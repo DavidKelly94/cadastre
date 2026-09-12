@@ -1,0 +1,21 @@
+name: Main triage
+
+# Consumer caller: copy into a repo's .github/workflows/. When CI fails on
+# the default branch, Claude opens (or updates) a diagnosis issue labeled
+# main-breakage — it never pushes. Note workflow_run always executes this
+# file's default-branch version. Companion to ci-autofix.yml, which handles
+# PR-branch failures.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  triage:
+    uses: davidkelly-snoday/base/.github/workflows/main-triage-reusable.yml@v1
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+      id-token: write
+    secrets: inherit

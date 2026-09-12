@@ -36,6 +36,9 @@ sessions/
 *.p8
 AuthKey*.p8
 
+# Claude Code local overrides (personal, per-clone)
+.claude/settings.local.json
+
 # Editors
 .vscode/
 .idea/

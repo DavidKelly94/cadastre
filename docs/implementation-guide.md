@@ -10,6 +10,15 @@ Read first: `docs/plan.md` (approved plan), `docs/session-format.md` (the contra
 - The working loop for iOS: edit → push → wait for `ios-check` → read the job log through the GitHub API tools → fix → push. Do not guess at compiler errors; read the log.
 - No third-party Swift dependencies. No Swift 6 strict concurrency (`SWIFT_VERSION = 5.0`). No embedded frameworks (the signing flow depends on it).
 - Never commit secrets. The App Store Connect key exists only as GitHub secrets.
+- Use the harness skills rather than a private definition of done: `/base:check`
+  runs the deterministic gate (it picks up this repo's commands from
+  `.harness.yml`), `/base:review` applies the same rubric CI's review uses, and
+  `/base:ship` is the bar — no push until the gate and the self-review both pass,
+  and a red check on your own PR is yours to fix. Read
+  `plugins/base/ship/POLICY.md` in the `base` checkout once, then follow it.
+- Dependencies are not installed for you: the plugin's SessionStart hook only
+  looks at the repository root, and this repo's Python manifest is
+  `pipeline/pyproject.toml`. Run `uv sync --project pipeline` yourself.
 - Keep the session format stable; any change goes through `docs/session-format.md` first.
 - Update the docs when behaviour changes; keep `docs/adr/` current (new decision → new ADR).
 - No AI model identifiers in commits, code or docs.
@@ -163,10 +172,12 @@ Implement in the order of `docs/design/pipeline-design.md`: `transforms` → `se
 
 ## 7. Workflows
 
-`.github/workflows/core-test.yml`:
+`.github/workflows/core-test.yml` (the workflow's display name is `CI` because
+base's adopted `main-triage.yml` triggers on `workflow_run` for
+`workflows: ["CI"]`; the filename stays `core-test.yml`):
 
 ```yaml
-name: core-test
+name: CI
 on: [push, pull_request]
 jobs:
   swift:
@@ -195,6 +206,9 @@ on:
   pull_request:
     paths: ["ios/**"]
   workflow_dispatch:
+# macOS runners bill at a 10x multiplier once this repo goes private, so never
+# let a superseded push keep a runner. See docs/adr/0018.
+concurrency: { group: ios-check-${{ github.ref }}, cancel-in-progress: true }
 jobs:
   build:
     runs-on: macos-26

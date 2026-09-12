@@ -50,3 +50,11 @@ Photo poses are pre-transformed into the house frame so the viewer never needs `
 ## 6. AR x-ray (later, in the app)
 
 The app will need: the house-frame marker map and landmarks for relocalization in a finished room, per-phase meshes as GLB, and the still index. All are produced by this same package. Rendering earlier-phase photos as projected textures onto the current wall uses `K`, the still pose and `T_hs`, exactly as the viewer's re-projection does.
+
+## 7. Markup and panoramas (later, sketched here so the data package does not have to change twice)
+
+**Markup layer.** Marks live in the house frame, not in a photo, so one mark renders in the 3D view, on the plan and over any phase's imagery. Expect `marks.json` per project alongside `index.json`: an id, a target (`point`, `region` or `element`), the house-frame geometry, level, room, phase, author, created time, text, a resolved flag and photo references. The viewer draws them as pins in 3D and on the plan, with a filter by phase and by resolved state. Two consequences for the current design: pins need to be pickable at the same time as meshes, so keep a single raycast path that can hit either; and mark geometry must be re-projected when an alignment changes, which is why marks store house-frame coordinates rather than screen or image coordinates.
+
+**Panorama viewer.** A pano is an equirectangular or cylindrical image with a pose (`docs/session-format.md` §7). Rendering one is a textured sphere or cylinder at `T_wp` with the camera at its centre, and the useful trick is that the viewer already knows every keyframe and still pose, so it can place clickable hotspots for nearby photos inside the pano and hand the user back to the 3D view at the same heading. Panoramas are also the natural entry point for a room: show the pano first, let the user look around, then step into geometry.
+
+**Both are additive.** Neither changes the existing package layout: `marks.json` is a new file, and panoramas are new entries in a session's directory plus a `panos` array in `frames.json`'s sibling. The viewer should ignore both when absent.

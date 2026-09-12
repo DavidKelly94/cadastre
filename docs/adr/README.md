@@ -1,6 +1,6 @@
 # Architecture decision records
 
-This folder holds the architecture decision records (ADRs) for Igloo. Each record captures one decision that is expensive to reverse: the forces behind it, what was decided, what we accept as a consequence, and the alternatives that were on the table. The layout follows MADR (https://adr.github.io/madr/): title, status, context, decision, consequences, alternatives considered. All sixteen records were accepted with the owner on 2026-09-11, the day the plan was approved, and they are the reference whenever code, docs and memory disagree.
+This folder holds the architecture decision records (ADRs) for Igloo. Each record captures one decision that is expensive to reverse: the forces behind it, what was decided, what we accept as a consequence, and the alternatives that were on the table. The layout follows MADR (https://adr.github.io/madr/): title, status, context, decision, consequences, alternatives considered. Records 0001 to 0016 were accepted with the owner on 2026-09-11, the day the plan was approved; 0017 and 0018 followed on 2026-09-12. They are the reference whenever code, docs and memory disagree. Two of them run longer than the word guidance below: 0017 carries a dependency on a decision it cannot yet make, and 0018 carries cost arithmetic that loses its value if summarised.
 
 Read them in order the first time. Afterwards, use the index.
 
@@ -24,6 +24,8 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0014](0014-plans-as-calibrated-rasters.md) | Plans as calibrated rasters | Accepted |
 | [ADR-0015](0015-name-igloo.md) | The product is named Igloo, bundle ID `ai.snoday.igloo` | Accepted |
 | [ADR-0016](0016-core-package-tested-on-linux.md) | Core logic in a pure-Swift package tested on Linux | Accepted |
+| [ADR-0017](0017-product-scope-record-and-collaboration.md) | The product is a queryable building record, not only a look behind walls | Accepted |
+| [ADR-0018](0018-staged-private-and-runner-budget.md) | Stay public through the build sprint, then go private | Accepted |
 
 ## Adding a new ADR
 

@@ -1,0 +1,42 @@
+# ADR-0001: Native Swift, SwiftUI and ARKit for the capture app
+
+## Status
+
+Accepted, 2026-09-11.
+
+## Context
+
+The capture phone is an iPhone 15 Pro or newer, decided with the owner on 2026-09-11. Its LiDAR sensor and ARKit give, per frame, a metric 6-DoF camera pose, intrinsics, a 1920x1440 colour image and a 256x192 depth map with per-pixel confidence; `captureHighResolutionFrame` adds full-resolution stills with pose, and scene reconstruction adds a live classified mesh (https://developer.apple.com/documentation/arkit). ARKit on iOS received no headline APIs in iOS 26 or in the iOS 27 announcement of 2026-06-09, so it is a mature, stable surface.
+
+No other stack exposes the same data. Android has no LiDAR equivalent in 2026; ARCore depth is depth-from-motion and fails on featureless walls. Of the cross-platform options only Unity AR Foundation 6.x reaches raw depth, intrinsics and per-frame pose; ViroReact is rendering only, `ar_flutter_plugin` has been dead since November 2022, and Safari implements no WebXR on iOS.
+
+The owner has no Mac, so builds run on CI (ADR-0002) and the implementer can never run the app. That favours the thinnest possible layer around Apple's documented patterns, with all logic in a package tested elsewhere (ADR-0016).
+
+## Decision
+
+Build Igloo as a native iOS app: SwiftUI screens in a `NavigationStack`, `ARView` wrapped in `UIViewRepresentable`, a thin ARKit layer (`ARSessionController`, `SessionRecorder`, `FrameWriter`, `JPEGEncoder`, `MarkerLogger`, `LandmarkLogger`, `MeshExporter`), Swift 5 language mode to avoid strict-concurrency compile failures we cannot iterate on locally, and system frameworks only. Decision logic and serialisation live in the pure-Swift `IglooCore` package.
+
+## Consequences
+
+Positive:
+
+- Full access to `sceneDepth`, confidence, mesh classification, `detectionImages` and high-resolution stills with no bridging layer.
+- Smallest build surface for a CI-only toolchain: one `xcodebuild`, no engine or plugin versions to pin.
+- Native components give Human Interface Guidelines behaviour, Dynamic Type and haptics for free.
+
+Negative:
+
+- iPhone only; Android and non-Pro iPhones are excluded (ADR-0013).
+- ARKit behaviour is only observable on the owner's device; mitigated by the per-build test plan, `igloo validate` and per-session `log.txt`.
+- Swift 5 language mode gives up strict concurrency checking.
+
+## Alternatives considered
+
+| Alternative | Why rejected |
+|---|---|
+| React Native (ViroReact) | No raw depth or mesh API; rendering only. |
+| Flutter (`ar_flutter_plugin`) | Unmaintained since November 2022; no depth, intrinsics or pose. |
+| Unity AR Foundation 6.x | Technically viable, but adds an engine licence, a heavy CI toolchain and non-native UI for no data gain. |
+| WebXR | Safari implements no WebXR on iOS; depth sensing is Chrome and Android XR only. |
+| Apple RoomPlan | Fits idealised planar walls (a 6.45 m wall reported as 6.82 m) and exports USD only; not a raw recorder. |
+| Android / ARCore | No LiDAR; depth-from-motion cannot give metric depth on bare walls. |

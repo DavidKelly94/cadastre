@@ -6,7 +6,7 @@ Accepted, 2026-09-11.
 
 ## Context
 
-The owner has a Windows PC with an RTX 4070 Super (12 GB) and no Mac. The scope is a personal tool first, with no accounts or cloud in the MVP. Everything beyond capture is heavy: TSDF fusion, a pose graph, Gaussian splats (Splatfacto trains 30k iterations in 8-12 minutes on a 4090 and 25-30 minutes on a 3060 at about 6 GB VRAM, so 15-20 minutes per room here, https://docs.nerf.studio/nerfology/methods/splat.html), SAM-style segmentation, vision language models and later a small detector fine-tune. The phone is thermally limited to sessions under 10 minutes and its mesh is "not intended to reflect in real time", so on-device processing would compete with capture.
+The owner has a Windows PC with an RTX 4070 Super (12 GB) and no Mac. The scope is a personal tool first, with no accounts or cloud in the MVP. Everything beyond capture is heavy: TSDF fusion, a pose graph, Gaussian splats (Splatfacto trains 30k iterations in 8-12 minutes on a 4090 and 25-30 minutes on a 3060 at about 6 GB VRAM, so 15-20 minutes per room here, https://docs.nerf.studio/nerfology/methods/splat.html), segmentation and vision models. The phone is thermally limited to sessions under 10 minutes and its mesh is "not intended to reflect in real time", so on-device processing would compete with capture.
 
 ## Decision
 
@@ -18,12 +18,12 @@ Positive:
 
 - A 12 GB GPU and unlimited time for free; algorithms can be rerun on old captures whenever they improve.
 - Photos of the owner's house never leave owner hardware.
-- Nothing to host, patch or secure; the pipeline is testable on Linux CI with `opencv-python-headless` and synthetic sessions.
+- Nothing to host or secure; the pipeline is testable on Linux CI with `opencv-python-headless` and synthetic sessions.
 
 Negative:
 
 - A manual transfer and `validate` step after every site visit.
-- Windows friction: `uv` solves Python, but CUDA drivers and tools such as nerfstudio in weeks 3+ may be easier under WSL2.
+- Windows friction: `uv` solves Python, but CUDA tools such as nerfstudio in weeks 3+ may be easier under WSL2.
 - No feedback on site beyond in-app statistics; capture coaching is a roadmap item.
 - Backups are the owner's job: the PC copy plus one external copy.
 

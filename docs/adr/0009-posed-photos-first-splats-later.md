@@ -6,7 +6,7 @@ Accepted, 2026-09-11.
 
 ## Context
 
-The purpose is to find studs, pipes, gas lines, ducts and wires behind finished walls years later. Those elements are thin: half-inch PEX or NM-B cable is a few pixels wide at typical distance. Gaussian splats are view-dependent blobs optimised for photometric loss; a 2 px cable renders plausibly but carries no reliable metric geometry, and no study quantifies 3DGS on wires or conduit. The LiDAR mesh gives few-centimetre wall dimensions from 256x192 depth but is useless for a half-inch pipe. Classic photogrammetry is the documented failure case for construction interiors: "large textureless walls, repetitive layouts, and partial or evolving structures exacerbate the challenges of pose estimation" (https://arxiv.org/html/2509.13972v1), and dense MVS costs about an hour on a 4090 for a small set. Splats, when wanted, train in 15-20 minutes per room on the 4070 Super (Postshot is free on all tiers; gsplat is open source) and ship as SOG, 15-20 times smaller than PLY (https://blog.playcanvas.com/playcanvas-adopts-sogs-for-20x-3dgs-compression/).
+The purpose is to find studs, pipes, gas lines, ducts and wires behind finished walls years later. Half-inch PEX or NM-B cable is a few pixels wide at typical distance. Gaussian splats are view-dependent blobs optimised for photometric loss; a 2 px cable renders plausibly but carries no reliable metric geometry, and no study quantifies 3DGS on wires or conduit. The LiDAR mesh gives few-centimetre wall dimensions from 256x192 depth but is useless for a half-inch pipe. Classic photogrammetry is the documented failure case for construction interiors: "large textureless walls, repetitive layouts, and partial or evolving structures exacerbate the challenges of pose estimation" (https://arxiv.org/html/2509.13972v1). Splats, when wanted, train in 15-20 minutes per room on the 4070 Super and ship as SOG, 15-20 times smaller than PLY (https://blog.playcanvas.com/playcanvas-adopts-sogs-for-20x-3dgs-compression/).
 
 ## Decision
 
@@ -23,8 +23,7 @@ No COLMAP or MVS by default. Feed-forward metric methods (MapAnything, Depth Any
 Positive:
 
 - "Where is the wire" is always answered by a photo and a ray, never by a hallucinated surface.
-- Value exists from v0.1 without any splat; splats are added room by room when time allows.
-- Nearest-photo lookup is simple: minimum angular plus positional distance over stored poses.
+- Value exists from v0.1 without any splat.
 
 Negative:
 
@@ -38,6 +37,5 @@ Negative:
 |---|---|
 | COLMAP, GLOMAP, RealityScan, Meshroom | Wrong default for textureless repetitive interiors; slow; kept as optional refinement. |
 | Splat-first capture (Scaniverse, Polycam) | No metric guarantee on thin elements; vendor formats and pricing. |
-| NeRF | Slower to train and render than splats with no advantage on the web. |
 | Mesh only | Loses thin elements and appearance. |
 | 360 photo pins (OpenSpace style) | No depth or measurement; the buy option, without a persistent frame. |

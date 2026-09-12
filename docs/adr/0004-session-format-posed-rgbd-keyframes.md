@@ -6,7 +6,7 @@ Accepted, 2026-09-11.
 
 ## Context
 
-Captured data is perishable (framing is covered within weeks) and must stay readable for years, on a PC, in Python, with standard tools. The phone writes 2-3 MB/s, about 800 MB per 5-minute room, and can be stopped mid-session by a crash or a thermal or disk guard. ARKit provides per frame a 1920x1440 colour image, a 256x192 Float32 depth map in metres, a UInt8 confidence map, a 4x4 camera transform, 3x3 intrinsics, exposure and tracking state. Apple's ARKitScenes (https://github.com/apple/ARKitScenes) and the Stray Scanner tooling (https://github.com/kekeblom/StrayVisualizer) use the same per-frame layout, as do the fallback recorders.
+Captured data is perishable (framing is covered within weeks) and must stay readable for years on a PC, in Python, with standard tools. The phone writes 2-3 MB/s, about 800 MB per 5-minute room, and can stop mid-session on a crash or a guard. ARKit provides per frame a 1920x1440 colour image, a 256x192 Float32 depth map in metres, a UInt8 confidence map, a 4x4 camera transform, 3x3 intrinsics, exposure and tracking state. Apple's ARKitScenes (https://github.com/apple/ARKitScenes) and Stray Scanner (https://github.com/kekeblom/StrayVisualizer) use the same per-frame layout.
 
 ## Decision
 
@@ -20,12 +20,11 @@ Positive:
 
 - Readable from any language; nothing is baked into images.
 - Append-only JSONL with fsync every 50 lines survives crashes; a dropped frame corrupts nothing.
-- Lossless depth; easy to trim for fixtures (`samples/` holds at most 10 frames, under 6 MB).
-- Every AI roadmap item can run on data captured now.
+- Lossless depth; easy to trim for fixtures (`samples/`: at most 10 frames, under 6 MB).
 
 Negative:
 
-- Thousands of small files copy slowly over SMB or USB; zip before transfer.
+- Thousands of small files copy slowly; zip before transfer.
 - No temporal compression, so about 800 MB per room.
 - `format_version` must stay in step across app, pipeline and samples.
 
@@ -36,4 +35,3 @@ Negative:
 | HEVC video plus a pose track | Poses drift from frames on drops; a crash truncates the container; keyframes must be re-extracted lossily. |
 | Vendor formats (`.r3d`, Polycam raw) | Tied to another app's conventions and pricing; accepted only as fallback inputs through a converter. |
 | HDF5 or one container per session | Needs a library on both sides and is fragile when writing stops abruptly. |
-| Video only, poses from photogrammetry | Throws away free metric poses and depth (ADR-0009). |

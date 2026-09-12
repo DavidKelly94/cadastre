@@ -22,7 +22,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0012](0012-monorepo-and-local-storage.md) | Monorepo, sessions in the app's Documents folder, no accounts | Accepted |
 | [ADR-0013](0013-ios17-lidar-required.md) | iOS 17 minimum, LiDAR required | Accepted |
 | [ADR-0014](0014-plans-as-calibrated-rasters.md) | Plans as calibrated rasters | Accepted |
-| [ADR-0015](0015-name-cadastre.md) | The product is named Cadastre, bundle ID `com.davidkelly.cadastre` | Accepted |
+| [ADR-0015](0015-name-igloo.md) | The product is named Igloo, bundle ID `ai.snoday.igloo` | Superseded by [ADR-0019](0019-name-cadastre.md) |
 | [ADR-0016](0016-core-package-tested-on-linux.md) | Core logic in a pure-Swift package tested on Linux | Accepted |
 | [ADR-0017](0017-product-scope-record-and-collaboration.md) | The product is a queryable building record, not only a look behind walls | Accepted |
 | [ADR-0018](0018-staged-private-and-runner-budget.md) | Stay public through the build sprint, then go private | Accepted |

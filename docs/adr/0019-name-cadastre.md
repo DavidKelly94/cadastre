@@ -4,6 +4,8 @@
 
 Accepted, 2026-09-12. Supersedes [ADR-0015](0015-name-igloo.md).
 
+The wordmark question was reopened the same day; see [docs/naming-investigation.md](../naming-investigation.md). This record stands until a superseding ADR replaces it.
+
 ## Context
 
 ADR-0015 chose "Igloo" on the snoday.ai brand, when this was a personal tool. The owner now

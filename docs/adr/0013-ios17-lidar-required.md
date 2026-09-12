@@ -25,7 +25,7 @@ Positive:
 Negative:
 
 - Excludes non-Pro iPhones and all Android; a future product must accept this or add a photo-only mode.
-- Runtime capability checks must be kept in sync with the ARKit configuration.
+- Runtime capability checks must stay in sync with the ARKit configuration.
 - Simulator builds prove compilation only.
 
 ## Alternatives considered

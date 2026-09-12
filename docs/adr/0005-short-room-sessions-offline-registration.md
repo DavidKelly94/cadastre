@@ -12,7 +12,7 @@ Thermal and storage limits point the same way: LiDAR, camera and mesh at 30 fps 
 
 ## Decision
 
-A session is one room in one phase, targeting 2-5 minutes, with a hard stop at 10 minutes or below 500 MB free (`HealthPolicy`). Each session has its own ARKit world frame with origin at the start; the app never attempts to relocalise into a previous session. The owner starts at the doorway, sees at least two markers, taps landmarks at corners and door thresholds, and finishes where they started. Registration of sessions into the per-level house frame happens offline in the pipeline from markers, landmarks and plan corners (ADR-0006, ADR-0007), and from week 3 a pose graph over marker observations ties all sessions of a level together.
+A session is one room in one phase, targeting 2-5 minutes, with a hard stop at 10 minutes or below 500 MB free (`HealthPolicy`). Each session has its own ARKit world frame with origin at the start; the app never tries to relocalise into a previous session. The owner starts at the doorway, sees at least two markers, taps landmarks at corners and door thresholds, and finishes where they started. Registration into the per-level house frame happens offline from markers, landmarks and plan corners (ADR-0006, ADR-0007); from week 3 a pose graph over marker observations ties all sessions of a level together.
 
 ## Consequences
 
@@ -21,12 +21,12 @@ Positive:
 - Drift stays at room scale, a few centimetres.
 - Thermal state, storage and crash exposure are bounded; a bad session is redone in five minutes.
 - The app stays simple: no `ARWorldMap` persistence, no cross-session state.
-- Sessions can be transferred and processed independently and in parallel.
+- Sessions transfer and process independently.
 
 Negative:
 
 - A house produces 10-20 sessions per phase; hallways and stairs need their own sessions with shared markers.
-- Neighbouring rooms overlap little, so inter-session alignment depends on markers and landmarks, not visual overlap.
+- Neighbouring rooms overlap little, so alignment depends on markers and landmarks, not visual overlap.
 - A house-wide consistent model waits for the week-3 pose graph.
 - The protocol relies on owner discipline.
 
@@ -37,4 +37,4 @@ Negative:
 | One continuous whole-house session | Metre-level drift, thermal shutdown and one multi-gigabyte session at risk from a crash. |
 | `ARWorldMap` relocalisation between sessions | Works only within a phase; relocalising can continue indefinitely and fails after appearance change (ADR-0006). |
 | Custom on-device loop closure | Weeks of work; ARKit already does VIO and offline optimisation sees all the data. |
-| Several rooms per session under the 10-minute cap | Allowed as an exception for small connected spaces, but naming and coverage tracking are per room. |
+| Several rooms per session under the cap | Allowed as an exception for small connected spaces; naming and coverage tracking are per room. |

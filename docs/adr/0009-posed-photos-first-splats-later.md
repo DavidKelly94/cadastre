@@ -24,12 +24,11 @@ Positive:
 
 - "Where is the wire" is always answered by a photo and a ray, never by a hallucinated surface.
 - Value exists from v0.1 without any splat; splats are added room by room when time allows.
-- Nearest-photo lookup in the viewer is simple: minimum angular plus positional distance over stored poses.
+- Nearest-photo lookup is simple: minimum angular plus positional distance over stored poses.
 
 Negative:
 
-- Photorealism arrives late and per room.
-- Mesh detail is coarse.
+- Photorealism arrives late and per room; mesh detail is coarse.
 - Still discipline rests on the owner; a missed still cannot be recovered after drywall.
 - Splats seeded from drifted poses show floaters; three representations must stay aligned.
 

@@ -23,8 +23,7 @@ Positive:
 
 Negative:
 
-- Hand-written 4x4 math without `simd`; acceptable at about ten keyframes per second.
-- A conversion at the boundary (`simd_float4x4` to `[Float]`).
+- Hand-written 4x4 math without `simd`, and a conversion at the boundary; acceptable at about ten keyframes per second.
 - Linux Foundation quirks (dates, `FileHandle`) can surprise.
 - Tracking states, anchors and thermal transitions remain testable only on the phone.
 - Two toolchains (Swift 6.1 on Linux, Xcode 26.6 on macOS) must both build the package.

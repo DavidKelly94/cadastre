@@ -6,13 +6,13 @@ Accepted, 2026-09-11.
 
 ## Context
 
-ARKit poses are metric and gravity-aligned (`worldAlignment = .gravity`), so the scale, roll and pitch of a session are already known. Placing a session on a plan level is a 2D rigid transform, x, y and yaw, plus a floor-height offset per level. Floor-plan localisation research poses the problem as SE(2) throughout, and multi-floor work uses one SE(2) per level with stairs as the only reliable tie. Compass heading (`.gravityAndHeading`) is unreliable indoors near steel, so yaw must come from correspondences.
+ARKit poses are metric and gravity-aligned (`worldAlignment = .gravity`), so the scale, roll and pitch of a session are already known. Placing a session on a plan level is a 2D rigid transform, x, y and yaw, plus a floor-height offset per level; floor-plan localisation research poses the problem as SE(2) throughout, with stairs as the only reliable tie between levels. Compass heading (`.gravityAndHeading`) is unreliable indoors near steel, so yaw must come from correspondences.
 
-Automatic methods exist: Z-FLoc (https://arxiv.org/abs/2606.04788) matches lines on a bird's-eye projection zero-shot, LASER reports a 5 cm median from a single panorama, and wall-line ICP pipelines report about 4 cm. Vision language models read plan geometry at only 33-38% accuracy (ArchPlanVQA). Residential framing tolerances allow 1-2 inch deviations from the plan, so any fit will show residuals; the plan is a reference, the scan is the truth.
+Automatic methods exist: Z-FLoc (https://arxiv.org/abs/2606.04788) matches lines on a bird's-eye projection zero-shot, LASER reports a 5 cm median from one panorama, and wall-line ICP pipelines report about 4 cm. Vision language models read plan geometry at only 33-38% accuracy (ArchPlanVQA). Residential framing tolerances allow 1-2 inch deviations from the plan, so any fit shows residuals; the plan is a reference, the scan is the truth.
 
 ## Decision
 
-The house frame per level is SE(2) plus a z offset. While capturing, the owner taps room corners and door thresholds; `LandmarkLogger` raycasts against estimated planes and stores a label and world point in `landmarks.jsonl`. `igloo align <session> --level L1` opens a local page to pair landmarks with plan corners and fits the transform with Umeyama's method without scale, writing `derived/align.json` with per-pair residuals. Sessions without landmarks inherit the frame through shared markers (ADR-0006). Automatic refinement (wall-line ICP or a Z-FLoc-style matcher) is deferred to weeks 3+ as roadmap item 2, and will only ever propose correspondences for the owner to confirm.
+The house frame per level is SE(2) plus a z offset. While capturing, the owner taps room corners and door thresholds; `LandmarkLogger` raycasts against estimated planes and stores a label and world point in `landmarks.jsonl`. `igloo align <session> --level L1` opens a local page to pair landmarks with plan corners and fits the transform with Umeyama's method without scale, writing `derived/align.json` with per-pair residuals. Sessions without landmarks inherit the frame through shared markers (ADR-0006). Automatic refinement (wall-line ICP or a Z-FLoc-style matcher) is deferred to weeks 3+ as roadmap item 2 and will only ever propose correspondences for the owner to confirm.
 
 ## Consequences
 
@@ -21,7 +21,7 @@ Positive:
 - About ten lines of deterministic linear algebra, covered by `synth.py` tests.
 - Tapping four corners on site is cheap and captures intent: which corner is which.
 - Residuals directly expose as-built deviation from the plan.
-- Independent of plan vector quality; works with photographed paper plans.
+- Works with photographed paper plans; no vector plan needed.
 
 Negative:
 
@@ -33,7 +33,7 @@ Negative:
 
 | Alternative | Why rejected |
 |---|---|
-| 3D similarity transform with scale | Scale, roll and pitch are already metric and gravity-aligned; extra freedom only absorbs noise. |
+| 3D similarity transform with scale | Scale, roll and pitch are already known; extra freedom only absorbs noise. |
 | Compass heading | Unreliable indoors near steel. |
 | Automatic wall-line matching now | A week of work with unknown failure cases on partial framing; deferred. |
 | Vision language model reading the plan | 33-38% accuracy on plan geometry. |

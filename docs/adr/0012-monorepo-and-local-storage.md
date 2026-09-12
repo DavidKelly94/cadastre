@@ -6,7 +6,7 @@ Accepted, 2026-09-11.
 
 ## Context
 
-Igloo has three codebases in three languages (Swift app plus `IglooCore`, Python pipeline, TypeScript viewer) plus documentation, one implementer and one user. The session format (ADR-0004) is shared by all of them, so a `format_version` bump touches the app, the pipeline, the docs and the sample fixtures at once. The MVP has no accounts or cloud; photos of the owner's house are private. A 5-minute room is about 800 MB, and the phone must refuse to start below 2 GB free and stop below 500 MB.
+Igloo has three codebases in three languages (Swift app plus `IglooCore`, Python pipeline, TypeScript viewer) plus documentation, one implementer and one user. The session format (ADR-0004) is shared by all of them, so a `format_version` bump touches the app, the pipeline, the docs and the sample fixtures at once. The MVP has no accounts or cloud; photos of the owner's house are private. A 5-minute room is about 800 MB, and the phone refuses to start below 2 GB free and stops below 500 MB.
 
 ## Decision
 
@@ -20,8 +20,7 @@ Positive:
 
 - Cross-cutting format changes land in one pull request with docs and fixtures.
 - Shared fixtures keep the Swift and Python encoders in agreement.
-- The owner can see, copy and delete every byte the app produces.
-- No backend to build or secure; privacy by construction.
+- The owner can see, copy and delete every byte the app produces; no backend to build or secure.
 - A public repository makes macOS runner minutes free (ADR-0002).
 
 Negative:

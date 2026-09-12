@@ -12,7 +12,7 @@ The APIs needed are all available by iOS 16 or 17: `sceneDepth` (iOS 14), mesh c
 
 ## Decision
 
-Deployment target iOS 17.0, Swift 5 language mode, portrait only, `UIRequiredDeviceCapabilities [arkit]`. At launch the app checks `ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)` and `supportsFrameSemantics(.sceneDepth)` and refuses capture with a clear message on any device without LiDAR; onboarding shows the check. There is no degraded non-LiDAR mode. The app is designed and tested for iPhone; iPad is neither excluded nor tested.
+Deployment target iOS 17.0, Swift 5 language mode, portrait only, `UIRequiredDeviceCapabilities [arkit]`. At launch the app checks `ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)` and `supportsFrameSemantics(.sceneDepth)` and refuses capture with a clear message on any device without LiDAR; onboarding shows the check. There is no degraded non-LiDAR mode. iPad is neither excluded nor tested.
 
 ## Consequences
 
@@ -36,4 +36,3 @@ Negative:
 | Photo-only mode without LiDAR | No metric depth; doubles the code paths and breaks the format guarantees. |
 | iPad Pro as a capture device | Two-handed on a dusty site; untested. |
 | Android | No LiDAR equivalent in 2026. |
-| iOS 16 minimum | No LiDAR phone is stuck on iOS 16; 17 is the newest release with all needed APIs stable. |

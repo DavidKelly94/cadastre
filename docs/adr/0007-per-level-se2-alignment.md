@@ -6,9 +6,7 @@ Accepted, 2026-09-11.
 
 ## Context
 
-ARKit poses are metric and gravity-aligned (`worldAlignment = .gravity`), so the scale, roll and pitch of a session are already known. Placing a session on a plan level is a 2D rigid transform, x, y and yaw, plus a floor-height offset per level; floor-plan localisation research poses the problem as SE(2) throughout, with stairs as the only reliable tie between levels. Compass heading (`.gravityAndHeading`) is unreliable indoors near steel, so yaw must come from correspondences.
-
-Automatic methods exist: Z-FLoc (https://arxiv.org/abs/2606.04788) matches lines on a bird's-eye projection zero-shot, LASER reports a 5 cm median from one panorama, and wall-line ICP pipelines report about 4 cm. Vision language models read plan geometry at only 33-38% accuracy (ArchPlanVQA). Residential framing tolerances allow 1-2 inch deviations from the plan, so any fit shows residuals; the plan is a reference, the scan is the truth.
+ARKit poses are metric and gravity-aligned (`worldAlignment = .gravity`), so the scale, roll and pitch of a session are already known. Placing a session on a plan level is a 2D rigid transform, x, y and yaw, plus a floor-height offset per level; floor-plan localisation research poses the problem as SE(2), with stairs as the only reliable tie between levels. Compass heading (`.gravityAndHeading`) is unreliable indoors near steel, so yaw must come from correspondences. Automatic methods exist: Z-FLoc (https://arxiv.org/abs/2606.04788) matches lines on a bird's-eye projection zero-shot, and wall-line ICP pipelines report about 4 cm. Framing tolerances allow 1-2 inch deviations from the plan, so any fit shows residuals; the plan is a reference, the scan is the truth.
 
 ## Decision
 
@@ -20,13 +18,11 @@ Positive:
 
 - About ten lines of deterministic linear algebra, covered by `synth.py` tests.
 - Tapping four corners on site is cheap and captures intent: which corner is which.
-- Residuals directly expose as-built deviation from the plan.
-- Works with photographed paper plans; no vector plan needed.
 
 Negative:
 
 - Manual pairing for every session with landmarks.
-- Raycast accuracy on estimated planes is a few centimetres; a wrong label gives a silently bad fit, caught only by the residual report and the inspector overlay.
+- Raycast accuracy on estimated planes is a few centimetres; a wrong label gives a silently bad fit, caught only by residuals and the inspector overlay.
 - A miscalibrated plan scale corrupts every alignment on that level (ADR-0014).
 
 ## Alternatives considered
@@ -34,7 +30,5 @@ Negative:
 | Alternative | Why rejected |
 |---|---|
 | 3D similarity transform with scale | Scale, roll and pitch are already known; extra freedom only absorbs noise. |
-| Compass heading | Unreliable indoors near steel. |
 | Automatic wall-line matching now | A week of work with unknown failure cases on partial framing; deferred. |
-| Vision language model reading the plan | 33-38% accuracy on plan geometry. |
 | Marker frame only, no plan | Loses the invariant reference the finished house and the AR view depend on. |

@@ -21,12 +21,12 @@ Build Igloo as a native iOS app: SwiftUI screens in a `NavigationStack`, `ARView
 Positive:
 
 - Full access to `sceneDepth`, confidence, mesh classification, `detectionImages` and posed stills with no bridging layer.
-- Smallest build surface for a CI-only toolchain: one `xcodebuild`, no engine or plugin to pin.
+- Smallest build surface for a CI-only toolchain: one `xcodebuild`, nothing else to pin.
 - Native components give Human Interface Guidelines behaviour, Dynamic Type and haptics for free.
 
 Negative:
 
-- iPhone only; Android and non-Pro iPhones are excluded (ADR-0013).
+- iPhone only (ADR-0013).
 - ARKit behaviour is observable only on the owner's device; mitigated by the per-build test plan, `igloo validate` and per-session `log.txt`.
 - Swift 5 mode gives up strict concurrency checking.
 
@@ -34,8 +34,8 @@ Negative:
 
 | Alternative | Why rejected |
 |---|---|
-| React Native (ViroReact) | No raw depth or mesh API; rendering only. |
+| React Native (ViroReact) | No raw depth or mesh API. |
 | Flutter (`ar_flutter_plugin`) | Unmaintained since November 2022; no depth, intrinsics or pose. |
-| Unity AR Foundation 6.x | Viable data access, but an engine licence, a heavy CI toolchain and non-native UI for no gain. |
-| WebXR | No WebXR in Safari on iOS; depth sensing is Chrome and Android XR only. |
-| Apple RoomPlan | Fits idealised planar walls (a 6.45 m wall reported as 6.82 m), exports USD only; not a raw recorder. |
+| Unity AR Foundation 6.x | Viable data access, but an engine licence, a heavy CI toolchain and non-native UI. |
+| WebXR | No WebXR in Safari on iOS. |
+| Apple RoomPlan | Idealised planar walls (6.45 m reported as 6.82 m), USD only; not a raw recorder. |

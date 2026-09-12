@@ -21,7 +21,7 @@ Planning is complete (2026-09-11); the product was named and the repositories mo
 | The owner | [Owner setup](docs/owner-setup.md), [Capture protocol](docs/capture-protocol.md), [Markers](docs/markers.md), [Schedule](docs/schedule.md), [Transfer runbook](docs/transfer-runbook.md) |
 | Implementing the code | [AGENTS.md](AGENTS.md), [Implementation guide](docs/implementation-guide.md), [System design](docs/design/system-design.md), [iOS app design](docs/design/ios-app-design.md), [Pipeline design](docs/design/pipeline-design.md), [Session format](docs/session-format.md), [ADRs](docs/adr/README.md) |
 | Designing the UI | [UI design brief](docs/ui/design-brief.md) (self-contained handoff) |
-| Asking "why" | [Feasibility](docs/feasibility.md), [Approved plan](docs/plan.md), [AI roadmap](docs/ai-roadmap.md), [Viewer design](docs/design/viewer-design.md) |
+| Asking "why" | [Feasibility](docs/feasibility.md), [Naming investigation](docs/naming-investigation.md), [Approved plan](docs/plan.md), [AI roadmap](docs/ai-roadmap.md), [Viewer design](docs/design/viewer-design.md) |
 
 ## Repository layout (target)
 

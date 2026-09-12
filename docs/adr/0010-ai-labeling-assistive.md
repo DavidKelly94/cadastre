@@ -24,8 +24,7 @@ Negative:
 
 - The owner labels at least 50 stills per trial.
 - No whole-house automatic tagging in the near term.
-- Candidates add a label schema with status and provenance.
-- Small per-photo API costs for captions.
+- Candidates add a label schema with status and provenance, and small per-photo API costs.
 
 ## Alternatives considered
 

@@ -27,7 +27,7 @@ Positive:
 
 - No certificate, private key or profile is stored anywhere; Apple manages and renews them.
 - Four secrets, all obtainable on the web.
-- Compile failures and signing failures are separated by the two-step flow, and an archive can be re-exported.
+- Compile failures and signing failures are separated, and an archive can be re-exported.
 
 Negative:
 
@@ -44,4 +44,3 @@ Negative:
 | fastlane `match` from day one | Adds Ruby tooling, a certs branch and another secret; kept as the last rung. |
 | Signing during archive | Mixes compile and signing failures; kept as rung two. |
 | Third-party upload action by default | Extra dependency; only needed if the `destination upload` export fails. |
-| Manual upload with Transporter | Needs a Mac. |

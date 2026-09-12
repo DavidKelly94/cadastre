@@ -26,8 +26,7 @@ Negative:
 
 - Spark is young; its LOD and streaming specifics were not verified.
 - Mixing splats, meshes and photo frustums needs careful depth handling.
-- Every domain feature is custom.
-- Room chunking and memory limits on mobile Safari are our problem.
+- Every domain feature is custom; room chunking and mobile Safari memory limits are our problem.
 
 ## Alternatives considered
 

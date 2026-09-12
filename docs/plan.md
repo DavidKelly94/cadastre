@@ -17,7 +17,7 @@
 
 ## Context
 
-`davidkelly-snoday/homescanner` is an empty public repo. The owner is about to build a house and wants to photograph it during framing, electrical rough-in, plumbing and HVAC, map those captures onto the architectural plans, and years later open a 3D view of any construction state to find studs, pipes, gas lines, ducts and wires behind finished walls. They asked how doable this is, what the phone can do, and what is needed for scale and location. They also want design docs, a schedule, ADRs, a UI brief they can hand to Claude Design, a snoday.ai-themed name, and a captured AI roadmap to trial during rough-in.
+The project starts from an empty public repo. The owner is about to build a house and wants to photograph it during framing, electrical rough-in, plumbing and HVAC, map those captures onto the architectural plans, and years later open a 3D view of any construction state to find studs, pipes, gas lines, ducts and wires behind finished walls. They asked how doable this is, what the phone can do, and what is needed for scale and location. They also want design docs, a schedule, ADRs, a UI brief they can hand to Claude Design, a snoday.ai-themed name, and a captured AI roadmap to trial during rough-in.
 
 Decisions made with the owner on 2026-09-11:
 

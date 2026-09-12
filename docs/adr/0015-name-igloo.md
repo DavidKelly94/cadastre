@@ -8,7 +8,7 @@ Accepted, 2026-09-11.
 
 ## Context
 
-The owner wanted a name that fits the snoday.ai brand, which has no strong theme yet. The name is needed early: the App ID is registered on day 2 for the first TestFlight build, and a bundle identifier cannot be changed once an app record exists, so the choice is permanent for this app. The GitHub repository is `davidkelly-snoday/homescanner`, a working name. The CLI, the Swift package and the marker labels also need stable names before code is written.
+The owner wanted a name that fits the snoday.ai brand, which has no strong theme yet. The name is needed early: the App ID is registered on day 2 for the first TestFlight build, and a bundle identifier cannot be changed once an app record exists, so the choice is permanent for this app. The GitHub repository still carries a working name. The CLI, the Swift package and the marker labels also need stable names before code is written.
 
 "Igloo" was chosen because it fits the brand ("sno") and the product: an igloo is a house built course by course from blocks, so each construction phase is a course and the finished house is the dome; ice-white and blue surfaces with one warm accent for record and primary actions read well in bright, dusty outdoor light. The design brief builds the visual theme on this motif.
 

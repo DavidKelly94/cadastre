@@ -8,7 +8,7 @@ The wordmark question was reopened the same day; see [docs/naming-investigation.
 
 ## Context
 
-ADR-0015 chose "Igloo" on the snoday.ai brand, when this was a personal tool. The owner now
+ADR-0015 chose "Igloo" on the brand in use at the time, when this was a personal tool. The owner now
 intends to market the product and has moved it to a personal account, and "Igloo" says nothing
 about what it does. A bundle identifier is permanent once an App Store Connect record exists and
 none had been created, so the rename was free at this moment and would not be later.

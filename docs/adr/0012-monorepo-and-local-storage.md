@@ -6,13 +6,13 @@ Accepted, 2026-09-11.
 
 ## Context
 
-Igloo has three codebases in three languages (Swift app plus `IglooCore`, Python pipeline, TypeScript viewer) plus documentation, one implementer and one user. The session format (ADR-0004) is shared by all of them, so a `format_version` bump touches the app, the pipeline, the docs and the sample fixtures at once. The MVP has no accounts or cloud; photos of the owner's house are private.
+Cadastre has three codebases in three languages (Swift app plus `CadastreCore`, Python pipeline, TypeScript viewer) plus documentation, one implementer and one user. The session format (ADR-0004) is shared by all of them, so a `format_version` bump touches the app, the pipeline, the docs and the sample fixtures at once. The MVP has no accounts or cloud; photos of the owner's house are private.
 
 ## Decision
 
-One public repository, `homescanner` (renamed only when the owner chooses, ADR-0015), with `docs/`, `ios/`, `pipeline/`, `samples/`, `web/` and `.github/workflows/`. Workflows are path-filtered: `core-test` on every push, `ios-check` on pull requests, `ios-testflight` on pushes touching `ios/**`. `samples/` holds one trimmed real session (at most 10 frames, under 6 MB) used by both Swift and Python tests; real plans and full sessions live in a project store outside the repository.
+One public repository, `homescanner` (renamed only when the owner chooses, ADR-0019), with `docs/`, `ios/`, `pipeline/`, `samples/`, `web/` and `.github/workflows/`. Workflows are path-filtered: `core-test` on every push, `ios-check` on pull requests, `ios-testflight` on pushes touching `ios/**`. `samples/` holds one trimmed real session (at most 10 frames, under 6 MB) used by both Swift and Python tests; real plans and full sessions live in a project store outside the repository.
 
-On the phone, sessions are written to `Documents/sessions/<project>/<session>/`. `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` expose them in the Files app. Transfer is manual: Files to an SMB share on the PC, or USB with the Apple Devices app. No accounts, no cloud storage, no telemetry. The PC copy is the archive; sessions are deleted from the phone after `igloo validate` passes.
+On the phone, sessions are written to `Documents/sessions/<project>/<session>/`. `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` expose them in the Files app. Transfer is manual: Files to an SMB share on the PC, or USB with the Apple Devices app. No accounts, no cloud storage, no telemetry. The PC copy is the archive; sessions are deleted from the phone after `cadastre validate` passes.
 
 ## Consequences
 

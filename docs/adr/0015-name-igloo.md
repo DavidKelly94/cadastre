@@ -2,6 +2,8 @@
 
 ## Status
 
+Superseded by [ADR-0019](0019-name-cadastre.md), 2026-09-12. The decision below is kept as written; it records what was agreed on 2026-09-11.
+
 Accepted, 2026-09-11.
 
 ## Context

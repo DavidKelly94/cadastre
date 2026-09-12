@@ -1,7 +1,7 @@
 name: Claude
 
 # Consumer caller: copy into a repo's .github/workflows/. Behavior lives in the
-# reusable workflow in davidkelly-snoday/base — bump the @ref to take updates.
+# reusable workflow in DavidKelly94/base — bump the @ref to take updates.
 on:
   issue_comment:
     types: [created]
@@ -35,7 +35,7 @@ jobs:
         github.event.comment.author_association
         || github.event.review.author_association
         || github.event.issue.author_association)
-    uses: davidkelly-snoday/base/.github/workflows/claude-reusable.yml@v1
+    uses: DavidKelly94/base/.github/workflows/claude-reusable.yml@v1
     # Permissions are set on the caller because the caller's token is the
     # ceiling for the reusable workflow.
     permissions:

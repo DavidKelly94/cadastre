@@ -1,35 +1,41 @@
-# Igloo design brief
+# Cadastre design brief
 
 Handoff for Claude Design. This document is self-contained: it carries every fact needed to design the app without access to the rest of the repository. Behaviour follows the approved project plan of 2026-09-11; where the plan is silent, this brief makes a proposal and says so.
 
 ## 1. Product
 
-Igloo (bundle ID `ai.snoday.igloo`, brand snoday.ai, repository `homescanner`) is an iPhone app that records a house while it is being built so the owner can later see what is behind the finished walls: studs, wires, pipes, gas lines, ducts. On an iPhone 15 Pro or newer (LiDAR required, iOS 17 minimum) it uses ARKit to record posed colour frames, LiDAR depth, high-resolution stills, tapped landmarks and printed-marker sightings into an open session folder, one session per room per construction phase. A pipeline on the owner's PC aligns sessions to the architectural plan and later builds a 3D viewer. No accounts, no cloud; sessions are plain folders visible in the Files app.
+Cadastre (bundle ID `com.davidkelly.cadastre`, repository `DavidKelly94/cadastre`) is an iPhone app that records a building while it is under construction, so the structure and services hidden by finished surfaces stay findable afterwards: studs, wires, pipes, gas lines, ducts. On an iPhone 15 Pro or newer (LiDAR required, iOS 17 minimum) it uses ARKit to record posed colour frames, LiDAR depth, high-resolution stills, tapped landmarks and printed-marker sightings into an open session folder, one session per room per construction phase. A pipeline on the owner's PC aligns sessions to the architectural plan and later builds a 3D viewer. No accounts, no cloud; sessions are plain folders visible in the Files app.
+
+The product is broader than that first release. It is a queryable record of a building spanning construction and ownership: inspecting work as it happens and comparing phases matter as much as the later search behind a finished surface, the captured photos and panoramas are an answer surface rather than only texture for a model, and the long-term direction is coordination with builders and clients, with markup as a major feature. Design the shell so those fit, but do not design them yet; the screens below are the ones being built.
+
+A note on the name, because it shapes the visuals. A *cadastre* is the authoritative register of what exists on a parcel of land: who holds it, where the boundaries run, what stands on it. The product borrows that idea and applies it to a building rather than to land. Pronounced "kuh-DASS-ter". Because the word is unfamiliar to most people, the wordmark should always appear with its line on first touch, something in the spirit of "the permanent register of your building", and the product is never abbreviated to "CAD", which already means something else in this industry.
 
 Users and setting. The first user is the owner, standing in a house under construction: dust, bright sun through unglazed openings, dim basements, compressor and saw noise, debris underfoot. The phone is held up at chest height, usually one-handed, sometimes in a work glove; the other hand may hold a tape measure. Attention is split between screen and floor. Later users are other homeowners and small builders doing the same job with less patience for setup.
 
 ## 2. Visual theme (proposal)
 
-snoday.ai has no established visual identity, so this section is a starting point the designer may change. Keep the contrast requirements in sections 7 and 8.
+The brand has no established visual identity, so this section is a starting point the designer may change. Keep the contrast requirements in sections 7 and 8.
 
-Motif: igloo blocks. An igloo is built from courses of blocks that close into a dome. Map construction phases to courses: framing is the first course, electrical the second, and so on to finish, which closes the dome. A project's progress is a small igloo gaining courses; a room's phase coverage is a row of blocks; the app icon is an igloo of a few rounded blocks with a dark doorway (the camera opening).
+Motif: **the register itself**. A cadastral plat divides ground into bounded parcels, each one a cell with a record behind it. Here the parcels are rooms on a level, and each carries its record of phases, photos and marks. That gives the app icon (a small ruled parcel grid, a few cells, one filled), the project overview (rooms drawn as parcels, filled in proportion to phase coverage), and a quiet texture for empty states (faint ruled parcel lines). The motif has a real advantage over an arbitrary one: it is already what the plan view looks like, so the brand and the product's main screen agree instead of competing.
 
-Surfaces: ice white and pale blue, with one warm accent (ember) reserved for record and primary actions so the eye always finds the one thing to press. High contrast for direct sun: dark text on near-white cards, no light grey on white, visible outlines. Cards are rounded blocks with a faint lighter top edge, like snow on a block. Status colours (green, amber, red) are semantic: dots, icons and chip tints only; text on light surfaces stays ink.
+Phases are the second dimension of that grid. A parcel filling in as framing, electrical, plumbing and the rest are captured reads as a record being completed, which is exactly what is happening.
+
+Surfaces: near-white paper grounds and a single cool ink-blue, with one warm accent reserved for record and primary actions so the eye always finds the one thing to press. The reference is a survey drawing rather than a consumer app: ruled, precise, quiet, with ink on paper as the dominant relationship. High contrast for direct sun: dark text on near-white cards, no light grey on white, visible outlines. Cards are ruled rectangles with a hairline border rather than soft floating shapes. Status colours (green, amber, red) are semantic: dots, icons and chip tints only; text on light surfaces stays ink.
 
 Starter tokens:
 
 | Role | Value | Use |
 |---|---|---|
-| ice/ground | #F4F8FB | Screen background |
-| ice/block | #FFFFFF | Cards, sheets |
-| ice/outline | #C9D6E2 | Card outlines, dividers |
+| surface/ground | #F4F8FB | Screen background |
+| surface/raised | #FFFFFF | Cards, sheets |
+| surface/outline | #C9D6E2 | Card outlines, dividers |
 | ink/primary | #0F1E2E | Body text, icons |
-| ink/secondary | #4A5A6A | Secondary text (6.6:1 on ice/ground) |
-| glacier/500 | #2E7FD0 | Brand blue: selection, active chips, large text only |
-| glacier/700 | #1D5C9E | Links and small blue text (6.8:1 on white) |
-| glacier/100 | #D6E8F8 | Tints, selected rows |
-| ember/500 | #D9480F | REC, primary buttons (4.3:1 with white text) |
-| ember/300 | #FF7A3D | Recording pulse, glow |
+| ink/secondary | #4A5A6A | Secondary text (6.6:1 on surface/ground) |
+| accent-cool/500 | #2E7FD0 | Brand ink-blue: selection, active chips, large text only |
+| accent-cool/700 | #1D5C9E | Links and small blue text (6.8:1 on white) |
+| accent-cool/100 | #D6E8F8 | Tints, selected rows |
+| accent-warm/500 | #D9480F | REC, primary buttons (4.3:1 with white text) |
+| accent-warm/300 | #FF7A3D | Recording pulse, glow |
 | status/ok | #1E9E5A, HUD #43D17C | Tracking normal |
 | status/warn | #F2B01E, HUD #FFC24D | Tracking limited, 5-minute warning, thermal serious |
 | status/error | #D3323C, HUD #FF5A5F | Errors, auto-stop |
@@ -48,7 +54,7 @@ Projects
     Levels (L1, L2, basement, garage; height in m)
       Rooms (name, expected marker IDs, notes)
         Sessions (one per room per phase visit)
-Markers (IG-000 to IG-059)
+Markers (CD-000 to CD-059)
 Settings
 Test plan
 ```
@@ -73,7 +79,7 @@ Success: a supported phone reaches the Project list in under 60 s; an unsupporte
 
 Purpose: pick or create a project.
 Primary action: New project.
-Content: one card per project: name, rooms captured out of total, last session date, storage used, a small igloo of completed phase courses. Empty state: an outline igloo with one block, "No projects yet", New project, a link to the protocol.
+Content: one card per project: name, rooms captured out of total, last session date, storage used, a small cadastre of completed phase courses. Empty state: an outline cadastre with one block, "No projects yet", New project, a link to the protocol.
 States: empty, populated.
 Success: one tap opens the current project; the empty state explains what a project is.
 
@@ -162,9 +168,9 @@ Success: a flagged session is obvious within 2 s; the folder is reachable in Fil
 
 Purpose: which markers exist, where each hangs, and whether it is being seen.
 Primary action: Add placement note (with photo).
-Content: IG-000 to IG-059 with status (unused, placed, covered, lost), level, room and surface, the placement note in the fixed form "centred on door D3 threshold, 100 mm from left jamb", photo, seen in N sessions, last seen. Print instructions (100% scale, matte lamination, verify 20.0 cm with a tape). A marker preview with a warning that on-screen size is not true size.
+Content: CD-000 to CD-059 with status (unused, placed, covered, lost), level, room and surface, the placement note in the fixed form "centred on door D3 threshold, 100 mm from left jamb", photo, seen in N sessions, last seen. Print instructions (100% scale, matte lamination, verify 20.0 cm with a tape). A marker preview with a warning that on-screen size is not true size.
 States: none placed, placed, expected but never seen (warn).
-Success: the owner can find where IG-017 should be while standing in the house.
+Success: the owner can find where CD-017 should be while standing in the house.
 
 ### Settings
 
@@ -195,7 +201,7 @@ Built later in the pipeline as plain HTML pages served locally, no framework. Th
 
 First run
 
-1. Install from TestFlight, open Igloo.
+1. Install from TestFlight, open Cadastre.
 2. Onboarding: LiDAR check passes, allow camera, read the three cards.
 3. New project: name. Add level L1 with its height. Add the first room.
 4. Land on Project overview with an empty coverage grid.
@@ -215,12 +221,12 @@ Review and transfer a session
 1. Read the flags. Red: re-shoot while still in the room. Amber: add a note.
 2. Add notes (what changed, what to look for later).
 3. Later: Open in Files, copy the session folder to the PC (SMB share, or the Apple Devices app on Windows).
-4. On the PC run `igloo ingest` then `igloo validate`.
+4. On the PC run `cadastre ingest` then `cadastre validate`.
 5. Mark the session transferred in Session review.
 
 Place and register markers
 
-1. On the PC run `igloo markers`, print at 100%, laminate matte, measure 20.0 cm.
+1. On the PC run `cadastre markers`, print at 100%, laminate matte, measure 20.0 cm.
 2. Hang two or more per room following `docs/markers.md`.
 3. Markers screen: add a placement note and photo per ID.
 4. Room detail: enter the expected IDs.
@@ -253,18 +259,18 @@ Place and register markers
 
 1. iPhone 15 Pro portrait mockups (393 by 852 pt, exported at 3x) for every screen in section 4, including empty and error states.
 2. HUD state sheet: one page with the seven HUD states side by side, plus the 5-minute warning and thermal variants.
-3. App icon, igloo motif, 1024 by 1024, light and dark tinted variants.
+3. App icon, parcel-grid motif, 1024 by 1024, light and dark tinted variants.
 4. Web layouts for the four surfaces in section 5 at 1440 pt wide.
 5. Design tokens as a JSON file (colour, type, spacing, radius, elevation) with a short usage note.
 6. PNG and PDF export of everything.
 
-File naming: `igloo-ios-<screen>-<state>@3x.png` (for example `igloo-ios-capture-hud-limited-low-light@3x.png`), `igloo-hud-states.pdf`, `igloo-icon-1024.png`, `igloo-web-<surface>.png`, `igloo-tokens.json`, `igloo-tokens.md`. Screen names: onboarding, project-list, project-overview, level, room-detail, capture-hud, session-review, markers, settings, test-plan. Surface names: calibrate, align, inspect, viewer.
+File naming: `cadastre-ios-<screen>-<state>@3x.png` (for example `cadastre-ios-capture-hud-limited-low-light@3x.png`), `cadastre-hud-states.pdf`, `cadastre-icon-1024.png`, `cadastre-web-<surface>.png`, `cadastre-tokens.json`, `cadastre-tokens.md`. Screen names: onboarding, project-list, project-overview, level, room-detail, capture-hud, session-review, markers, settings, test-plan. Surface names: calibrate, align, inspect, viewer.
 
 ## 10. Open questions for the designer
 
 1. Light chrome outside the HUD is proposed for sun readability. Is there a case for a dark site theme with light for home use?
 2. Should each phase get its own colour, or only its position in the block courses? Eight colours are hard to keep apart in sun.
-3. How should the igloo progress glyph read at 24 pt in a list row?
+3. How should the cadastre progress glyph read at 24 pt in a list row?
 4. Coverage chips: fixed order as listed, or most urgent first?
 5. Left-hand layout: mirror the whole bottom bar, or only swap Still and Mark?
 6. Glove use: is a larger-target site mode worth a toggle, or should the defaults already be that large?

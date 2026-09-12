@@ -1,0 +1,24 @@
+# Automated dependency update PRs. Seeded from base, then pointed at this
+# repo's real manifest locations.
+#
+# Only ecosystems whose manifest actually exists are listed. Dependabot errors
+# on a directory it cannot find, so entries are added as the code lands:
+#   - uv at "/pipeline" once pipeline/pyproject.toml and uv.lock exist
+#   - npm at "/web" once the browser viewer lands (docs/design/viewer-design.md)
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pre-commit
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      pre-commit:
+        patterns: ["*"]

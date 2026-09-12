@@ -80,6 +80,12 @@ The owner trials the first four items during electrical and plumbing rough-in in
 
 **AR x-ray narration.** Once the finished house is aligned through openings and corners, the phone overlays earlier-phase photos and elements and a VLM narrates what is behind the pointed area from stored labels, with distances; depends on item 2 and the viewer.
 
+**Spatial markup and annotation.** A mark belongs to a place, not to a photo: store each one against a house-frame point plus the plan position, so it shows on every phase, in the 3D view and on the plan sheet, and survives a re-alignment. An annotation carries a target (point, region or element), an author, a phase, free text and optional photo references. The AI role is small and worth keeping small: summarise a thread, group marks that concern the same element, and draft a mark from dictated speech. The data model is the hard part and is deliberately independent of any model.
+
+**Builder and client sharing.** Coordination means other people see the record, which the MVP architecture does not allow: ADR-0012 chose no accounts and no cloud. Sharing needs a scope per recipient (a room, a phase, a mark thread), a read-only view that does not leak the rest of the house, and an identity for attribution. That is a future ADR superseding the no-accounts clause, not an incremental feature, and it should not be started before the capture and alignment layers are trusted.
+
+**Question answering over panoramas.** `docs/session-format.md` §7 reserves the panorama slot. A pano answers "what did this corner look like" in one image where a still answers only for one direction, so it is a better retrieval unit for a room-level question. Treat a pano as a first-class searchable item with its own pose, and when answering, cite the pano plus the yaw the answer refers to so the viewer can point the camera there.
+
 **On-site voice notes pinned to location.** Record while capturing, transcribe on device, pin the note to the current pose and nearest element, summarise with an LLM and index it with item 4; simple and high value, so capture audio early even if the AI waits.
 
 ## Data to start collecting now

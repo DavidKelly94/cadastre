@@ -1,0 +1,54 @@
+# Local quality gates. Install once with `pre-commit install`, then hooks run on
+# every commit. Run across the whole repo with `pre-commit run --all-files`.
+# Hook versions are kept current automatically by Dependabot (pre-commit
+# ecosystem) — see .github/dependabot.yml.
+#
+# Detect-then-run friendly: ruff only touches Python files and no-ops when there
+# are none. Remove or add hooks to match your project.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # samples/ carries a trimmed real capture session (JPEGs plus a
+        # truncated mesh, under 6 MB) that the Swift and Python tests read as
+        # a fixture, and docs/ carries printable marker PNGs. Both exceed the
+        # 500 KB default on purpose.
+        args: [--maxkb=1024]
+        exclude: ^samples/
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.2
+    hooks:
+      - id: gitleaks
+
+  # Lint the machinery itself — the shell scripts and GitHub Actions workflows
+  # this template is built from. Versions kept current by Dependabot.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        # -x follows sourced files (plugins/base/scripts/lib.sh) via the
+        # `# shellcheck source=` directives, which are repo-root-relative.
+        args: [-x]
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+        # base also lints its consumer caller templates; that path exists only
+        # in base, so this repo scans just its own workflows.
+        files: ^\.github/workflows/.*\.ya?ml$

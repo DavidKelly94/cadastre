@@ -1,6 +1,6 @@
 # Capture protocol
 
-How to record a room with Igloo so the data is usable years later. Read `docs/markers.md` first: markers must be up before the first session in a room.
+How to record a room with Cadastre so the data is usable years later. Read `docs/markers.md` first: markers must be up before the first session in a room.
 
 Rule of thumb: one room, one phase, one session, under five minutes, start and end at the door.
 
@@ -78,9 +78,9 @@ Keyframes are not saved while limited, so a wall filmed in that state is missing
 
 ## 7. After the visit
 
-1. Same day: copy every session folder from Files (On My iPhone, Igloo, sessions) to the PC by SMB share or USB with the Apple Devices app (`docs/owner-setup.md`).
-2. Run `igloo ingest <folder>` then `igloo validate <session>`. Fix or re-shoot anything reported.
-3. Run `igloo apriltag <session>`; confirm every expected marker was found.
+1. Same day: copy every session folder from Files (On My iPhone, Cadastre, sessions) to the PC by SMB share or USB with the Apple Devices app (`docs/owner-setup.md`).
+2. Run `cadastre ingest <folder>` then `cadastre validate <session>`. Fix or re-shoot anything reported.
+3. Run `cadastre apriltag <session>`; confirm every expected marker was found.
 4. Mark each session transferred in the app. Delete from the phone only after validate passes and the PC copy is backed up.
 5. Update the marker log with anything moved, covered or lost.
 
@@ -112,6 +112,6 @@ Each room
 
 After
 
-- [ ] Copy to PC, `igloo ingest`, `igloo validate`
-- [ ] `igloo apriltag`; all expected markers found
+- [ ] Copy to PC, `cadastre ingest`, `cadastre validate`
+- [ ] `cadastre apriltag`; all expected markers found
 - [ ] Mark transferred; update marker log

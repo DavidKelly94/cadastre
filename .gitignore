@@ -25,8 +25,8 @@ build/
 node_modules/
 web/dist/
 
-# Igloo data (raw sessions never go in git)
-igloo-data/
+# Cadastre data (raw sessions never go in git)
+cadastre-data/
 sessions/
 *.f32
 *.u8

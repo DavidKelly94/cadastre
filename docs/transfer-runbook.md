@@ -17,7 +17,11 @@ Do not interleave the phases. Each one ends in a working state.
   with. Transferring mid-session cuts it off until the new path is attached, so
   finish or pause any running work first.
 
-## Phase 1: rename and transfer. Both repositories stay public.
+## Phase 1 (DONE 2026-09-12): rename and transfer, both repositories stay public
+
+Steps 1 to 4 are complete: both repositories were renamed and transferred to `DavidKelly94`, and the
+owner references were repointed in the same change that added this note. Steps 5 to 7 remain for the
+owner. The steps are kept below as the record of what was done.
 
 1. **Rename this repository** to the product name (Settings, then the name field).
    GitHub redirects the old web and git URLs, so existing clones keep working. Still
@@ -32,7 +36,7 @@ Do not interleave the phases. Each one ends in a working state.
 
 4. **Repoint every reference to the old owner, in one commit.** Leaving the workflow
    ones stale breaks CI in a way that reads like a broken workflow rather than a
-   wrong path. Run `git grep -n 'davidkelly-snoday'` and work the list; it is longer
+   wrong path. Run `git grep -n 'DavidKelly94'` and work the list; it is longer
    than just the workflows:
 
    | File | What to change |
@@ -42,16 +46,16 @@ Do not interleave the phases. Each one ends in a working state.
    | `.github/workflows/dependabot-automerge.yml` | the `uses:` line |
    | `.github/workflows/main-triage.yml` | the `uses:` line |
    | `.claude/settings.json` | `extraKnownMarketplaces.snoday.source.repo` |
-   | `.github/CODEOWNERS` | `* @davidkelly-snoday` |
+   | `.github/CODEOWNERS` | `* @DavidKelly94` |
    | `README.md` | the `base` slug in the Development section |
    | `docs/owner-setup.md` | three repository URLs, the `base` slug, and the `/plugin marketplace add` line |
    | `docs/transfer-runbook.md` | the example strings in this very table |
 
    **Leave two files alone.** `docs/plan.md` records the plan as approved on a date,
-   and `docs/adr/0015-name-igloo.md` is a superseded decision. Both are historical
+   and `docs/adr/0015-name-cadastre.md` is a superseded decision. Both are historical
    record, and rewriting them destroys the audit trail the ADRs exist to keep.
 
-   Then confirm: `git grep -n 'davidkelly-snoday'` returns hits **only** in
+   Then confirm: `git grep -n 'DavidKelly94'` returns hits **only** in
    `docs/plan.md` and `docs/adr/`.
 
 5. **Verify what the transfer kept.** Sources disagree about what survives, so check

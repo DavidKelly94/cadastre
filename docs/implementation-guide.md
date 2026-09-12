@@ -1,6 +1,6 @@
 # Implementation guide
 
-Step-by-step instructions for implementing Igloo from the docs in this repository. Written for a coding agent working in a Linux container with no Xcode and possibly no Swift toolchain; all iOS compilation happens on GitHub Actions. The owner tests on the phone via TestFlight.
+Step-by-step instructions for implementing Cadastre from the docs in this repository. Written for a coding agent working in a Linux container with no Xcode and possibly no Swift toolchain; all iOS compilation happens on GitHub Actions. The owner tests on the phone via TestFlight.
 
 Read first: `docs/plan.md` (approved plan), `docs/session-format.md` (the contract), `docs/design/system-design.md`, `docs/design/ios-app-design.md`, `docs/design/pipeline-design.md`, `docs/schedule.md`, `docs/adr/README.md`.
 
@@ -38,18 +38,18 @@ git status && git branch --show-current
 Create:
 
 ```
-.gitignore                  (macOS, Xcode, Python, uv, node, igloo-data/, *.xcodeproj, DerivedData, .build)
+.gitignore                  (macOS, Xcode, Python, uv, node, cadastre-data/, *.xcodeproj, DerivedData, .build)
 pipeline/pyproject.toml     see §6
-pipeline/igloo/__init__.py  __version__ = "0.1.0"
-pipeline/igloo/cli.py       argparse with all subcommands stubbed (print "not implemented", exit 2)
-pipeline/tests/test_cli.py  `igloo --help` works
-ios/IglooCore/Package.swift see §4
+pipeline/cadastre/__init__.py  __version__ = "0.1.0"
+pipeline/cadastre/cli.py       argparse with all subcommands stubbed (print "not implemented", exit 2)
+pipeline/tests/test_cli.py  `cadastre --help` works
+ios/CadastreCore/Package.swift see §4
 .github/workflows/core-test.yml, ios-check.yml, ios-testflight.yml   see §7
 ```
 
 Run `cd pipeline && uv sync && uv run pytest` locally. Commit and push. `core-test` must be green before continuing.
 
-## 3. IglooCore (pure Swift)
+## 3. CadastreCore (pure Swift)
 
 Implement, with tests, in this order: `Transform` (column-major `[Double]` 4x4: identity, multiply, invert, translation, rotationAngle between two matrices), `SessionID` (slug + id6), `Records` (Codable structs matching `session-format.md` exactly; golden-string tests), `KeyframePolicy`, `HealthPolicy`, `JSONLWriter` (Foundation `FileHandle`; test on Linux with a temp file).
 
@@ -59,12 +59,12 @@ Implement, with tests, in this order: `Transform` (column-major `[Double]` 4x4: 
 // swift-tools-version: 5.9
 import PackageDescription
 let package = Package(
-  name: "IglooCore",
+  name: "CadastreCore",
   platforms: [.iOS(.v17), .macOS(.v13)],
-  products: [.library(name: "IglooCore", targets: ["IglooCore"])],
+  products: [.library(name: "CadastreCore", targets: ["CadastreCore"])],
   targets: [
-    .target(name: "IglooCore"),
-    .testTarget(name: "IglooCoreTests", dependencies: ["IglooCore"]),
+    .target(name: "CadastreCore"),
+    .testTarget(name: "CadastreCoreTests", dependencies: ["CadastreCore"]),
   ]
 )
 ```
@@ -74,28 +74,28 @@ Use only `Foundation`. No `simd`, no `ARKit`, no `UIKit`. Linux Foundation diffe
 ## 4. iOS project (`ios/project.yml`)
 
 ```yaml
-name: Igloo
+name: Cadastre
 options:
-  bundleIdPrefix: ai.snoday
+  bundleIdPrefix: com.davidkelly
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 packages:
-  IglooCore:
-    path: IglooCore
+  CadastreCore:
+    path: CadastreCore
 targets:
-  Igloo:
+  Cadastre:
     type: application
     platform: iOS
-    sources: [Igloo]
+    sources: [Cadastre]
     dependencies:
-      - package: IglooCore
-        product: IglooCore
+      - package: CadastreCore
+        product: CadastreCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: ai.snoday.igloo
-        PRODUCT_NAME: Igloo
+        PRODUCT_BUNDLE_IDENTIFIER: com.davidkelly.cadastre
+        PRODUCT_NAME: Cadastre
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
@@ -104,20 +104,20 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
     info:
-      path: Igloo/Info.plist
+      path: Cadastre/Info.plist
       properties:
-        CFBundleDisplayName: Igloo
+        CFBundleDisplayName: Cadastre
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiredDeviceCapabilities: [arkit, arm64]
-        NSCameraUsageDescription: "Igloo records the camera and LiDAR to document your house during construction."
+        NSCameraUsageDescription: "Cadastre records the camera and LiDAR to document your house during construction."
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSupportsIndirectInputEvents: true
 ```
 
-Start with a minimal app: `IglooApp.swift` (`@main`), one `ContentView` showing "Igloo build <CFBundleVersion>", whether `ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)` is true, and a button that opens a full-screen `ARView`. Get `ios-check` green, then `ios-testflight` (once the owner adds secrets). This is **TestFlight build #1** (schedule day 2–3).
+Start with a minimal app: `CadastreApp.swift` (`@main`), one `ContentView` showing "Cadastre build <CFBundleVersion>", whether `ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)` is true, and a button that opens a full-screen `ARView`. Get `ios-check` green, then `ios-testflight` (once the owner adds secrets). This is **TestFlight build #1** (schedule day 2–3).
 
 Then implement the screens and capture pipeline in the order of `docs/design/ios-app-design.md`, pushing a TestFlight build at each milestone in `docs/schedule.md`, each with an updated `Resources/TestPlan.md`.
 
@@ -143,19 +143,19 @@ The workflow substitutes `TEAM_ID_PLACEHOLDER` with the `APPLE_TEAM_ID` secret a
 
 ## 5. Marker images
 
-Before the marker detection feature: `cd pipeline && uv run igloo markers --out ../docs/markers.pdf --png ../ios/Igloo/Resources/Markers --ids 0-59`. Commit the PNGs (60 x ~150 KB) and the PDF. The app bundles the PNGs; the owner prints the PDF.
+Before the marker detection feature: `cd pipeline && uv run cadastre markers --out ../docs/markers.pdf --png ../ios/Cadastre/Resources/Markers --ids 0-59`. Commit the PNGs (60 x ~150 KB) and the PDF. The app bundles the PNGs; the owner prints the PDF.
 
 ## 6. Pipeline (`pipeline/pyproject.toml`)
 
 ```toml
 [project]
-name = "igloo"
+name = "cadastre"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = ["numpy>=2.0", "opencv-python-headless>=4.10", "pypdfium2>=4.30", "reportlab>=4.2", "pillow>=10.4"]
 
 [project.scripts]
-igloo = "igloo.cli:main"
+cadastre = "cadastre.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
@@ -185,7 +185,7 @@ jobs:
     container: swift:6.1
     steps:
       - uses: actions/checkout@v4
-      - run: swift test --package-path ios/IglooCore
+      - run: swift test --package-path ios/CadastreCore
   python:
     runs-on: ubuntu-latest
     steps:
@@ -219,7 +219,7 @@ jobs:
       - run: brew install xcodegen
       - run: xcodegen generate --spec ios/project.yml --project ios
       - run: >
-          xcodebuild build -project ios/Igloo.xcodeproj -scheme Igloo
+          xcodebuild build -project ios/Cadastre.xcodeproj -scheme Cadastre
           -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" | tee build.log | grep -E "error:|warning: unre|BUILD"
       - uses: actions/upload-artifact@v4
@@ -267,14 +267,14 @@ jobs:
           sed "s/TEAM_ID_PLACEHOLDER/$TEAM_ID/" ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
       - name: Archive (unsigned)
         run: >
-          xcodebuild archive -project ios/Igloo.xcodeproj -scheme Igloo
-          -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Igloo.xcarchive"
+          xcodebuild archive -project ios/Cadastre.xcodeproj -scheme Cadastre
+          -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
           CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
           DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
           CURRENT_PROJECT_VERSION=${{ github.run_number }}
       - name: Export and upload (cloud signing)
         run: >
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Igloo.xcarchive"
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
           -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export"
           -allowProvisioningUpdates
           -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey.p8"
@@ -295,5 +295,5 @@ After the owner's first valid capture, copy a trimmed session (≤ 10 keyframes,
 
 - `core-test` and `ios-check` green on the branch; the latest `ios-testflight` run uploaded and the build processed.
 - The owner completed the Test plan of the latest build, including a 5-minute room with 3 markers, 3 stills and 4 landmarks.
-- `igloo validate` passes on that session; `apriltag` finds all 3 markers with < 3 cm spread; `plan add` + `calibrate` done for one level; `align` residual < 10 cm; `inspect` shows the trajectory on the plan.
+- `cadastre validate` passes on that session; `apriltag` finds all 3 markers with < 3 cm spread; `plan add` + `calibrate` done for one level; `align` residual < 10 cm; `inspect` shows the trajectory on the plan.
 - Docs updated to match; ADRs current; `docs/schedule.md` checked off through day 12.

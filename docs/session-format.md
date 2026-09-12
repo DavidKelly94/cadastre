@@ -1,4 +1,4 @@
-# Igloo session format (format_version 1)
+# Cadastre session format (format_version 1)
 
 A **session** is one continuous capture of one room at one construction phase. The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
 
@@ -72,7 +72,7 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
   "room":    { "slug": "kitchen", "name": "Kitchen" },
   "phase":   "electrical",
   "notes":   "Panel side rough-in done; plumbing not started.",
-  "expected_markers": ["IG-012", "IG-013", "IG-014"],
+  "expected_markers": ["CD-012", "CD-013", "CD-014"],
   "device":  { "model": "iPhone16,1", "ios_version": "26.6", "app_version": "0.1.0", "app_build": "37" },
   "capture": {
     "started_at": "2026-11-03T14:15:02-05:00",
@@ -162,10 +162,10 @@ second calibration path. Stitching offline is the cheaper first move and is why
 Marker observation (from `ARImageAnchor` add/update events):
 
 ```json
-{"t":31.02,"i":211,"marker_id":"IG-012","T_wa":[...16...],"tracked":true,"physical_width_m":0.20}
+{"t":31.02,"i":211,"marker_id":"CD-012","T_wa":[...16...],"tracked":true,"physical_width_m":0.20}
 ```
 
-`T_wa` is the **ARKit image-anchor** transform: origin at the image centre, `+x` to the right of the printed image, `+z` toward the bottom of the printed image, `+y` the normal pointing out of the printed face. The pipeline converts it to the canonical marker frame used for AprilTag PnP (`+x` right, `+y` toward the top of the tag, `+z` out of the face): `T_wm = T_wa · R_am` with `R_am` the 4x4 whose 3x3 block has columns `(1,0,0)`, `(0,0,-1)`, `(0,1,0)`. The first real capture must confirm this with `igloo apriltag --check-anchor-frame`; if the axes disagree, fix the pipeline's constant, never the app.
+`T_wa` is the **ARKit image-anchor** transform: origin at the image centre, `+x` to the right of the printed image, `+z` toward the bottom of the printed image, `+y` the normal pointing out of the printed face. The pipeline converts it to the canonical marker frame used for AprilTag PnP (`+x` right, `+y` toward the top of the tag, `+z` out of the face): `T_wm = T_wa · R_am` with `R_am` the 4x4 whose 3x3 block has columns `(1,0,0)`, `(0,0,-1)`, `(0,1,0)`. The first real capture must confirm this with `cadastre apriltag --check-anchor-frame`; if the axes disagree, fix the pipeline's constant, never the app.
 
 Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowing: .estimatedPlane, alignment: .any)`):
 
@@ -183,7 +183,7 @@ Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowi
 
 Per keyframe: JPEG 250–400 KB at quality 0.85, depth 196,608 B, confidence 49,152 B. With motion-gated keyframes (typically 2–4 per second while walking, at most 10 per second) a 5-minute room is 300–800 MB plus 3–5 MB per still. The app refuses to start a session with less than 2 GB free and stops at 500 MB free.
 
-## 11. Validation rules (`igloo validate`)
+## 11. Validation rules (`cadastre validate`)
 
 1. `manifest.json` parses, `format_version == 1`, `status != "incomplete"` (a warning, not an error, for `repaired`).
 2. Every JSONL line parses; `i` strictly increasing; `t` non-decreasing and within `[0, duration_s + 1]`.

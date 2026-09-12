@@ -7,7 +7,7 @@ Browser viewer for browsing a house across construction phases: plan overlay, pe
 - **three.js** (WebGL2) for scene, plan plane, meshes, photo frustums, measurement.
 - **Spark** (`@sparkjsdev/spark`) for Gaussian splats; formats PLY/SPZ/SOG, SOG preferred (15–20x smaller than PLY).
 - **Vite + TypeScript**, no framework required; a small UI layer (vanilla or Preact) for the side panel.
-- Static hosting: files on disk opened through a local server (`igloo serve`) or any static host later.
+- Static hosting: files on disk opened through a local server (`cadastre serve`) or any static host later.
 
 ## 2. Data package per level (emitted by the pipeline)
 

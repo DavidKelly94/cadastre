@@ -7,7 +7,7 @@ on:
 
 jobs:
   review:
-    uses: davidkelly-snoday/base/.github/workflows/claude-review-reusable.yml@v1
+    uses: DavidKelly94/base/.github/workflows/claude-review-reusable.yml@v1
     permissions:
       contents: read
       pull-requests: write

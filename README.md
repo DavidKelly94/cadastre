@@ -1,18 +1,18 @@
-# Igloo
+# Cadastre
 
 Capture your house while it is being built. See behind the walls forever.
 
-Igloo is a toolchain for a homeowner (first) and, later, a product:
+Cadastre is a toolchain for a homeowner (first) and, later, a product:
 
 - an **iPhone app** (LiDAR iPhone Pro) that records, for each room at each construction phase, posed photos, LiDAR depth, high-resolution stills, tapped room corners and printed marker sightings, plus a mesh;
 - a **Python pipeline** on the owner's PC that validates sessions, finds the markers, aligns every session to the floor plans, and (later) builds meshes, Gaussian splats and AI labels;
 - a **web viewer** (later) to find studs, pipes, gas lines, ducts and wires behind finished walls, years after they were covered.
 
-Product name: **Igloo** (a house built layer by layer). Bundle ID `ai.snoday.igloo`. The repository is still called `homescanner`; it will be renamed later (GitHub redirects the old URL).
+Product name: **Cadastre** (a house built layer by layer). Bundle ID `com.davidkelly.cadastre`. The repository is still called `homescanner`; it will be renamed later (GitHub redirects the old URL).
 
 ## Status
 
-Planning is complete (2026-09-11). Implementation follows [docs/implementation-guide.md](docs/implementation-guide.md) and the 14-day [schedule](docs/schedule.md). Nothing ships to the App Store; builds go to TestFlight for the owner.
+Planning is complete (2026-09-11); the product was named and the repositories moved on 2026-09-12. Implementation follows [docs/implementation-guide.md](docs/implementation-guide.md) and the 14-day [schedule](docs/schedule.md). Nothing ships to the App Store; builds go to TestFlight for the owner.
 
 ## Where to start
 
@@ -21,19 +21,19 @@ Planning is complete (2026-09-11). Implementation follows [docs/implementation-g
 | The owner | [Owner setup](docs/owner-setup.md), [Capture protocol](docs/capture-protocol.md), [Markers](docs/markers.md), [Schedule](docs/schedule.md), [Transfer runbook](docs/transfer-runbook.md) |
 | Implementing the code | [AGENTS.md](AGENTS.md), [Implementation guide](docs/implementation-guide.md), [System design](docs/design/system-design.md), [iOS app design](docs/design/ios-app-design.md), [Pipeline design](docs/design/pipeline-design.md), [Session format](docs/session-format.md), [ADRs](docs/adr/README.md) |
 | Designing the UI | [UI design brief](docs/ui/design-brief.md) (self-contained handoff) |
-| Asking "why" | [Feasibility](docs/feasibility.md), [Approved plan](docs/plan.md), [AI roadmap](docs/ai-roadmap.md), [Viewer design](docs/design/viewer-design.md) |
+| Asking "why" | [Feasibility](docs/feasibility.md), [Naming investigation](docs/naming-investigation.md), [Approved plan](docs/plan.md), [AI roadmap](docs/ai-roadmap.md), [Viewer design](docs/design/viewer-design.md) |
 
 ## Repository layout (target)
 
 ```
-homescanner/
+cadastre/
   docs/                 plan, feasibility, design docs, ADRs, UI brief, schedule, protocols, format spec
   ios/
     project.yml         XcodeGen spec; the Xcode project is generated on the CI runner
     ExportOptions.plist App Store Connect export (TestFlight upload)
-    Igloo/              SwiftUI app with a thin ARKit capture layer
-    IglooCore/          pure-Swift package (no ARKit/simd); tests run on Linux CI
-  pipeline/             Python 3.12 package `igloo` (uv): validate, apriltag, plan, align, inspect, markers
+    Cadastre/              SwiftUI app with a thin ARKit capture layer
+    CadastreCore/          pure-Swift package (no ARKit/simd); tests run on Linux CI
+  pipeline/             Python 3.12 package `cadastre` (uv): validate, apriltag, plan, align, inspect, markers
   samples/              one trimmed real session for pipeline tests
   web/                  browser viewer (weeks 3+)
   .github/workflows/    core-test.yml, ios-check.yml, ios-testflight.yml
@@ -42,7 +42,7 @@ homescanner/
 ## How it fits together
 
 ```
-iPhone (Igloo app)  --sessions (files)-->  PC (igloo pipeline)  --JSON/GLB/SOG-->  browser viewer
+iPhone (Cadastre app)  --sessions (files)-->  PC (cadastre pipeline)  --JSON/GLB/SOG-->  browser viewer
 ARKit poses + LiDAR depth              validate, markers, align to plan           plan overlay, phases,
 + stills + landmarks + markers         (later: mesh, splats, AI labels)            click-to-photo, measure
 ```
@@ -54,6 +54,6 @@ The floor plan is the permanent reference frame. Each session is aligned to it w
 - iOS builds run on GitHub Actions `macos-26` runners and upload to TestFlight (no Mac required). See [owner setup](docs/owner-setup.md) for the four secrets.
 - Core Swift logic and the Python pipeline are tested on Linux on every push.
 - Development branch: `claude/construction-3d-mapping-app-nzm3bb`.
-- Agent instructions live in [AGENTS.md](AGENTS.md) (cross-tool) and [CLAUDE.md](CLAUDE.md) (Claude-specific). The repository carries the shared harness from `davidkelly-snoday/base`: `.harness.yml` configures it, and `/base:check`, `/base:review` and `/base:ship` are the gates.
+- Agent instructions live in [AGENTS.md](AGENTS.md) (cross-tool) and [CLAUDE.md](CLAUDE.md) (Claude-specific). The repository carries the shared harness from `DavidKelly94/base`: `.harness.yml` configures it, and `/base:check`, `/base:review` and `/base:ship` are the gates.
 - Enable local gates once per clone: `pip install pre-commit && pre-commit install`.
 - The product is being renamed, and both this repository and `base` move to a personal account and later go private. See [ADR-0017](docs/adr/0017-product-scope-record-and-collaboration.md), [ADR-0018](docs/adr/0018-staged-private-and-runner-budget.md) and the [transfer runbook](docs/transfer-runbook.md).

@@ -1,6 +1,6 @@
 # System design
 
-Igloo turns a walk through a room with a LiDAR iPhone into a permanent, plan-aligned record of what is inside the walls. This document describes the whole system; the iOS app, pipeline and viewer each have their own design doc.
+Cadastre turns a walk through a room with a LiDAR iPhone into a permanent, plan-aligned record of what is inside the walls. This document describes the whole system; the iOS app, pipeline and viewer each have their own design doc.
 
 ## 1. Goals and non-goals
 
@@ -15,16 +15,16 @@ Non-goals (MVP): reconstruction beyond the ARKit mesh, AI labeling, AR x-ray, ac
 
 | Component | Runs on | Language | Responsibility |
 |---|---|---|---|
-| Igloo app | iPhone 15 Pro or newer, iOS 17+ | Swift, SwiftUI, ARKit, RealityKit | Record sessions per room and phase; expose them as files |
-| IglooCore | inside the app, and on Linux CI | Swift (no ARKit/simd) | Pure logic: keyframe policy, transforms, manifest/JSONL encoding, health policy |
-| Pipeline (`igloo` CLI) | owner's PC (Windows, RTX 4070 Super) and Linux CI | Python 3.12 | Validate, detect markers, calibrate plans, align sessions, inspect; later meshes, splats, AI |
+| Cadastre app | iPhone 15 Pro or newer, iOS 17+ | Swift, SwiftUI, ARKit, RealityKit | Record sessions per room and phase; expose them as files |
+| CadastreCore | inside the app, and on Linux CI | Swift (no ARKit/simd) | Pure logic: keyframe policy, transforms, manifest/JSONL encoding, health policy |
+| Pipeline (`cadastre` CLI) | owner's PC (Windows, RTX 4070 Super) and Linux CI | Python 3.12 | Validate, detect markers, calibrate plans, align sessions, inspect; later meshes, splats, AI |
 | Viewer | browser | TypeScript, three.js, Spark | Plan overlay, phases, click-to-photo, measurement (weeks 3+) |
 | Docs | repo | Markdown | Contracts (session format), protocols, decisions |
 
 ## 3. Data flow
 
 ```
- Igloo app                          Files / SMB / USB             igloo pipeline                     viewer
+ Cadastre app                          Files / SMB / USB             cadastre pipeline                     viewer
  ┌─────────────────────────┐        ┌──────────────┐        ┌───────────────────────────┐        ┌────────────┐
  │ ARKit frames            │        │ sessions/    │        │ ingest + validate         │        │ plan +     │
  │  → keyframe policy      │───────▶│  <project>/  │───────▶│ apriltag → markers        │───────▶│ sessions   │
@@ -64,7 +64,7 @@ T_hs = [ cos θ   0   sin θ   t_x ]
 
 Multi-level: each level has its own plan raster and `floor_height_m`. Stairs are the only reliable physical tie between levels; markers on stair landings appear in sessions of both levels.
 
-Cross-phase: sessions of different phases are aligned to the plan independently. Marker poses (in house frame) from earlier phases are reused as extra correspondences for later phases (`igloo align --use-markers`), which is more accurate than tapped corners once markers are established.
+Cross-phase: sessions of different phases are aligned to the plan independently. Marker poses (in house frame) from earlier phases are reused as extra correspondences for later phases (`cadastre align --use-markers`), which is more accurate than tapped corners once markers are established.
 
 ## 5. Accuracy budget
 
@@ -95,7 +95,7 @@ Everything is local: no accounts, no telemetry, no uploads in the MVP. Sessions 
 | Disk full | free-space check | refuse to start below 2 GB; stop below 500 MB |
 | App crash mid-session | manifest `status: incomplete` at next launch | app repairs the manifest from files present and marks `repaired` |
 | Marker not seen / wrong size | pipeline residuals; `expected_markers` vs observed | validate warns; protocol requires a square-on still per marker |
-| Session cannot be aligned (too few landmarks) | `igloo align` | fall back to markers from other phases or manual trajectory drag in the inspector |
+| Session cannot be aligned (too few landmarks) | `cadastre align` | fall back to markers from other phases or manual trajectory drag in the inspector |
 | Owner cannot get files off the phone | — | three routes documented: Files app to SMB, USB with the Apple Devices app, AirDrop-free zip share sheet |
 
 ## 9. Extension points (weeks 3+)

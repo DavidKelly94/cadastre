@@ -1,4 +1,4 @@
-# Igloo schedule
+# Cadastre schedule
 
 Fourteen days to a usable capture app, then a roadmap keyed to construction phases. Day 0 is 2026-09-11, the day the plan was approved; day 14 is 2026-09-25. "Implementer" is the coding agent building the repository; "Owner" has the phone, the accounts and the house. If a day's acceptance check fails, the next day starts by fixing it.
 
@@ -7,14 +7,14 @@ Fourteen days to a usable capture app, then a roadmap keyed to construction phas
 | Day | Implementer | Owner | Acceptance check |
 |---|---|---|---|
 | 0 (09-11) | Plan approved; nothing to build. | Enroll in the Apple Developer Program (individual, $99); turn on two-factor authentication; read `docs/owner-setup.md`. | Enrollment submitted and payment confirmed by email. |
-| 1 (09-12) | Repo scaffold; docs skeleton; `ios/project.yml`; `IglooCore` with first tests; the three workflows; "Hello ARKit" screen with LiDAR check and build label. | None. | `core-test` green; `ios-check` compiles for the simulator; README links every doc. |
+| 1 (09-12) | Repo scaffold; docs skeleton; `ios/project.yml`; `CadastreCore` with first tests; the three workflows; "Hello ARKit" screen with LiDAR check and build label. | None. | `core-test` green; `ios-check` compiles for the simulator; README links every doc. |
 | 2 (09-13) | First `ios-testflight` run; walk the fallback ladder if signing or upload fails; `Transform` and `KeyframePolicy` with tests; `docs/session-format.md`. | Once enrolled: App ID, app record, Admin API key, TestFlight group, four GitHub secrets (owner-setup steps 2 to 6). | Secrets present; a workflow run reaches the export step. |
 | 3 (09-14) | Fix whatever build #1 needs; `FrameRecord` and `SessionManifest` with tests. | Install TestFlight and build #1; run the test plan. | **TestFlight build #1** installed; app opens, LiDAR check passes, build label matches the run number. |
-| 4 (09-15) | `ARSessionController`, `SessionRecorder`, `FrameWriter`, `JPEGEncoder`, depth and confidence writing, Capture HUD; a first `igloo validate`. | Build #2: 1-minute capture at home; copy to the PC; run `igloo validate`; paste the output. | A session with `frames.jsonl`, `rgb/`, `depth/` and `conf/` reaches the PC; `validate` passes or names specific defects. |
+| 4 (09-15) | `ARSessionController`, `SessionRecorder`, `FrameWriter`, `JPEGEncoder`, depth and confidence writing, Capture HUD; a first `cadastre validate`. | Build #2: 1-minute capture at home; copy to the PC; run `cadastre validate`; paste the output. | A session with `frames.jsonl`, `rgb/`, `depth/` and `conf/` reaches the PC; `validate` passes or names specific defects. |
 | 5 (09-16) | `markers.py`, `docs/markers.md`, `synth.py`, full `validate.py`, pytest on the synthetic session. | Print and laminate 20 markers; hand over the day-4 session for `samples/`. | pytest green in CI; `markers.pdf` prints at 20.0 cm; `samples/` holds a trimmed real session under 6 MB. |
 | 6 (09-17) | Stills via `captureHighResolutionFrame`, `MarkerLogger`, `LandmarkLogger`, `MeshExporter`. | Build #3: run the test plan. | A still with pose in `stills/`; a marker in view appears in `markers.jsonl`; a tap adds a landmark; `mesh.obj` written at stop. |
 | 7 (09-18) | `HealthPolicy`, interruption handling, picker persistence, Session review with Open in Files. | Build #4: a 5-minute room with markers and tapped corners; transfer and validate. | Session finalises; review shows trajectory and counts; Open in Files works; `validate` passes; at least two marker IDs logged. |
-| 8 (09-19) | `apriltag.py` with PnP, verified on `samples/` and the day-7 session. | None. | `igloo apriltag` finds every marker in the day-7 session with under 3 cm spread; synthetic PnP test green. |
+| 8 (09-19) | `apriltag.py` with PnP, verified on `samples/` and the day-7 session. | None. | `cadastre apriltag` finds every marker in the day-7 session with under 3 cm spread; synthetic PnP test green. |
 | 9 (09-20) | `plan.py` (add, calibrate), `align.py`, `inspector.py`. | Provide one plan PDF page and one photographed paper plan. | `plan add` and `calibrate` produce `plans/L1.json` for both inputs; `align` fits the day-7 landmarks and reports residuals; `inspect` shows the trajectory on the plan. |
 | 10 (09-21) | Feedback fixes, Settings, Test plan view, Markers screen. | Build #5: run the test plan. | Test plan renders in-app; settings persist across launches; Markers screen lists IDs and seen counts. |
 | 11 (09-22) | Crash-safe finalise, drop-rate and fps tuning. | Build #6: force-quit mid-session once, then relaunch. | The interrupted session is repaired on relaunch and passes `validate`; dropped-frame rate shown in review. |
@@ -45,6 +45,6 @@ Ordered by dependency, because construction sets the dates. Build order: session
 
 ## How to re-plan
 
-The schedule assumes framing starts no earlier than day 15 (2026-09-26). If the builder moves earlier, do not compress the app work: switch to the fallback capture path in `docs/owner-setup.md` section 12 (a free ARKit recorder with the same markers and protocol), pull the marker generator and `docs/markers.md` forward, add an `ingest` converter for the chosen recorder, and keep building Igloo on the same schedule. Capture-ready then means markers printed, protocol read, converter and `validate` working.
+The schedule assumes framing starts no earlier than day 15 (2026-09-26). If the builder moves earlier, do not compress the app work: switch to the fallback capture path in `docs/owner-setup.md` section 12 (a free ARKit recorder with the same markers and protocol), pull the marker generator and `docs/markers.md` forward, add an `ingest` converter for the chosen recorder, and keep building Cadastre on the same schedule. Capture-ready then means markers printed, protocol read, converter and `validate` working.
 
 If Apple enrollment slips past day 3, the TestFlight milestone moves day for day and nothing else does. If a build fails twice on signing, walk the fallback ladder in ADR-0003. If rough-in arrives before the pose graph or viewer exist, capture anyway; the session format allows processing later without recapture.

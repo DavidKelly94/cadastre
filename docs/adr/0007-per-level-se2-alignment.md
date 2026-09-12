@@ -10,7 +10,7 @@ ARKit poses are metric and gravity-aligned (`worldAlignment = .gravity`), so the
 
 ## Decision
 
-The house frame per level is SE(2) plus a z offset. While capturing, the owner taps room corners and door thresholds; `LandmarkLogger` raycasts against estimated planes and stores a label and world point in `landmarks.jsonl`. `igloo align <session> --level L1` opens a local page to pair landmarks with plan corners and fits the transform with Umeyama's method without scale, writing `derived/align.json` with per-pair residuals. Sessions without landmarks inherit the frame through shared markers (ADR-0006). Automatic refinement (wall-line ICP or a Z-FLoc-style matcher) is deferred to weeks 3+ as roadmap item 2 and will only ever propose correspondences for the owner to confirm.
+The house frame per level is SE(2) plus a z offset. While capturing, the owner taps room corners and door thresholds; `LandmarkLogger` raycasts against estimated planes and stores a label and world point in `landmarks.jsonl`. `cadastre align <session> --level L1` opens a local page to pair landmarks with plan corners and fits the transform with Umeyama's method without scale, writing `derived/align.json` with per-pair residuals. Sessions without landmarks inherit the frame through shared markers (ADR-0006). Automatic refinement (wall-line ICP or a Z-FLoc-style matcher) is deferred to weeks 3+ as roadmap item 2 and will only ever propose correspondences for the owner to confirm.
 
 ## Consequences
 

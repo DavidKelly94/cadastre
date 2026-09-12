@@ -11,7 +11,7 @@ on:
 
 jobs:
   automerge:
-    uses: davidkelly-snoday/base/.github/workflows/dependabot-automerge-reusable.yml@v1
+    uses: DavidKelly94/base/.github/workflows/dependabot-automerge-reusable.yml@v1
     permissions:
       contents: write
       pull-requests: write

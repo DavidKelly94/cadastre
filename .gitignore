@@ -1,0 +1,41 @@
+# macOS / Xcode
+.DS_Store
+ios/*.xcodeproj
+ios/*.xcworkspace
+ios/**/xcuserdata/
+ios/**/DerivedData/
+ios/**/.build/
+ios/**/.swiftpm/
+*.xcarchive
+*.ipa
+*.dSYM.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+pipeline/.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node (web viewer, later)
+node_modules/
+web/dist/
+
+# Igloo data (raw sessions never go in git)
+igloo-data/
+sessions/
+*.f32
+*.u8
+!samples/**
+
+# Secrets (never commit)
+*.p8
+AuthKey*.p8
+
+# Editors
+.vscode/
+.idea/

@@ -30,20 +30,29 @@ Do not interleave the phases. Each one ends in a working state.
 3. **Transfer `base`** the same way. Its `v1` tag moves with it, which matters
    because every caller pins `@v1`.
 
-4. **Repoint every reference to the old owner, in one commit.** Leaving these stale
-   breaks CI in a way that reads like a broken workflow:
+4. **Repoint every reference to the old owner, in one commit.** Leaving the workflow
+   ones stale breaks CI in a way that reads like a broken workflow rather than a
+   wrong path. Run `git grep -n 'davidkelly-snoday'` and work the list; it is longer
+   than just the workflows:
 
    | File | What to change |
    |---|---|
-   | `.github/workflows/claude.yml` | `uses: davidkelly-snoday/base/...@v1` |
-   | `.github/workflows/claude-review.yml` | same |
-   | `.github/workflows/dependabot-automerge.yml` | same |
-   | `.github/workflows/main-triage.yml` | same |
+   | `.github/workflows/claude.yml` | the `uses:` line, and the owner named in the header comment |
+   | `.github/workflows/claude-review.yml` | the `uses:` line |
+   | `.github/workflows/dependabot-automerge.yml` | the `uses:` line |
+   | `.github/workflows/main-triage.yml` | the `uses:` line |
    | `.claude/settings.json` | `extraKnownMarketplaces.snoday.source.repo` |
    | `.github/CODEOWNERS` | `* @davidkelly-snoday` |
+   | `README.md` | the `base` slug in the Development section |
+   | `docs/owner-setup.md` | three repository URLs, the `base` slug, and the `/plugin marketplace add` line |
+   | `docs/transfer-runbook.md` | the example strings in this very table |
 
-   Then confirm: `git grep -n 'davidkelly-snoday'` should return nothing outside
-   `docs/adr/`, where the old owner is part of the historical record.
+   **Leave two files alone.** `docs/plan.md` records the plan as approved on a date,
+   and `docs/adr/0015-name-igloo.md` is a superseded decision. Both are historical
+   record, and rewriting them destroys the audit trail the ADRs exist to keep.
+
+   Then confirm: `git grep -n 'davidkelly-snoday'` returns hits **only** in
+   `docs/plan.md` and `docs/adr/`.
 
 5. **Verify what the transfer kept.** Sources disagree about what survives, so check
    rather than assume:

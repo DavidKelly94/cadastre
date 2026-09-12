@@ -1,0 +1,19 @@
+name: Dependabot auto-merge
+
+# Consumer caller: copy into a repo's .github/workflows/. For patch/minor
+# Dependabot bumps, enable auto-merge once required checks pass; majors stay
+# manual. The pull_request trigger + elevated permissions let Dependabot's
+# otherwise read-only token merge. Requires "Allow auto-merge" enabled on the
+# repo and at least one required status check — see the reusable workflow's
+# header for the full requirements.
+on:
+  pull_request:
+
+jobs:
+  automerge:
+    uses: davidkelly-snoday/base/.github/workflows/dependabot-automerge-reusable.yml@v1
+    permissions:
+      contents: write
+      pull-requests: write
+    # with:
+    #   merge-method: squash

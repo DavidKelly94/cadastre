@@ -1,0 +1,48 @@
+name: Claude
+
+# Consumer caller: copy into a repo's .github/workflows/. Behavior lives in the
+# reusable workflow in davidkelly-snoday/base — bump the @ref to take updates.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+  issues:
+    types: [opened, assigned]
+
+jobs:
+  claude:
+    # DIVERGENCE FROM base's TEMPLATE — do not drop this on a fleet-sync.
+    #
+    # base's reusable gates only on "actor is not a bot" and "text contains
+    # @claude". It has no author check, and issue_comment/issues events run in
+    # the default branch's context WITH secrets. base itself is private, so only
+    # collaborators can comment there and the gap never shows. This repo is
+    # public, so without the guard below any GitHub user could comment @claude
+    # and drive a job holding contents/issues/pull-requests write plus the
+    # owner's CLAUDE_CODE_OAUTH_TOKEN.
+    #
+    # Association lives on a different object per event: comment for
+    # issue_comment and pull_request_review_comment, review for
+    # pull_request_review, issue for issues. A missing property is falsy, so the
+    # || chain picks whichever one the event actually carries.
+    #
+    # Proposed upstream so every public consumer inherits it.
+    if: >-
+      contains(fromJSON('["OWNER","COLLABORATOR","MEMBER"]'),
+        github.event.comment.author_association
+        || github.event.review.author_association
+        || github.event.issue.author_association)
+    uses: davidkelly-snoday/base/.github/workflows/claude-reusable.yml@v1
+    # Permissions are set on the caller because the caller's token is the
+    # ceiling for the reusable workflow.
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: read # lets Claude read CI results on PRs
+    # Passes this repo's secrets (e.g. CLAUDE_CODE_OAUTH_TOKEN) to the reusable.
+    secrets: inherit

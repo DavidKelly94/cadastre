@@ -1,0 +1,27 @@
+# Deviations from base's harness defaults (plugins/base/harness/defaults.yml,
+# which is also the schema — an unknown key fails loudly).
+ci:
+  # No manifest at the repo root: Swift lives in ios/, Python in pipeline/, and
+  # the browser viewer will live in web/. base's check.sh detects stacks at the
+  # root only, so node would never match anyway; skipping it says so on purpose.
+  skip: [node]
+  reason: "No root manifest. Swift is in ios/, Python in pipeline/, the viewer will be in web/. This repo's own CI workflows gate them."
+  # The real gate for a local run. /base:check and the deterministic gate inside
+  # /base:ship run check.sh on a developer machine where uv is on PATH, so this
+  # gives one command that actually exercises the pipeline. In CI the Extra
+  # checks job may not have uv installed, because harness-check installs it only
+  # when root detection finds the stack — this repo's own CI workflow is the CI
+  # gate regardless.
+  extra-checks:
+    - "cd pipeline && uv run ruff check . && uv run pytest -q"
+
+review:
+  extra-instructions: |
+    docs/session-format.md is a contract between the iOS app and the Python
+    pipeline. Reject any change to units, axes, matrix order, file encodings or
+    file names that does not also bump format_version and update both sides.
+    New architectural decisions need an ADR under docs/adr/, and an accepted ADR
+    is superseded by a new one rather than edited.
+    The iOS layer cannot be compiled or run in review; judge it against Apple's
+    documented ARKit patterns and flag anything that retains an ARFrame, blocks
+    the session delegate, or assumes tightly packed CVPixelBuffer rows.

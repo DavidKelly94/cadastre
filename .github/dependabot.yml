@@ -1,0 +1,33 @@
+# Automated dependency update PRs. Seeded from base, then pointed at this
+# repo's real manifest locations: Python lives in pipeline/, not at the root.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # The pipeline is uv-locked, so it needs the dedicated ecosystem: pip does
+  # not read uv.lock. Only one of pip/uv is listed to avoid duplicate PRs.
+  - package-ecosystem: uv
+    directory: "/pipeline"
+    schedule:
+      interval: weekly
+    groups:
+      uv:
+        patterns: ["*"]
+
+  - package-ecosystem: pre-commit
+    directory: "/"
+    schedule:
+      interval: weekly
+    groups:
+      pre-commit:
+        patterns: ["*"]
+
+  # Add an npm entry at directory "/web" when the browser viewer lands
+  # (docs/design/viewer-design.md). Listing it before web/ exists only
+  # produces Dependabot errors.

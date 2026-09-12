@@ -29,8 +29,10 @@ Example: `20261103-141502_main_kitchen_electrical_k3x7qa`.
   depth/000123.f32       keyframe LiDAR depth, 256x192 Float32 little-endian, metres
   conf/000123.u8         keyframe depth confidence, 256x192 UInt8 (0 low, 1 medium, 2 high)
   stills/000.jpg         high-resolution still (device native, e.g. 4032x3024)
+  panos/000.jpg          OPTIONAL, reserved and unused by the MVP (see 7)
+  panos.jsonl            OPTIONAL, one line per panorama (see 7)
   mesh.obj               ARKit scene mesh at stop, world (session) coordinates, metres
-  mesh_classes.u8        one byte per OBJ face, in face order (classification, see 8)
+  mesh_classes.u8        one byte per OBJ face, in face order (classification, see 9)
   mesh.json              mesh summary (anchor count, vertex/face counts, class histogram)
   derived/               written only by the pipeline (never by the app)
 ```
@@ -123,7 +125,39 @@ Depth and confidence files are **tightly packed** row-major arrays (`dh` rows of
 
 Same fields as a keyframe line plus `s` (still index) and `path` (`stills/000.jpg`); `w`, `h` and `K` describe the still's own resolution (ARKit provides intrinsics for the high-resolution frame). `i` is the index of the most recent keyframe at the time of capture (`-1` if none). Stills have no depth file.
 
-## 7. `markers.jsonl` and `landmarks.jsonl`
+## 7. `panos.jsonl` (reserved, optional)
+
+Panoramas are **not produced by the MVP app**, but the slot is reserved now so
+adding them later is additive and keeps `format_version` at 1. A reader must
+tolerate the directory and the file being absent, and must ignore fields it does
+not recognise.
+
+```
+panos/000.jpg          equirectangular or cylindrical panorama
+panos.jsonl            one line per panorama
+```
+
+```json
+{"p":0,"t":74.3,"T_wp":[...16...],"projection":"equirectangular","w":8192,"h":4096,
+ "hfov_deg":360.0,"vfov_deg":180.0,"source":"stitched","frames":[812,813,814],
+ "path":"panos/000.jpg"}
+```
+
+`T_wp` is the panorama-to-world pose: the origin is the optical centre the
+panorama was stitched about, `+y` is up, and the `+z` axis maps to the centre
+column of the image so a pixel column maps to a yaw about `+y`. `projection` is
+`equirectangular` or `cylindrical`. `source` is `stitched` (assembled from the
+listed `frames`, which are keyframe indices) or `native` (captured directly).
+`hfov_deg` and `vfov_deg` state the real coverage, which is often less than a
+full sphere.
+
+Open question for whenever this is implemented: whether to stitch offline from
+keyframes, which needs no new capture UI and reuses poses already recorded, or to
+capture natively on the phone, which is sharper but adds a capture mode and a
+second calibration path. Stitching offline is the cheaper first move and is why
+`frames` exists.
+
+## 8. `markers.jsonl` and `landmarks.jsonl`
 
 Marker observation (from `ARImageAnchor` add/update events):
 
@@ -141,15 +175,15 @@ Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowi
 
 `kind` is `corner`, `door`, `window`, `floor` or `other`. Labels are free text but the app offers a fixed vocabulary so the same room gets the same labels in every phase (`corner-nw`, `corner-ne`, `corner-se`, `corner-sw`, `door-<name>`, `window-<name>`, `floor`).
 
-## 8. Mesh files
+## 9. Mesh files
 
 `mesh.obj` contains all `ARMeshAnchor` geometries transformed into session (world) coordinates, concatenated: `v x y z` lines (metres) then `f a b c` lines (1-based indices), no normals or texture coordinates required. `mesh_classes.u8` has exactly one byte per `f` line, in the same order, holding the ARKit face classification raw value: `0` none, `1` wall, `2` floor, `3` ceiling, `4` table, `5` seat, `6` window, `7` door. `mesh.json` records `anchors`, `vertices`, `faces` and a `class_histogram`.
 
-## 9. Sizes
+## 10. Sizes
 
 Per keyframe: JPEG 250–400 KB at quality 0.85, depth 196,608 B, confidence 49,152 B. With motion-gated keyframes (typically 2–4 per second while walking, at most 10 per second) a 5-minute room is 300–800 MB plus 3–5 MB per still. The app refuses to start a session with less than 2 GB free and stops at 500 MB free.
 
-## 10. Validation rules (`igloo validate`)
+## 11. Validation rules (`igloo validate`)
 
 1. `manifest.json` parses, `format_version == 1`, `status != "incomplete"` (a warning, not an error, for `repaired`).
 2. Every JSONL line parses; `i` strictly increasing; `t` non-decreasing and within `[0, duration_s + 1]`.
@@ -162,6 +196,6 @@ Per keyframe: JPEG 250–400 KB at quality 0.85, depth 196,608 B, confidence 49,
 
 The command prints a summary and exits non-zero on any error.
 
-## 11. Evolution
+## 12. Evolution
 
 Additive fields keep `format_version` 1; the pipeline must ignore unknown fields. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading older versions. Never rewrite raw session files; all processing output goes under `derived/`.

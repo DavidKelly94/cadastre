@@ -96,3 +96,80 @@ If framing starts before Igloo is capture-ready, capture anyway with a free ARKi
 - Record3D: `.r3d` export, about $5 in-app unlock.
 
 Place markers as in `docs/markers.md`, record one room per session, and follow `docs/capture-protocol.md`: start at the door, slow sweeps at chest height, each wall square-on with a tape measure in frame, close stills of every box, pipe, gas line, header, blocking and duct, finish where you started.
+
+## 13. Claude automation and local gates (from the `base` harness)
+
+This repository adopted the shared caller workflows from `davidkelly-snoday/base`,
+so four of them now live in `.github/workflows/`: `claude.yml` answers `@claude`
+mentions, `claude-review.yml` reviews every pull request, `dependabot-automerge.yml`
+auto-merges patch and minor dependency bumps, and `main-triage.yml` opens a
+diagnosis issue when CI fails on the default branch. They are thin callers; the
+behaviour lives in `base` at the pinned `@v1` ref.
+
+Three things to do once:
+
+1. **Add this repository to the Claude GitHub App** at
+   https://github.com/settings/installations so the workflows can act on it.
+2. **Set the auth secret.** Add a repository secret named `CLAUDE_CODE_OAUTH_TOKEN`.
+   Without it the Claude workflows fail immediately.
+3. **Install the plugin locally** so you get the same skills the workflows use:
+   `/plugin marketplace add davidkelly-snoday/base`, then
+   `/plugin install base@snoday`. That provides `/base:check` (the deterministic
+   gate), `/base:review` (the same rubric CI applies) and `/base:ship` (the
+   definition of done).
+
+Two behaviours worth knowing so they do not look like bugs:
+
+- **The first pull request that adds `claude-review.yml` skips its own review.**
+  That is deliberate tamper protection, not a failure. Confirm the review works on
+  the next pull request.
+- **`dependabot-automerge` needs "Allow auto-merge" enabled and at least one
+  required status check** on the target branch. Without a required check it merges
+  immediately instead of waiting for CI, which is worse than not having it. Enable
+  both, or disable that workflow.
+
+Local gates run through `pre-commit` (ruff, gitleaks, shellcheck, actionlint,
+whitespace). Once per clone:
+
+```
+pip install pre-commit      # or: pipx install pre-commit
+pre-commit install
+pre-commit run --all-files  # optional, first time
+```
+
+`.github/workflows/claude.yml` carries a deliberate change from base's template: a
+guard restricting it to repository owners, collaborators and members. base's
+reusable checks only that the commenter is not a bot, and this repository is
+public, so without the guard any GitHub user could comment `@claude` and drive a
+job that holds write permissions and spends your Claude usage. Read the comment in
+the file before editing it, and re-check it after any `fleet-sync`.
+
+## 14. Going private later: what changes
+
+The repository stays public through the build sprint on purpose, because standard
+GitHub runners are free on public repositories. Private repositories draw from a
+monthly allowance with a multiplier per operating system, and **macOS counts 10x**.
+GitHub Free includes 2,000 minutes a month, which is only **200 macOS minutes**;
+Pro includes 3,000, so 300. Overage on standard macOS runners is **$0.062 a minute**,
+and on Free the default spending limit is **$0**, which means Actions simply stops
+once the allowance is gone.
+
+So when you do flip to private, in this order:
+
+1. Read the Actions usage page first and see what the sprint actually consumed.
+   That number decides Free plus a spending limit versus Pro; do not guess.
+2. **Raise the Actions spending limit above $0** before flipping, or the TestFlight
+   loop will halt mid-build with no obvious cause.
+3. Restrict `ios-check` to `pull_request` and `workflow_dispatch` instead of every
+   push touching `ios/**`. You lose a per-push compile signal, which is worth
+   paying for only once minutes are billed.
+4. Flip both this repository and `base` to private.
+5. **Grant same-owner Actions access on `base`**: its Settings, then Actions, then
+   General, then Access, set to "Accessible from repositories owned by the user".
+   Miss this and every caller fails with "workflow was not found", which reads like
+   a broken workflow rather than a missing permission.
+6. Re-check whether required status checks are still available on your plan. If not,
+   disable `dependabot-automerge` rather than let it merge without gating.
+
+`docs/transfer-runbook.md` has the full two-phase sequence, including the repository
+transfer itself.

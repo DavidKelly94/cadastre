@@ -192,7 +192,7 @@ Per keyframe: JPEG 250–400 KB at quality 0.85, depth 196,608 B, confidence 49,
 5. `K` has `fx, fy > 0`, `cx` within `[0, w]`, `cy` within `[0, h]`.
 6. At least 80% of depth pixels valid in at least 80% of keyframes (warning otherwise).
 7. Stats in the manifest match the counted files (warning otherwise).
-8. Marker IDs match `IG-\d{3}`; landmarks have finite coordinates.
+8. Marker IDs match `CD-\d{3}`; landmarks have finite coordinates.
 
 The command prints a summary and exits non-zero on any error.
 

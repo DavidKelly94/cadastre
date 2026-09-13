@@ -15,7 +15,6 @@ MVP_COMMANDS = frozenset(
 #: A minimal valid invocation of each subcommand, including both plan sub-commands.
 STUB_INVOCATIONS = [
     ["ingest", "some-session"],
-    ["validate", "some-session"],
     ["apriltag", "some-session"],
     ["plan", "add", "plan.pdf", "--level", "main"],
     ["plan", "correct", "plan.jpg", "--level", "main"],
@@ -41,8 +40,12 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
     assert __version__ in capsys.readouterr().out
 
 
+#: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
+IMPLEMENTED = frozenset({"validate"})
+
+
 def test_every_mvp_command_is_covered() -> None:
-    assert {argv[0] for argv in STUB_INVOCATIONS} == MVP_COMMANDS
+    assert {argv[0] for argv in STUB_INVOCATIONS} | IMPLEMENTED == MVP_COMMANDS
 
 
 def test_no_command_is_an_error() -> None:
@@ -72,3 +75,41 @@ def test_stub_reports_not_implemented(argv: list[str], capsys: pytest.CaptureFix
 def test_store_defaults_and_overrides() -> None:
     assert build_parser().parse_args(["validate", "s"]).store == "./cadastre-data"
     assert build_parser().parse_args(["--store", "/tmp/x", "validate", "s"]).store == "/tmp/x"
+
+
+def test_validate_runs_and_reports(session_dir, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["validate", str(session_dir)]) == 0
+    assert "keyframes" in capsys.readouterr().out
+
+
+def test_validate_exits_one_on_a_broken_session(
+    session_dir, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (session_dir / "depth" / "000000.f32").unlink()
+    assert main(["validate", str(session_dir)]) == 1
+    assert "FAILED" in capsys.readouterr().out
+
+
+def test_validate_writes_the_json_report(session_dir, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["validate", str(session_dir), "--json"]) == 0
+    capsys.readouterr()
+    assert (session_dir / "derived" / "validate.json").exists()
+
+
+def test_validate_reports_a_path_that_is_not_a_session(
+    tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["--store", str(tmp_path), "validate", "nope"]) == 1
+    assert "not a session directory" in capsys.readouterr().err
+
+
+def test_validate_finds_a_session_by_id_within_the_store(
+    tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from helpers import build_session
+
+    store = tmp_path / "cadastre-data"
+    session_id = "20261103-141502_main_kitchen_electrical_k3x7qa"
+    build_session(store / "sessions" / "our-house" / session_id)
+    assert main(["--store", str(store), "validate", session_id]) == 0
+    assert session_id in capsys.readouterr().out

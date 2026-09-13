@@ -325,3 +325,18 @@ def test_plan_calibrate_says_what_is_missing_without_web(
     assert "--distance" in error
     assert "--origin" in error
     assert "without --web" in error
+
+
+def test_validate_can_skip_the_image_and_depth_checks(
+    session_dir, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Skipping is for long sessions and for output that has no JPEGs at all."""
+    (session_dir / "rgb" / "000000.jpg").write_bytes(b"not-a-real-jpeg")
+
+    assert main(["validate", str(session_dir)]) == 1
+    capsys.readouterr()
+
+    assert main(["validate", str(session_dir), "--skip-images"]) == 0
+    printed = capsys.readouterr().out
+    assert "note: images not checked" in printed
+    assert "OK" in printed

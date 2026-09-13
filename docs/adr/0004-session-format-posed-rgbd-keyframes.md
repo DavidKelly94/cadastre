@@ -2,9 +2,7 @@
 
 ## Status
 
-Accepted, 2026-09-11. Still current in substance.
-
-The session directory name below has since changed: [ADR-0022](0022-session-is-one-pass-carrying-phases.md) removed the `<phase>` segment and moved phases into `manifest.json` as a list, taking `format_version` to 2. Everything else in this record — the per-frame files, the JSONL lines, the encodings and the keyframe policy — is unchanged. `docs/session-format.md` is the live specification.
+Accepted, 2026-09-11.
 
 ## Context
 
@@ -12,7 +10,7 @@ Captured data is perishable (framing is covered within weeks) and must stay read
 
 ## Decision
 
-A session is a directory `sessions/<project>/<YYYYMMDD-HHMMSS>_<level>_<room>_<phase>_<id6>/` with `manifest.json`, `frames.jsonl`, `stills.jsonl`, `markers.jsonl`, `landmarks.jsonl`, `log.txt`, `rgb/NNNNNN.jpg` (quality 0.85), `depth/NNNNNN.f32` (256x192 row-major Float32 metres, 0 = invalid), `conf/NNNNNN.u8`, `stills/NNN.jpg`, `mesh.obj` and `mesh_classes.u8`. Only keyframes are stored (`KeyframePolicy`: at least 100 ms apart and moved more than 0.10 m or rotated more than 5 degrees, tracking normal).
+A session is a directory `sessions/<project>/<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>/` with `manifest.json`, `frames.jsonl`, `stills.jsonl`, `markers.jsonl`, `landmarks.jsonl`, `log.txt`, `rgb/NNNNNN.jpg` (quality 0.85), `depth/NNNNNN.f32` (256x192 row-major Float32 metres, 0 = invalid), `conf/NNNNNN.u8`, `stills/NNN.jpg`, `mesh.obj` and `mesh_classes.u8`. Only keyframes are stored (`KeyframePolicy`: at least 100 ms apart and moved more than 0.10 m or rotated more than 5 degrees, tracking normal).
 
 Each `frames.jsonl` line carries `i`, `t`, `T_wc` (16 floats, column-major, camera to world), `K`, image and depth sizes, `exp_s`, `tracking`, `thermal` and the three file paths. Conventions: ARKit world, y up, gravity-aligned, metres, origin at session start, camera looking along -z (`T_cv = T_wc * diag(1,-1,-1,1)` for OpenCV); `K` is for the landscape image; depth intrinsics are `K` scaled by 256/1920. `manifest.json` carries `format_version`, identifiers, device, app build, keyframe policy, expected markers and statistics. Raw sessions are never modified; derived data goes under `derived/`.
 

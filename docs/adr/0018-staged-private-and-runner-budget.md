@@ -4,6 +4,8 @@
 
 Accepted, 2026-09-12. Amends a stated consequence of ADR-0002 and ADR-0012.
 
+**Update, 2026-09-13.** The repository was found already private — the flip happened at the account transfer rather than after TestFlight, so the staging below had not in fact been followed. The owner is returning it to public for the remainder of the sprint, which restores this decision as written. The one protection deferred to the flip, restricting `ios-check` to `pull_request` and `workflow_dispatch`, has been taken early at the owner's direction: it costs a per-push compile signal but holds in either state, so it need not be revisited when the repository does go private. The decision itself is unchanged.
+
 ## Context
 
 ADR-0002 put iOS builds on GitHub Actions because the owner has no Mac, and both it

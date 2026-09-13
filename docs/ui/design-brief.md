@@ -111,7 +111,7 @@ Success: room, phase and markers chosen in under 15 s with one hand.
 
 Purpose: record one room while showing only what affects the result.
 Primary action: REC, which becomes STOP in the same position while recording.
-Content. Top status strip: tracking quality with reason, elapsed, keyframes kept, dropped frames, free GB, thermal state, markers seen (count; IDs on tap). Coverage chip strip: the phase checklist as chips (Doorway, Corners 0/4, N wall, E wall, S wall, W wall, Stills, Markers 0/2, Loop), ticked automatically where the app can tell and by tap otherwise. Bottom bar: Still, REC/STOP, Mark landmark, mesh toggle (live LiDAR mesh wireframe as a coverage aid, off by default), room and phase label. Mark landmark uses a **pre-armed label** (§10.7): a chip strip above the bottom bar holds the vocabulary, tapping a chip arms it, and tapping the camera view places a ring at the surface already labelled. The armed chip auto-advances through a run, so four corners is four taps and no sheet ever covers the camera. An Undo chip stays for 5 s.
+Content. Top status strip: tracking quality with reason, elapsed, keyframes kept, dropped frames, free GB, thermal state, markers seen (count; IDs on tap). Coverage chip strip: the phase checklist as chips (Doorway, Corners 0/4, N wall, E wall, S wall, W wall, Stills, Markers 0/2, Loop), ticked automatically where the app can tell and by tap otherwise. Bottom bar: Still, REC/STOP, Mark landmark, mesh toggle (live LiDAR mesh wireframe as a coverage aid, off by default), room and phase label. Mark landmark uses a **pre-armed, contextual label** (§10.7): a chip strip above the bottom bar holds the vocabulary, tapping a chip arms it, and tapping the camera view places a ring at the surface already labelled. The armed chip auto-advances, and the strip itself swaps from the four corners to the openings once Corners reads 4/4. Four corners is four taps, no sheet ever covers the camera, and the row never scrolls. An Undo chip stays for 5 s.
 
 ```
  iPhone 15 Pro portrait, 393 x 852 pt
@@ -257,14 +257,25 @@ Place and register markers
 
 ## 9. Deliverables
 
-1. iPhone 15 Pro portrait mockups (393 by 852 pt, exported at 3x) for every screen in section 4, including empty and error states.
-2. HUD state sheet: one page with the seven HUD states side by side, plus the 5-minute warning and thermal variants.
-3. App icon, parcel-grid motif, 1024 by 1024, light and dark tinted variants.
-4. Web layouts for the four surfaces in section 5 at 1440 pt wide.
-5. Design tokens as a JSON file (colour, type, spacing, radius, elevation) with a short usage note.
-6. PNG and PDF export of everything.
+The design is a **canvas**: one pan-and-zoom board of artboards, edited in place
+rather than exported and re-imported. That is what the tooling produces, and it
+suits a design that is still moving.
 
-File naming: `cadastre-ios-<screen>-<state>@3x.png` (for example `cadastre-ios-capture-hud-limited-low-light@3x.png`), `cadastre-hud-states.pdf`, `cadastre-icon-1024.png`, `cadastre-web-<surface>.png`, `cadastre-tokens.json`, `cadastre-tokens.md`. Screen names: onboarding, project-list, project-overview, level, room-detail, capture-hud, session-review, markers, settings, test-plan. Surface names: calibrate, align, inspect, viewer.
+1. One artboard per screen in §4, at iPhone 15 Pro portrait (393 by 852 pt),
+   including empty and error states.
+2. The seven Capture HUD states as their own artboard group, plus the 5-minute
+   warning and the thermal variant. This group is the priority: it is the only
+   screen with real-time constraints, and a mistake there costs a re-capture
+   rather than a tap.
+3. Both palettes. Every artboard that differs between light and dark gets both;
+   the rest state which tokens change.
+4. App icon artboard, 1024 by 1024, light and dark tinted variants.
+5. Web layouts for the four surfaces in §5, 1440 pt wide.
+6. `cadastre-tokens.json` generated into the repository from the agreed palette,
+   with a short usage note. A token file is code rather than a design artifact,
+   so it belongs in the repo and in review, not in an export folder.
+
+PNG and PDF export on demand, for anything that has to leave the canvas.
 
 ## 10. Answered by the owner, 2026-09-13
 
@@ -289,11 +300,15 @@ These were open questions; they are now decisions. Anything still open is in §1
    drawn in §4. A mirrored variant is not required for the MVP.
 6. **No glove mode.** Bare hands, standard 44 pt minimum targets. The capture
    bar is already oversized for the actions that matter while recording.
-7. **Landmark labels are pre-armed, not chosen after the tap.** A chip strip
-   above the bottom bar holds the vocabulary; tapping a chip arms it, tapping
-   the surface places it, and the selection auto-advances through a run
-   (corner NW → NE → SE → SW). Four corners is four taps and no sheet ever
-   covers the camera. The label sheet in §4 is replaced by this.
+7. **Landmark labels are pre-armed and contextual.** A chip strip above the
+   bottom bar holds the vocabulary; tapping a chip arms it, tapping the surface
+   places it, and the selection auto-advances. The strip starts as the four
+   corners (NW → NE → SE → SW) and swaps to openings — door, window, floor,
+   other — once Corners reads 4/4, which the HUD already tracks. Four corners
+   is four taps, nothing covers the camera, and six chips fit one 44 pt row on a
+   393 pt screen without scrolling. The strip changes exactly once per room, at
+   a moment the owner caused; a chip to swap back is always present. The label
+   sheet in §4 is replaced by this.
 8. **App icon: the parcel grid with a survey benchmark mark** — the ruled plat
    with the surveyor's triangle-and-dot over it. Ink-blue rules on near-white;
    the warm accent is reserved for record and primary actions and does not

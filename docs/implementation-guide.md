@@ -143,7 +143,9 @@ The workflow substitutes `TEAM_ID_PLACEHOLDER` with the `APPLE_TEAM_ID` secret a
 
 ## 5. Marker images
 
-Before the marker detection feature: `cd pipeline && uv run cadastre markers --out ../docs/markers.pdf --png ../ios/Cadastre/Resources/Markers --ids 0-59`. Commit the PNGs (60 x ~150 KB) and the PDF. The app bundles the PNGs; the owner prints the PDF.
+Before the marker detection feature: `cd pipeline && uv run cadastre markers --png ../ios/Cadastre/Resources/Markers --ids 0-59`. Commit the PNGs: they are about 38 KB each, 2.4 MB for the set, and the app bundles them as ARKit reference images, so they have to exist at build time on the runner.
+
+The PDF is **not** committed. It is 3.3 MB, one command and four seconds to regenerate, and a single binary that would diff in full every time it was rebuilt — and it exceeds the 1 MB ceiling this repository's own `check-added-large-files` hook enforces outside `samples/`. `docs/owner-setup.md` already tells the owner to run `cadastre markers --out markers.pdf` when it is time to print, which is the only moment it is needed.
 
 ## 6. Pipeline (`pipeline/pyproject.toml`)
 

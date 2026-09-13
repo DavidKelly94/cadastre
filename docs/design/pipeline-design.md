@@ -47,7 +47,7 @@ cadastre-data/
 - `arkit_to_cv(T_wc) = T_wc @ np.diag([1, -1, -1, 1])`.
 - `unproject(u, v, d, K) -> p_c_arkit`: `X=(u-cx)/fx*d; Y=(v-cy)/fy*d; return [X, -Y, -d]`.
 - `se2_to_mat(theta, tx, ty, tz)`: the 4x4 in `system-design.md` §4.
-- `umeyama_2d(A, B)`: `A`, `B` are `(n,2)` arrays (session `(x,z)` and house `(x,z)`); returns `R (2,2)`, `t (2,)`, `rms`. Centroid-subtract, `H = A0.T @ B0`, SVD `U,S,Vt`; `d = sign(det(Vt.T @ U.T))`; `R = Vt.T @ diag(1,d) @ U.T`; `t = b̄ − R ā`. `theta = atan2(R[1,0], R[0,0])` is then mapped into the y-rotation form: with session horizontal coordinates `(x, z)` and house `(x, z)`, the 4x4 rows/cols `(0, 2)` receive `R` directly and `t` fills `(t_x, t_z)`.
+- `umeyama_2d(A, B)`: `A`, `B` are `(n,2)` arrays (session `(x,z)` and house `(x,z)`); returns `R (2,2)`, `t (2,)`, `rms`. Centroid-subtract, `H = A0.T @ B0`, SVD `U,S,Vt`; `d = sign(det(Vt.T @ U.T))`; `R = Vt.T @ diag(1,d) @ U.T`; `t = b̄ − R ā`. The 4x4 is then built by embedding directly: with session horizontal coordinates `(x, z)` and house `(x, z)`, the 4x4 rows/cols `(0, 2)` receive `R` directly and `t` fills `(t_x, t_z)`. The angle, if it is ever reported, is `theta = atan2(R[0,1], R[0,0])`, which matches the `T_hs` layout in `system-design.md` §4 where `sin theta` sits at row 0, column 2. Reading `R[1,0]` instead, as a formula written for an `(x, y)` plane would, returns `-theta`.
 
 Unit tests: round trips, known rotations, `umeyama_2d` recovers a synthetic transform to 1e-9, unproject/reproject identity.
 

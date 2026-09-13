@@ -36,6 +36,8 @@ Claude-specific additions.
 ## Where things live
 
 - `AGENTS.md` — shared, cross-tool project instructions (source of truth).
+- `docs/status.md` — what is actually built, what is blocked. **Update it in the
+  same commit as the work**; a status file that lags is worse than none.
 - `docs/plan.md` — the approved plan, including scope and the 14-day schedule.
 - `docs/implementation-guide.md` — build order, CI workflows, project and export
   configuration. Start here to write code.

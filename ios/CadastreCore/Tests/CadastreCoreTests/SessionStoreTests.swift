@@ -27,6 +27,7 @@ final class SessionStoreTests: XCTestCase {
     project: String = "our-house",
     id: String = "20261103-141502_main_kitchen_k3x7qa",
     status: SessionStatus = .incomplete,
+    phases: [CapturePhase] = [.electrical, .plumbing],
     keyframes: Int = 3,
     trailingNewline: Bool = true
   ) throws -> SessionLayout {
@@ -64,6 +65,7 @@ final class SessionStoreTests: XCTestCase {
       project: SlugRef(slug: project, name: project),
       level: LevelRef(slug: "main", name: "Main", index: 1),
       room: SlugRef(slug: "kitchen", name: "Kitchen"),
+      phases: phases,
       device: DeviceInfo(model: "x", iosVersion: "26", appVersion: "0.1.0", appBuild: "1"),
       startedAt: "2026-11-03T14:15:02-05:00",
       videoFormat: VideoFormat(w: 64, h: 48, fps: 30),

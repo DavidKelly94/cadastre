@@ -19,7 +19,7 @@ guard arguments.count >= 2 else {
   exit(2)
 }
 
-let sessionID = SessionID("20261103-141502_main_kitchen_electrical_k3x7qa")!
+let sessionID = SessionID("20261103-141502_main_kitchen_k3x7qa")!
 let layout = SessionLayout(root: URL(fileURLWithPath: arguments[1]))
 try layout.createDirectories()
 
@@ -128,6 +128,7 @@ let manifest = Manifest.starting(
   project: SlugRef(slug: "our-house", name: "Our House"),
   level: LevelRef(slug: "main", name: "Main Floor", index: 1),
   room: SlugRef(slug: "kitchen", name: "Kitchen"),
+  phases: [.electrical, .plumbing],
   notes: "Written by cadastre-fixture for the contract check.",
   expectedMarkers: [MarkerID.string(for: 12)],
   device: DeviceInfo(

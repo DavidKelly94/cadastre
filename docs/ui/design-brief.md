@@ -53,13 +53,13 @@ Projects
   Project (name, address, created)
     Levels (L1, L2, basement, garage; height in m)
       Rooms (name, expected marker IDs, notes)
-        Sessions (one per room per phase visit)
+        Sessions (one per room per capture pass)
 Markers (CD-000 to CD-059)
 Settings
 Test plan
 ```
 
-Phases in order: framing, electrical, plumbing, hvac, insulation, drywall, finish, other. A room may have several sessions in one phase (re-shoots). A session folder is named `<YYYYMMDD-HHMMSS>_<level>_<room>_<phase>_<id6>`.
+Phases in order: framing, electrical, plumbing, hvac, insulation, drywall, finish, other. **A session carries a set of phases, not one** ([ADR-0022](../adr/0022-session-is-one-pass-carrying-phases.md)): concurrent rough-in is normal, so one pass often covers electrical and plumbing together. A room may also have several sessions covering the same phase (re-shoots). A session folder is named `<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>` — the phases are in the manifest, not the folder name, because they can be corrected after the capture.
 
 Navigation is a single NavigationStack, no tab bar in the MVP. Markers and Settings are toolbar items on the Project list; Test plan is reached from Settings and from the build label on Onboarding.
 
@@ -111,7 +111,7 @@ Success: room, phase and markers chosen in under 15 s with one hand.
 
 Purpose: record one room while showing only what affects the result.
 Primary action: REC, which becomes STOP in the same position while recording.
-Content. Top status strip: tracking quality with reason, elapsed, keyframes kept, dropped frames, free GB, thermal state, markers seen (count; IDs on tap). Coverage chip strip: the phase checklist as chips (Doorway, Corners 0/4, N wall, E wall, S wall, W wall, Stills, Markers 0/2, Loop), ticked automatically where the app can tell and by tap otherwise. Bottom bar: Still, REC/STOP, Mark landmark, mesh toggle (live LiDAR mesh wireframe as a coverage aid, off by default), room and phase label. Mark landmark arms one tap on the camera view: a ring appears where the tap hits a surface, a label sheet offers the fixed vocabulary as one-tap chips (corner NW, door D3 threshold), and an Undo chip stays for 5 s.
+Content. Top status strip: tracking quality with reason, elapsed, keyframes kept, dropped frames, free GB, thermal state, markers seen (count; IDs on tap). Coverage chip strip: the phase checklist as chips (Doorway, Corners 0/4, N wall, E wall, S wall, W wall, Stills, Markers 0/2, Loop), ticked automatically where the app can tell and by tap otherwise. Bottom bar: Still, REC/STOP, Mark landmark, mesh toggle (live LiDAR mesh wireframe as a coverage aid, off by default), room and phase label. Mark landmark uses a **pre-armed label** (§10.7): a chip strip above the bottom bar holds the vocabulary, tapping a chip arms it, and tapping the camera view places a ring at the surface already labelled. The armed chip auto-advances through a run, so four corners is four taps and no sheet ever covers the camera. An Undo chip stays for 5 s.
 
 ```
  iPhone 15 Pro portrait, 393 x 852 pt
@@ -266,14 +266,45 @@ Place and register markers
 
 File naming: `cadastre-ios-<screen>-<state>@3x.png` (for example `cadastre-ios-capture-hud-limited-low-light@3x.png`), `cadastre-hud-states.pdf`, `cadastre-icon-1024.png`, `cadastre-web-<surface>.png`, `cadastre-tokens.json`, `cadastre-tokens.md`. Screen names: onboarding, project-list, project-overview, level, room-detail, capture-hud, session-review, markers, settings, test-plan. Surface names: calibrate, align, inspect, viewer.
 
-## 10. Open questions for the designer
+## 10. Answered by the owner, 2026-09-13
 
-1. Light chrome outside the HUD is proposed for sun readability. Is there a case for a dark site theme with light for home use?
-2. Should each phase get its own colour, or only its position in the block courses? Eight colours are hard to keep apart in sun.
-3. How should the cadastre progress glyph read at 24 pt in a list row?
-4. Coverage chips: fixed order as listed, or most urgent first?
-5. Left-hand layout: mirror the whole bottom bar, or only swap Still and Mark?
-6. Glove use: is a larger-target site mode worth a toggle, or should the defaults already be that large?
-7. The landmark label sheet interrupts capture. Is there a faster way to pick one of about ten labels with one thumb?
-8. App icon: dome only, or dome with doorway; does the warm accent belong on the icon?
-9. Does anything in the token set fail in direct sun at full brightness? Please test on a device, not a monitor.
+These were open questions; they are now decisions. Anything still open is in §11.
+
+1. **Light chrome, plus a dark theme.** Rough-in happens in unlit basements and
+   closed interiors, so a near-white screen at full brightness is not usable for
+   the phases this product exists to record. Two full palettes, both meeting the
+   contrast requirements in §§7 and 8.
+2. **No colour per phase.** A parcel fills in phase order and the phase is read
+   from position plus label. Green, amber and red stay semantic — tracking,
+   warnings, errors — so a colour on screen never means a category. This also
+   survives a session carrying several phases at once, which per-phase hues
+   would not.
+3. **The progress glyph** is the parcel grid partly filled, matching the icon
+   and §2's motif. At 24 pt in a list row it reads as a small ruled square with
+   some cells inked; the count beside it carries the precision.
+4. **Coverage chips keep a fixed order and shrink when complete.** Position
+   stays stable so it can be learned, and finished work compresses to a tick
+   rather than reordering the strip under the thumb mid-capture.
+5. **Right-handed layout is primary.** Mark bottom-right, Still bottom-left, as
+   drawn in §4. A mirrored variant is not required for the MVP.
+6. **No glove mode.** Bare hands, standard 44 pt minimum targets. The capture
+   bar is already oversized for the actions that matter while recording.
+7. **Landmark labels are pre-armed, not chosen after the tap.** A chip strip
+   above the bottom bar holds the vocabulary; tapping a chip arms it, tapping
+   the surface places it, and the selection auto-advances through a run
+   (corner NW → NE → SE → SW). Four corners is four taps and no sheet ever
+   covers the camera. The label sheet in §4 is replaced by this.
+8. **App icon: the parcel grid with a survey benchmark mark** — the ruled plat
+   with the surveyor's triangle-and-dot over it. Ink-blue rules on near-white;
+   the warm accent is reserved for record and primary actions and does not
+   appear on the icon.
+
+## 11. Still open
+
+1. Does anything in the token set fail in direct sun at full brightness? Please
+   test on a device, not a monitor. Nothing in this document can settle it.
+2. The dark palette needs the same test in the opposite condition: an unlit
+   basement at night, where the failure is glare rather than washout.
+3. The pre-armed landmark chips need a vocabulary that fits one row without
+   scrolling at 44 pt. If it does not fit, which labels earn a place and which
+   move behind a "more" chip?

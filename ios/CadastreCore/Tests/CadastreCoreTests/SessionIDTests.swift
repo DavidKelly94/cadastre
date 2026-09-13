@@ -5,7 +5,7 @@ import XCTest
 
 final class SessionIDTests: XCTestCase {
   /// The worked example from docs/session-format.md §1.
-  private let example = "20261103-141502_main_kitchen_electrical_k3x7qa"
+  private let example = "20261103-141502_main_kitchen_k3x7qa"
 
   func testParsesTheDocumentedExample() {
     let id = SessionID(example)
@@ -13,7 +13,6 @@ final class SessionIDTests: XCTestCase {
     XCTAssertEqual(id?.timestamp, "20261103-141502")
     XCTAssertEqual(id?.level, "main")
     XCTAssertEqual(id?.room, "kitchen")
-    XCTAssertEqual(id?.phase, .electrical)
     XCTAssertEqual(id?.id6, "k3x7qa")
   }
 
@@ -24,15 +23,18 @@ final class SessionIDTests: XCTestCase {
   func testRejectsMalformedIdentifiers() {
     let bad = [
       "",
-      "20261103-141502_main_kitchen_electrical",  // too few parts
-      "20261103-141502_main_kitchen_electrical_k3x7qa_extra",  // too many
-      "20261103-141502_main_kitchen_painting_k3x7qa",  // unknown phase
-      "2026113-141502_main_kitchen_electrical_k3x7qa",  // short timestamp
-      "20261103141502_main_kitchen_electrical_k3x7qa",  // missing hyphen
-      "20261103-141502_Main_kitchen_electrical_k3x7qa",  // uppercase slug
-      "20261103-141502_main_kitchen_electrical_k3x7q",  // id6 too short
-      "20261103-141502_main_kitchen_electrical_k3x7q1",  // 1 is not in a-z2-7
-      "20261103-141502__kitchen_electrical_k3x7qa",  // empty slug
+      "20261103-141502_main_kitchen",  // too few parts
+      "20261103-141502_main_kitchen_k3x7qa_extra",  // too many
+      // A version 1 id, which carried the phase. It has five parts, so it is
+      // rejected as malformed rather than silently read as a version 2 id with
+      // a room called "kitchen" and a phase where the id6 should be.
+      "20261103-141502_main_kitchen_electrical_k3x7qa",
+      "2026113-141502_main_kitchen_k3x7qa",  // short timestamp
+      "20261103141502_main_kitchen_k3x7qa",  // missing hyphen
+      "20261103-141502_Main_kitchen_k3x7qa",  // uppercase slug
+      "20261103-141502_main_kitchen_k3x7q",  // id6 too short
+      "20261103-141502_main_kitchen_k3x7q1",  // 1 is not in a-z2-7
+      "20261103-141502__kitchen_k3x7qa",  // empty slug
     ]
     for raw in bad {
       XCTAssertNil(SessionID(raw), "should reject \(raw)")
@@ -69,15 +71,14 @@ final class SessionIDTests: XCTestCase {
       timeZone: TimeZone(identifier: "UTC")!,
       levelName: "Main Floor",
       roomName: "Kitchen",
-      phase: .electrical,
       id6: "k3x7qa")
-    XCTAssertEqual(id?.stringValue, "20261103-141502_main-floor_kitchen_electrical_k3x7qa")
+    XCTAssertEqual(id?.stringValue, "20261103-141502_main-floor_kitchen_k3x7qa")
   }
 
   func testBuildFailsWhenANameSlugifiesToNothing() {
     XCTAssertNil(
       SessionID(
-        date: Date(), levelName: "!!!", roomName: "Kitchen", phase: .framing, id6: "k3x7qa"))
+        date: Date(), levelName: "!!!", roomName: "Kitchen", id6: "k3x7qa"))
   }
 
   func testGeneratedID6IsAlwaysValid() {
@@ -98,10 +99,14 @@ final class SessionIDTests: XCTestCase {
     }
   }
 
-  func testEveryPhaseSurvivesARoundTrip() {
-    for phase in CapturePhase.allCases {
-      let raw = "20261103-141502_main_kitchen_\(phase.rawValue)_k3x7qa"
-      XCTAssertEqual(SessionID(raw)?.phase, phase)
-    }
+  /// A room slug that happens to read like a phase is still a room slug.
+  ///
+  /// Worth pinning: under version 1 the fourth segment was the phase, so an id
+  /// like this one used to mean something else entirely. Now there is no phase
+  /// segment and "electrical" here is simply a room called electrical.
+  func testAPhaseNameIsNoLongerSpecialInAnID() {
+    let id = SessionID("20261103-141502_main_electrical_k3x7qa")
+    XCTAssertEqual(id?.room, "electrical")
+    XCTAssertEqual(id?.id6, "k3x7qa")
   }
 }

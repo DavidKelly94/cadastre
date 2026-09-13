@@ -22,7 +22,7 @@ from typing import Any
 
 import numpy as np
 
-from .session import Frame, Session, SessionError
+from .session import FORMAT_VERSION, KNOWN_PHASES, Frame, Session, SessionError
 
 __all__ = ["Finding", "Report", "validate_session"]
 
@@ -220,10 +220,22 @@ def validate_session(
     # Rule 1: the manifest.
     if session.format_version is None:
         report.add(ERROR, 1, "manifest has no format_version")
-    elif session.format_version != 1:
+    elif session.format_version != FORMAT_VERSION:
         report.add(ERROR, 1, f"unsupported format_version {session.format_version}")
     else:
-        report.add(OK, 1, "manifest reads as format_version 1")
+        report.add(OK, 1, f"manifest reads as format_version {FORMAT_VERSION}")
+
+    # Phases are a list since version 2. Empty is an error rather than a
+    # warning: with no phase the session cannot be placed in the record at all.
+    raw_phases = session.manifest.get("phases")
+    if not isinstance(raw_phases, list) or not raw_phases:
+        report.add(ERROR, 1, "manifest has no phases, or phases is not a non-empty list")
+    else:
+        unknown = [str(p) for p in raw_phases if str(p) not in KNOWN_PHASES]
+        if unknown:
+            report.add(ERROR, 1, f"unknown phase(s): {', '.join(sorted(unknown))}")
+        else:
+            report.add(OK, 1, f"phases: {', '.join(str(p) for p in raw_phases)}")
 
     status = session.status
     if status == "incomplete":

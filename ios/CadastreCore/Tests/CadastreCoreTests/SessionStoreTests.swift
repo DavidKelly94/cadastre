@@ -25,7 +25,7 @@ final class SessionStoreTests: XCTestCase {
   @discardableResult
   private func makeSession(
     project: String = "our-house",
-    id: String = "20261103-141502_main_kitchen_electrical_k3x7qa",
+    id: String = "20261103-141502_main_kitchen_k3x7qa",
     status: SessionStatus = .incomplete,
     keyframes: Int = 3,
     trailingNewline: Bool = true

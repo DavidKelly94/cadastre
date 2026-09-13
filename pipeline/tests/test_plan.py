@@ -224,7 +224,7 @@ def _write_alignment(store: Path, session_id: str, level: str) -> None:
 
 def test_recalibration_is_refused_once_alignments_exist(store: Path):
     calibrated(store)
-    _write_alignment(store, "20261103-141502_main_kitchen_electrical_k3x7qa", "main")
+    _write_alignment(store, "20261103-141502_main_kitchen_k3x7qa", "main")
 
     with pytest.raises(PlanError, match="already has alignments"):
         calibrated(store)

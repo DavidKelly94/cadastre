@@ -171,7 +171,7 @@ def test_validate_finds_a_session_by_id_within_the_store(
     from helpers import build_session
 
     store = tmp_path / "cadastre-data"
-    session_id = "20261103-141502_main_kitchen_electrical_k3x7qa"
+    session_id = "20261103-141502_main_kitchen_k3x7qa"
     build_session(store / "sessions" / "our-house" / session_id)
     assert main(["--store", str(store), "validate", session_id]) == 0
     assert session_id in capsys.readouterr().out

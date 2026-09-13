@@ -13,5 +13,5 @@ public enum CadastreCore {
   ///
   /// The format is the contract between the app and the pipeline; see
   /// `docs/session-format.md`. Additive optional fields keep version 1.
-  public static let sessionFormatVersion = 1
+  public static let sessionFormatVersion = 2
 }

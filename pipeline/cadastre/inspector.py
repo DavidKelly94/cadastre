@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 
 from .plan import PlanCalibration, PlanError, house_to_plan, load_calibration, plan_paths
-from .session import Session
+from .session import PHASE_ORDER, Session
 from .transforms import mat_from_cm
 
 __all__ = ["LevelPage", "SessionOverlay", "build_page", "levels_with_alignments"]
@@ -27,27 +27,16 @@ __all__ = ["LevelPage", "SessionOverlay", "build_page", "levels_with_alignments"
 #: Thumbnails are generated at this width, per pipeline-design §7.
 THUMBNAIL_WIDTH = 320
 
+
 #: Phases in build order, so the side panel reads chronologically rather than
 #: alphabetically. Anything unrecognised sorts last.
-PHASE_ORDER = [
-    "framing",
-    "electrical",
-    "plumbing",
-    "hvac",
-    "insulation",
-    "drywall",
-    "finish",
-    "other",
-]
-
-
 @dataclass
 class SessionOverlay:
     """One aligned session, already projected into plan pixels."""
 
     session_id: str
     room: str
-    phase: str
+    phases: list[str]
     trajectory: list[tuple[float, float]]
     landmarks: list[dict]
     markers: list[dict]
@@ -58,7 +47,7 @@ class SessionOverlay:
         return {
             "session_id": self.session_id,
             "room": self.room,
-            "phase": self.phase,
+            "phases": self.phases,
             "trajectory": [[round(u, 2), round(v, 2)] for u, v in self.trajectory],
             "landmarks": self.landmarks,
             "markers": self.markers,
@@ -224,7 +213,7 @@ def _overlay(
     return SessionOverlay(
         session_id=session_id,
         room=str(room.get("name", "")) if isinstance(room, dict) else "",
-        phase=session.phase,
+        phases=session.phases,
         trajectory=trajectory,
         landmarks=landmarks,
         markers=markers,
@@ -269,7 +258,7 @@ def build_page(
         if overlay is not None:
             overlays.append(overlay)
 
-    overlays.sort(key=lambda o: (_phase_rank(o.phase), o.room, o.session_id))
+    overlays.sort(key=lambda o: (_phase_rank(o.phases), o.room, o.session_id))
     page = LevelPage(
         level=level, image=f"../plans/{image_path.name}", image_size=size, sessions=overlays
     )
@@ -280,8 +269,15 @@ def build_page(
     return target
 
 
-def _phase_rank(phase: str) -> int:
-    return PHASE_ORDER.index(phase) if phase in PHASE_ORDER else len(PHASE_ORDER)
+def _phase_rank(phases: list[str]) -> int:
+    """Sort a multi-phase session by its earliest trade.
+
+    A pass covering electrical and plumbing belongs with the electrical work,
+    not after the plumbing: sorting by the earliest phase keeps the level page
+    in the order the building was actually built.
+    """
+    ranks = [PHASE_ORDER.index(p) for p in phases if p in PHASE_ORDER]
+    return min(ranks) if ranks else len(PHASE_ORDER)
 
 
 def _render(page: LevelPage) -> str:
@@ -387,11 +383,12 @@ function hideThumb() {{ thumb.style.display = "none"; }}
 const list = document.getElementById("list");
 let phase = null;
 DATA.sessions.forEach(s => {{
-  if (s.phase !== phase) {{
-    phase = s.phase;
+  const label = s.phases.join(" \u00b7 ");
+  if (label !== phase) {{
+    phase = label;
     const heading = document.createElement("div");
     heading.className = "phase";
-    heading.textContent = phase;
+    heading.textContent = label;
     list.appendChild(heading);
   }}
   const row = document.createElement("div");

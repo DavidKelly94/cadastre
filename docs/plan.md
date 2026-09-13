@@ -130,7 +130,7 @@ cadastre/
 ## Session format (`docs/session-format.md`)
 
 ```
-sessions/<project>/<YYYYMMDD-HHMMSS>_<level>_<room>_<phase>_<id6>/
+sessions/<project>/<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>/
   manifest.json  frames.jsonl  stills.jsonl  markers.jsonl  landmarks.jsonl  log.txt
   rgb/000123.jpg   depth/000123.f32 (256×192 row-major Float32 metres, 0 = invalid)   conf/000123.u8
   stills/000.jpg   mesh.obj   mesh_classes.u8
@@ -161,7 +161,7 @@ Conventions: ARKit world y-up, gravity-aligned, metres, origin at session start;
 
 - Marker sheet (Letter/A4): 20 cm square = 12.8 cm AprilTag 36h11 (1.6 cm cells + quiet zone) + a 2 cm high-detail ring seeded by ID (satisfies ARKit's image-detail check) + label "CD-017"; the same rendering is bundled as PNG for on-device detection. Print at 100%, matte lamination, verify size with a tape.
 - Placement (`docs/markers.md`): ≥2 per room (subfloor by the door, top plate or jamb visible from the room), shared markers at stair landings, IDs entered in RoomPicker, never move a placed marker; record each marker's position relative to an invariant feature ("CD-012: centred on door D3 threshold, 100 mm from left jamb") so it can be re-hung.
-- Capture (`docs/capture-protocol.md`): one session per room per phase; start at the doorway; slow chest-height sweeps; each wall square-on floor-to-ceiling with a tape measure in frame; stills of every box, pipe penetration, gas line, header, blocking, duct and of each marker square-on from ~1 m; tap landmarks at room corners and door thresholds; finish where you started.
+- Capture (`docs/capture-protocol.md`): one session per room per pass, carrying every phase exposed (ADR-0022); start at the doorway; slow chest-height sweeps; each wall square-on floor-to-ceiling with a tape measure in frame; stills of every box, pipe penetration, gas line, header, blocking, duct and of each marker square-on from ~1 m; tap landmarks at room corners and door thresholds; finish where you started.
 - **Fallback if the app slips**: same protocol with a free ARKit raw-recorder (NeRFCapture, free, updated May 2026; or Stray Scanner / Record3D ~$5 export unlock) plus the markers; `ingest` gains a converter and the format doc is unchanged.
 
 ## AI roadmap (outside the 2 weeks; trial during rough-in in 1–2 months)

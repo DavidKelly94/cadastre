@@ -2,7 +2,7 @@
 
 How to record a room with Cadastre so the data is usable years later. Read `docs/markers.md` first: markers must be up before the first session in a room.
 
-Rule of thumb: one room, one phase, one session, under five minutes, start and end at the door.
+Rule of thumb: one room, one pass, one session, under five minutes, start and end at the door. A pass covers whatever trades are exposed that day, so if the electrician and the plumber have both been in, tick both.
 
 ## 1. Before you go
 
@@ -15,11 +15,11 @@ Rule of thumb: one room, one phase, one session, under five minutes, start and e
 - Latest TestFlight build installed. Brightness at maximum. Do Not Disturb on: a call pauses the session.
 - A work light for basements and closed rooms; low light drops tracking to limited.
 
-## 2. Per room, per phase
+## 2. Per room, per pass
 
 If the app stops or you must leave, start a new session for the same room and say so in the notes; the pipeline joins them through the markers.
 
-1. In the app: project, room, phase. Check the expected marker IDs. Start capture.
+1. In the app: project, room, and every phase exposed in this pass. Check the expected marker IDs. Start capture.
 2. Wait for tracking OK. If it stays limited, see section 6.
 3. Stand in the doorway facing into the room, phone at chest height, dated sheet in view. Press REC.
 4. Mark landmark: tap the floor at the centre of the door threshold and label it `door D3 threshold`, using the door number from the plan. Thresholds and corners drive the plan alignment, so tap the actual floor point, not the wall.

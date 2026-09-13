@@ -26,7 +26,7 @@ ios/
     Capture/StillCapture.swift          captureHighResolutionFrame → stills/
     Screens/OnboardingView.swift
     Screens/ProjectPickerView.swift
-    Screens/RoomPickerView.swift        level, room, phase, notes, expected markers → start capture
+    Screens/RoomPickerView.swift        level, room, phases (multi-select), notes, markers → start
     Screens/CaptureView.swift           ARViewContainer + HUD + buttons
     Screens/SessionReviewView.swift
     Screens/MarkersView.swift
@@ -53,7 +53,7 @@ ios/
 |---|---|---|---|
 | Onboarding | LiDAR/ARKit capability check, camera permission, 3-card protocol tutorial | Continue | Blocks on unsupported device with a clear message |
 | ProjectPicker | list projects; create one (name → slug) | Open / New project | Also links to Markers, Settings, Test plan |
-| RoomPicker | choose level and room (typed once, reused), phase, notes, expected marker IDs | Start capture | Persists last choices |
+| RoomPicker | choose level and room (typed once, reused), **phases as multi-select chips** defaulting to the room's last pass, notes, expected marker IDs | Start capture | Persists last choices |
 | Capture | full-screen `ARView` with HUD and buttons | REC / Stop | See section 3 |
 | SessionReview | stats, top-down trajectory sketch, thumbnails strip, stills, markers, landmarks, quality flags, notes | Open in Files, Share zip, Delete | "Open in Files" uses `shareddocuments://` + the session path |
 | Markers | list of marker IDs with placement notes and seen-in-N-sessions | Add note | Print instructions link to `docs/markers.md` |

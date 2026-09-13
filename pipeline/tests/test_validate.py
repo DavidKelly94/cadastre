@@ -47,10 +47,41 @@ def test_a_good_session_passes(session_dir: Path):
 
 
 def test_rule_1_rejects_a_wrong_format_version(session_dir: Path):
-    patch_manifest(session_dir, format_version=2)
+    patch_manifest(session_dir, format_version=3)
     report = report_for(session_dir)
     assert not report.ok
     assert 1 in rules(report.findings, ERROR)
+
+
+def test_rule_1_rejects_a_version_1_session(session_dir: Path):
+    """Version 1 is refused rather than migrated.
+
+    ADR-0022 changed the session id and replaced the single ``phase`` with a
+    list. That is only safe to do without a migration because no version 1
+    session was ever captured, so refusing one outright is the honest
+    behaviour: a file claiming version 1 is a mistake, not old data.
+    """
+    patch_manifest(session_dir, format_version=1)
+    report = report_for(session_dir)
+    assert not report.ok
+    assert 1 in rules(report.findings, ERROR)
+
+
+def test_rule_1_rejects_missing_or_unknown_phases(session_dir: Path):
+    patch_manifest(session_dir, phases=[])
+    assert not report_for(session_dir).ok
+
+    patch_manifest(session_dir, phases=["framing", "painting"])
+    report = report_for(session_dir)
+    assert not report.ok
+    assert any("painting" in f.message for f in report.errors)
+
+
+def test_rule_1_accepts_several_phases_in_one_pass(session_dir: Path):
+    """Concurrent trades are the normal case, not an anomaly (ADR-0022)."""
+    patch_manifest(session_dir, phases=["electrical", "plumbing", "hvac"])
+    report = report_for(session_dir)
+    assert report.ok
 
 
 def test_rule_1_rejects_an_incomplete_session(session_dir: Path):

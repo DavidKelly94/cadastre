@@ -4,7 +4,7 @@ import XCTest
 @testable import CadastreCore
 
 final class SessionLayoutTests: XCTestCase {
-  private let sessionID = SessionID("20261103-141502_main_kitchen_electrical_k3x7qa")!
+  private let sessionID = SessionID("20261103-141502_main_kitchen_k3x7qa")!
 
   func testPathsMatchTheDocumentedLayout() {
     let layout = SessionLayout(root: URL(fileURLWithPath: "/tmp/s"))
@@ -24,7 +24,7 @@ final class SessionLayoutTests: XCTestCase {
       documents: URL(fileURLWithPath: "/Documents"), project: "our-house", sessionID: sessionID)
     XCTAssertTrue(
       layout.root.path.hasSuffix(
-        "/Documents/sessions/our-house/20261103-141502_main_kitchen_electrical_k3x7qa"),
+        "/Documents/sessions/our-house/20261103-141502_main_kitchen_k3x7qa"),
       layout.root.path)
   }
 

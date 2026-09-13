@@ -14,10 +14,10 @@ from cadastre.session import Session, SessionError, read_jsonl
 
 def test_loads_the_manifest(session_dir: Path):
     session = Session.load(session_dir)
-    assert session.format_version == 1
-    assert session.session_id == "20261103-141502_main_kitchen_electrical_k3x7qa"
+    assert session.format_version == 2
+    assert session.session_id == "20261103-141502_main_kitchen_k3x7qa"
     assert session.status == "complete"
-    assert session.phase == "electrical"
+    assert session.phases == ["electrical", "plumbing"]
     assert session.expected_markers == ["CD-012"]
     assert session.duration_s == 2.0
 

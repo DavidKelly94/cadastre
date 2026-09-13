@@ -28,6 +28,9 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
   enum StartFailure: Error {
     case unhealthy(String)
     case badNames
+    /// No trade was selected. The format requires at least one, because a
+    /// session with no phase cannot be placed in the record (ADR-0022).
+    case noPhases
     case io(Error)
   }
 
@@ -71,7 +74,7 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
     project: SlugRef,
     level: LevelRef,
     room: SlugRef,
-    phase: CapturePhase,
+    phases: [CapturePhase],
     notes: String?,
     expectedMarkers: [String],
     videoFormat: VideoFormat,
@@ -85,10 +88,11 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
       throw StartFailure.unhealthy(refusal)
     }
 
+    guard !phases.isEmpty else { throw StartFailure.noPhases }
+
     guard
       let id = SessionID(
-        date: Date(), levelName: level.name, roomName: room.name, phase: phase,
-        id6: SessionID.makeID6())
+        date: Date(), levelName: level.name, roomName: room.name, id6: SessionID.makeID6())
     else {
       throw StartFailure.badNames
     }
@@ -103,6 +107,7 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
         project: project,
         level: level,
         room: room,
+        phases: phases,
         notes: notes,
         expectedMarkers: expectedMarkers,
         device: Self.device(),

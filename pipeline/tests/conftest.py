@@ -10,4 +10,4 @@ from helpers import build_session
 
 @pytest.fixture
 def session_dir(tmp_path: Path) -> Path:
-    return build_session(tmp_path / "20261103-141502_main_kitchen_electrical_k3x7qa")
+    return build_session(tmp_path / "20261103-141502_main_kitchen_k3x7qa")

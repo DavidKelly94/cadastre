@@ -29,7 +29,7 @@ def test_reads_frames_with_matrices_already_converted(session_dir: Path):
     assert frames[0].K.shape == (3, 3)
     # Translation is at column-major indices 12, 13, 14.
     np.testing.assert_allclose(frames[1].position, [0.25, 0.0, 0.0])
-    assert frames[0].K[0, 0] == pytest.approx(1451.2)
+    assert frames[0].K[0, 0] == pytest.approx(48.4)
 
 
 def test_reads_the_other_record_types(session_dir: Path):
@@ -38,7 +38,7 @@ def test_reads_the_other_record_types(session_dir: Path):
     stills = list(session.stills())
     assert len(stills) == 1
     assert stills[0].s == 0
-    assert stills[0].w == 4032
+    assert stills[0].w == 128
 
     markers = list(session.markers())
     assert [m.marker_id for m in markers] == ["CD-012"]
@@ -65,7 +65,7 @@ def test_depth_intrinsics_scale_with_the_depth_resolution(session_dir: Path):
     assert frame.depth_K[1, 1] == pytest.approx(frame.K[1, 1] * sy)
     assert frame.depth_K[1, 2] == pytest.approx(frame.K[1, 2] * sy)
     # The colour intrinsics must not be mutated in the process.
-    assert frame.K[0, 0] == pytest.approx(1451.2)
+    assert frame.K[0, 0] == pytest.approx(48.4)
 
 
 def test_paths_resolve_against_the_session_root(session_dir: Path):

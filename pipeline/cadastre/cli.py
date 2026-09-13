@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from . import __version__
 
@@ -132,9 +133,54 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def resolve_session(store: str, value: str) -> Path:
+    """Find a session from a path, or from an id inside the store.
+
+    A path is used as given. Otherwise the value is treated as a session id and
+    looked up under ``<store>/sessions/<project>/<id>``, so the owner can name a
+    session the way it appears in a report rather than by typing its full path.
+    """
+    direct = Path(value)
+    if direct.is_dir():
+        return direct
+    matches = sorted(Path(store).glob(f"sessions/*/{value}"))
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        found = ", ".join(str(match) for match in matches)
+        raise FileNotFoundError(f"{value!r} matches more than one session: {found}")
+    raise FileNotFoundError(f"{value!r} is not a session directory or an id in {store}")
+
+
+def _run_validate(args: argparse.Namespace) -> int:
+    from .session import Session, SessionError
+    from .validate import validate_session, write_report
+
+    try:
+        session = Session.load(resolve_session(args.store, args.session))
+    except (FileNotFoundError, SessionError) as error:
+        print(f"cadastre validate: {error}", file=sys.stderr)
+        return 1
+
+    report = validate_session(session)
+    print(report.render())
+    if args.json:
+        target = write_report(session, report)
+        print(f"\nwrote {target}")
+    return report.exit_code
+
+
+#: Subcommands that are implemented. Everything else still exits NOT_IMPLEMENTED.
+_HANDLERS = {"validate": _run_validate}
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse arguments and dispatch. Returns the process exit code."""
     args = build_parser().parse_args(argv)
+
+    handler = _HANDLERS.get(args.command)
+    if handler is not None:
+        return handler(args)
 
     name = args.command
     if getattr(args, "plan_command", None):

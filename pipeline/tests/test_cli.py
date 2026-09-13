@@ -15,7 +15,6 @@ MVP_COMMANDS = frozenset(
 #: A minimal valid invocation of each subcommand, including both plan sub-commands.
 STUB_INVOCATIONS = [
     ["ingest", "some-session"],
-    ["inspect"],
     ["markers"],
 ]
 
@@ -35,7 +34,7 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
 
 
 #: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
-IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan", "align"})
+IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan", "align", "inspect"})
 
 
 def test_every_mvp_command_is_covered() -> None:
@@ -201,3 +200,10 @@ def test_apriltag_solves_a_synthetic_session(tmp_path, capsys: pytest.CaptureFix
     assert "CD-012" in printed
     assert "anchor frame agreement" in printed
     assert (out / "derived" / "markers_detected.json").exists()
+
+
+def test_inspect_reports_when_nothing_is_aligned(
+    tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["--store", str(tmp_path / "empty"), "inspect"]) == 1
+    assert "run 'cadastre align'" in capsys.readouterr().err

@@ -5,17 +5,12 @@ from __future__ import annotations
 import pytest
 
 from cadastre import __version__
-from cadastre.cli import NOT_IMPLEMENTED, build_parser, main
+from cadastre.cli import _HANDLERS, NOT_IMPLEMENTED, build_parser, main
 
 #: Every subcommand the MVP promises, per docs/design/pipeline-design.md §1.
 MVP_COMMANDS = frozenset(
     {"ingest", "validate", "apriltag", "plan", "align", "inspect", "markers", "synth"}
 )
-
-#: A minimal valid invocation of each subcommand, including both plan sub-commands.
-STUB_INVOCATIONS = [
-    ["markers"],
-]
 
 
 def test_help_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:
@@ -32,12 +27,30 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
     assert __version__ in capsys.readouterr().out
 
 
-#: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
-IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan", "align", "inspect", "ingest"})
+def test_every_mvp_command_is_registered_and_implemented() -> None:
+    """Every command the design promises exists and does real work.
+
+    This began as a check that the stubs were all present. Nothing is stubbed
+    now, so it checks the stronger thing: the parser and the dispatch table agree
+    with the design, in both directions.
+    """
+    parser_commands = {
+        choice
+        for action in build_parser()._actions
+        for choice in (action.choices or {})
+        if isinstance(action.choices, dict)
+    }
+    assert parser_commands >= MVP_COMMANDS
+    assert set(_HANDLERS) == MVP_COMMANDS
 
 
-def test_every_mvp_command_is_covered() -> None:
-    assert {argv[0] for argv in STUB_INVOCATIONS} | IMPLEMENTED == MVP_COMMANDS
+def test_a_command_without_a_handler_still_exits_cleanly(monkeypatch) -> None:
+    """The NOT_IMPLEMENTED path is the guard for a parser entry added without a
+    handler. It has no callers now, so it is exercised deliberately."""
+    handlers = dict(_HANDLERS)
+    handlers.pop("validate")
+    monkeypatch.setattr("cadastre.cli._HANDLERS", handlers)
+    assert main(["validate", "anything"]) == NOT_IMPLEMENTED
 
 
 def test_no_command_is_an_error() -> None:
@@ -119,12 +132,6 @@ def test_plan_reports_a_bad_distance(tmp_path, capsys: pytest.CaptureFixture[str
     )
     assert code == 1
     assert "cannot read" in capsys.readouterr().err
-
-
-@pytest.mark.parametrize("argv", STUB_INVOCATIONS, ids=lambda a: " ".join(a[:2]))
-def test_stub_reports_not_implemented(argv: list[str], capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(argv) == NOT_IMPLEMENTED
-    assert "not implemented" in capsys.readouterr().err
 
 
 def test_store_defaults_and_overrides() -> None:
@@ -262,3 +269,39 @@ def test_an_interrupt_exits_cleanly(
     monkeypatch.setitem(cli._HANDLERS, "validate", explode)
     assert cli.main(["validate", str(tmp_path)]) == 130
     assert "interrupted" in capsys.readouterr().err
+
+
+def test_markers_writes_the_pdf_and_the_pngs(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert (
+        main(
+            [
+                "markers",
+                "--out",
+                str(tmp_path / "markers.pdf"),
+                "--png",
+                str(tmp_path / "Markers"),
+                "--ids",
+                "0-2",
+            ]
+        )
+        == 0
+    )
+    printed = capsys.readouterr().out
+    assert "3 pages" in printed
+    assert "200 mm" in printed
+    assert (tmp_path / "markers.pdf").exists()
+    assert sorted(p.name for p in (tmp_path / "Markers").iterdir()) == [
+        "CD-000.png",
+        "CD-001.png",
+        "CD-002.png",
+    ]
+
+
+def test_markers_needs_a_destination(capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["markers", "--ids", "0-1"]) == 1
+    assert "--out, --png, or both" in capsys.readouterr().err
+
+
+def test_markers_reports_a_bad_id_range(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["markers", "--out", str(tmp_path / "x.pdf"), "--ids", "9-2"]) == 1
+    assert "backwards" in capsys.readouterr().err

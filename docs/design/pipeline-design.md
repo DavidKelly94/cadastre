@@ -94,7 +94,7 @@ Generates `inspect/<level>.html`: the plan raster as background, each aligned se
 
 ## 9. `synth`
 
-`synth --out <dir>`: writes a small format-valid session: a circular trajectory of 30 keyframes in a 4x5 m room, flat depth maps with a synthetic floor and walls, blank JPEGs with two AprilTags warped into them at known poses (`cv2.warpPerspective` of the generated tag bitmaps), four corner landmarks at known positions, and a manifest. Tests use it to check `validate` (passes), `apriltag` (recovers the tag poses within 1 cm / 1°), `align` (recovers a known SE(2) within 1 mm), and `inspect` (produces HTML).
+`synth --out <dir>`: writes a small format-valid session: a circular trajectory of 48 keyframes in a 4x5 m room, flat depth maps with a synthetic floor and walls, blank JPEGs with two AprilTags warped into them at known poses (`cv2.warpPerspective` of the generated tag bitmaps), four corner landmarks at known positions, and a manifest. Tests use it to check `validate` (passes), `apriltag` (recovers the tag poses within 1 cm / 1°), `align` (recovers a known SE(2) within 1 mm), and `inspect` (produces HTML). The keyframe count is 48 rather than 30 because a 65° field of view sweeping a full turn leaves each marker in frame only briefly; 30 yields two or three observations per marker, too few to exercise the median aggregation in `apriltag`.
 
 ## 10. Later (weeks 3+, own design docs when started)
 

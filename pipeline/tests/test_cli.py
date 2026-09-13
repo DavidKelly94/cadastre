@@ -22,7 +22,6 @@ STUB_INVOCATIONS = [
     ["align", "some-session", "--level", "main"],
     ["inspect"],
     ["markers"],
-    ["synth", "--out", "out"],
 ]
 
 
@@ -41,7 +40,7 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
 
 
 #: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
-IMPLEMENTED = frozenset({"validate"})
+IMPLEMENTED = frozenset({"validate", "synth"})
 
 
 def test_every_mvp_command_is_covered() -> None:
@@ -113,3 +112,22 @@ def test_validate_finds_a_session_by_id_within_the_store(
     build_session(store / "sessions" / "our-house" / session_id)
     assert main(["--store", str(store), "validate", session_id]) == 0
     assert session_id in capsys.readouterr().out
+
+
+def test_synth_writes_a_session_that_validates(
+    tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from cadastre.session import Session
+    from cadastre.validate import validate_session
+
+    out = tmp_path / "synthetic"
+    assert main(["synth", "--out", str(out), "--keyframes", "6"]) == 0
+    assert "wrote" in capsys.readouterr().out
+    assert validate_session(Session.load(out)).ok
+
+
+def test_synth_rejects_a_nonsense_keyframe_count(
+    tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["synth", "--out", str(tmp_path / "x"), "--keyframes", "0"]) == 1
+    assert "at least 1" in capsys.readouterr().err

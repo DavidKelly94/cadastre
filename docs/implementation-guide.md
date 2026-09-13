@@ -208,7 +208,9 @@ on:
   workflow_dispatch:
 # macOS runners bill at a 10x multiplier once this repo goes private, so never
 # let a superseded push keep a runner. See docs/adr/0018.
-concurrency: { group: ios-check-${{ github.ref }}, cancel-in-progress: true }
+concurrency:
+  group: ios-check-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: macos-26
@@ -238,7 +240,9 @@ on:
     branches: ["claude/construction-3d-mapping-app-nzm3bb"]
     paths: ["ios/**"]
   workflow_dispatch:
-concurrency: { group: testflight, cancel-in-progress: true }
+concurrency:
+  group: testflight
+  cancel-in-progress: true
 jobs:
   preflight:
     runs-on: ubuntu-latest

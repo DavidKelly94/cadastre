@@ -1,0 +1,19 @@
+# The display name is `CI` because base's adopted main-triage.yml triggers on
+# workflow_run for workflows: ["CI"]. The filename stays core-test.yml.
+name: CI
+on: [push, pull_request]
+jobs:
+  swift:
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path ios/CadastreCore
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --project pipeline
+      - run: uv run --project pipeline ruff check pipeline
+      - run: uv run --project pipeline pytest pipeline -q

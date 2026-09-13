@@ -57,7 +57,7 @@ Implements `session-format.md` §11 exactly; prints a table (keyframes, stills, 
 
 ## 4. `apriltag`
 
-1. For each keyframe (optionally every `--stride` frames) and every still: `cv2.imread`, grayscale, `cv2.aruco.ArucoDetector(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11), params).detectMarkers(gray)`. Tag ID `n` maps to marker `IG-{n:03d}`.
+1. For each keyframe (optionally every `--stride` frames) and every still: `cv2.imread`, grayscale, `cv2.aruco.ArucoDetector(cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11), params).detectMarkers(gray)`. Tag ID `n` maps to marker `CD-{n:03d}`.
 2. Corner order from OpenCV is top-left, top-right, bottom-right, bottom-left in the image. Object points for a tag of side `s` (the AprilTag black square is 12.8 cm of the 20 cm marker; use `tag_size_m = 0.128` by default, overridable) in the canonical marker frame (`+x` right, `+y` up, `+z` out of the face, origin at centre): `(-s/2, +s/2, 0), (+s/2, +s/2, 0), (+s/2, -s/2, 0), (-s/2, -s/2, 0)`.
 3. `cv2.solvePnP(obj, corners, K, None, flags=cv2.SOLVEPNP_IPPE_SQUARE)` → `T_cm` (OpenCV camera ← marker). Session pose: `T_wm = arkit_to_cv(T_wc) @ T_cm`.
 4. Reject observations with reprojection error > 1.5 px, tag side < 40 px in the image, or estimated distance > 4 m.

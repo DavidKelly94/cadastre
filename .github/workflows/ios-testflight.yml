@@ -1,0 +1,58 @@
+name: ios-testflight
+on:
+  push:
+    # Must track wherever iOS work actually lands. docs/implementation-guide.md
+    # names the original working branch; the second entry is the branch in use
+    # now. A push that matches neither uploads nothing.
+    branches:
+      - claude/construction-3d-mapping-app-nzm3bb
+      - claude/confident-cerf-q37nev
+    paths: ["ios/**"]
+  workflow_dispatch:
+concurrency:
+  group: testflight
+  cancel-in-progress: true
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs: { ready: "${{ steps.check.outputs.ready }}" }
+    steps:
+      - id: check
+        env: { KEY: "${{ secrets.ASC_KEY_ID }}" }
+        run: echo "ready=$([ -n "$KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+  build:
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true'
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      - run: brew install xcodegen
+      - run: xcodegen generate --spec ios/project.yml --project ios
+      - name: Write API key and export options
+        env:
+          P8: ${{ secrets.ASC_PRIVATE_KEY_P8 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$P8" > "$RUNNER_TEMP/keys/AuthKey.p8"
+          sed "s/TEAM_ID_PLACEHOLDER/$TEAM_ID/" ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
+      - name: Archive (unsigned)
+        run: >
+          xcodebuild archive -project ios/Cadastre.xcodeproj -scheme Cadastre
+          -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
+          CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
+          DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
+          CURRENT_PROJECT_VERSION=${{ github.run_number }}
+      - name: Export and upload (cloud signing)
+        run: >
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
+          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export"
+          -allowProvisioningUpdates
+          -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey.p8"
+          -authenticationKeyID "${{ secrets.ASC_KEY_ID }}"
+          -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: export-logs, path: "${{ runner.temp }}/export/*.plist" }

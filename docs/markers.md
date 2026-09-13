@@ -65,7 +65,7 @@ Re-hang protocol:
 
 1. Check the log entry and that the reference feature still exists.
 2. If it can go back within 10 mm of the recorded offsets, re-hang the same ID and log "re-hung, date"; the pipeline treats it as lower confidence.
-3. Otherwise hang a new ID nearby, log it, and mark the old ID "lost, date, replaced by IG-0xx".
+3. Otherwise hang a new ID nearby, log it, and mark the old ID "lost, date, replaced by CD-0xx".
 4. Either way, record a session that sees it together with another established marker in the room, and note this in the session.
 
 ## 7. Detection range and accuracy

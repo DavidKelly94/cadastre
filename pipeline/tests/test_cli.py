@@ -15,7 +15,6 @@ MVP_COMMANDS = frozenset(
 #: A minimal valid invocation of each subcommand, including both plan sub-commands.
 STUB_INVOCATIONS = [
     ["ingest", "some-session"],
-    ["align", "some-session", "--level", "main"],
     ["inspect"],
     ["markers"],
 ]
@@ -36,7 +35,7 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
 
 
 #: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
-IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan"})
+IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan", "align"})
 
 
 def test_every_mvp_command_is_covered() -> None:

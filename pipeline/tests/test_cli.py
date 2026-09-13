@@ -15,9 +15,6 @@ MVP_COMMANDS = frozenset(
 #: A minimal valid invocation of each subcommand, including both plan sub-commands.
 STUB_INVOCATIONS = [
     ["ingest", "some-session"],
-    ["plan", "add", "plan.pdf", "--level", "main"],
-    ["plan", "correct", "plan.jpg", "--level", "main"],
-    ["plan", "calibrate", "--level", "main"],
     ["align", "some-session", "--level", "main"],
     ["inspect"],
     ["markers"],
@@ -39,7 +36,7 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
 
 
 #: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
-IMPLEMENTED = frozenset({"validate", "synth", "apriltag"})
+IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan"})
 
 
 def test_every_mvp_command_is_covered() -> None:
@@ -62,6 +59,69 @@ def test_plan_requires_a_sub_command() -> None:
     with pytest.raises(SystemExit) as exc:
         main(["plan"])
     assert exc.value.code == 2
+
+
+def test_plan_add_then_calibrate(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    from PIL import Image
+
+    source = tmp_path / "plan.png"
+    Image.new("RGB", (400, 300), (255, 255, 255)).save(source, "PNG")
+    store = str(tmp_path / "cadastre-data")
+
+    assert main(["--store", store, "plan", "add", str(source), "--level", "main"]) == 0
+    assert "wrote" in capsys.readouterr().out
+
+    assert (
+        main(
+            [
+                "--store",
+                store,
+                "plan",
+                "calibrate",
+                "--level",
+                "main",
+                "--scale-points",
+                "100,100 300,100",
+                "--distance",
+                "12' 6\"",
+                "--origin",
+                "100,100",
+            ]
+        )
+        == 0
+    )
+    printed = capsys.readouterr().out
+    assert "calibrated" in printed
+    assert "mm per pixel" in printed
+
+
+def test_plan_reports_a_bad_distance(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    from PIL import Image
+
+    source = tmp_path / "plan.png"
+    Image.new("RGB", (40, 30), (255, 255, 255)).save(source, "PNG")
+    store = str(tmp_path / "cadastre-data")
+    main(["--store", store, "plan", "add", str(source), "--level", "main"])
+    capsys.readouterr()
+
+    code = main(
+        [
+            "--store",
+            store,
+            "plan",
+            "calibrate",
+            "--level",
+            "main",
+            "--scale-points",
+            "0,0 10,0",
+            "--distance",
+            "about three metres",
+            "--origin",
+            "0,0",
+        ]
+    )
+    assert code == 1
+    assert "cannot read" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("argv", STUB_INVOCATIONS, ids=lambda a: " ".join(a[:2]))

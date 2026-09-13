@@ -64,9 +64,26 @@ def _add_plan(sub: argparse._SubParsersAction) -> None:
     correct = plan_sub.add_parser("correct", help="perspective-correct a photographed plan")
     correct.add_argument("file", help="source image")
     correct.add_argument("--level", required=True, help="level slug")
+    correct.add_argument(
+        "--corners",
+        required=True,
+        help="the four sheet corners as 'x,y x,y x,y x,y': top-left, top-right, "
+        "bottom-right, bottom-left",
+    )
 
     calibrate = plan_sub.add_parser("calibrate", help="set scale, origin and rotation for a level")
     calibrate.add_argument("--level", required=True, help="level slug")
+    calibrate.add_argument(
+        "--scale-points", required=True, help="two pixels a known distance apart, 'x,y x,y'"
+    )
+    calibrate.add_argument(
+        "--distance", required=True, help="the real distance between them, e.g. 3.81m or 12' 6\""
+    )
+    calibrate.add_argument("--origin", required=True, help="the pixel at house (0, 0), 'x,y'")
+    calibrate.add_argument(
+        "--rotation-deg", type=float, default=0.0, help="angle from image +u to house +x"
+    )
+    calibrate.add_argument("--floor-height", type=float, default=0.0, help="level height in metres")
     calibrate.add_argument(
         "--force",
         action="store_true",
@@ -170,6 +187,63 @@ def _run_validate(args: argparse.Namespace) -> int:
     return report.exit_code
 
 
+def _points(value: str, count: int) -> list[tuple[float, float]]:
+    """Parse ``'x,y x,y'`` into pixel pairs."""
+    parts = value.replace(",", " ").split()
+    if len(parts) != count * 2:
+        raise ValueError(f"expected {count} 'x,y' point(s), got {value!r}")
+    numbers = [float(part) for part in parts]
+    return [(numbers[i * 2], numbers[i * 2 + 1]) for i in range(count)]
+
+
+def _run_plan(args: argparse.Namespace) -> int:
+    from .plan import (
+        PlanError,
+        add_plan,
+        calibrate,
+        correct_perspective,
+        parse_distance,
+        plan_paths,
+    )
+
+    try:
+        if args.plan_command == "add":
+            result = add_plan(args.store, args.file, args.level, page=args.page, dpi=args.dpi)
+            image_path, json_path = plan_paths(args.store, args.level)
+            print(f"wrote {image_path}")
+            print(f"wrote {json_path}")
+            if not result.is_calibrated:
+                print(f"\nnext: cadastre plan calibrate --level {args.level} ...")
+            return 0
+
+        if args.plan_command == "correct":
+            image_path, _ = plan_paths(args.store, args.level)
+            target = correct_perspective(args.file, image_path, _points(args.corners, 4))
+            print(f"wrote {target}")
+            return 0
+
+        result = calibrate(
+            args.store,
+            args.level,
+            point_a=_points(args.scale_points, 2)[0],
+            point_b=_points(args.scale_points, 2)[1],
+            distance_m=parse_distance(args.distance),
+            origin_px=_points(args.origin, 1)[0],
+            rotation_deg=args.rotation_deg,
+            floor_height_m=args.floor_height,
+            force=args.force,
+        )
+    except (PlanError, ValueError) as error:
+        print(f"cadastre plan: {error}", file=sys.stderr)
+        return 1
+
+    print(f"level {result.level} calibrated")
+    print(f"  {result.metres_per_pixel * 1000:.4f} mm per pixel")
+    print(f"  origin at pixel {result.origin_px[0]:.1f}, {result.origin_px[1]:.1f}")
+    print(f"  rotation {result.rotation_deg:.2f} deg, floor {result.floor_height_m:.3f} m")
+    return 0
+
+
 def _run_apriltag(args: argparse.Namespace) -> int:
     from .apriltag import aggregate, check_anchor_frame, solve_session, write_detections
     from .session import Session, SessionError
@@ -230,6 +304,7 @@ _HANDLERS = {
     "validate": _run_validate,
     "synth": _run_synth,
     "apriltag": _run_apriltag,
+    "plan": _run_plan,
 }
 
 

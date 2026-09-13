@@ -96,6 +96,11 @@ def _add_align(sub: argparse._SubParsersAction) -> None:
     p.add_argument("session_id", help="session id within the store")
     p.add_argument("--level", required=True, help="level slug")
     p.add_argument(
+        "--pairs",
+        help="landmark to plan-pixel pairs, 'label=x,y label=x,y' (at least two, "
+        "or use --use-markers)",
+    )
+    p.add_argument(
         "--use-markers",
         action="store_true",
         help="add correspondences from house-frame marker poses seen in earlier sessions",
@@ -244,6 +249,67 @@ def _run_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_align(args: argparse.Namespace) -> int:
+    from .align import (
+        WARN_RMS_M,
+        AlignError,
+        landmark_pairs,
+        marker_pairs,
+        project_slug,
+        solve,
+        update_marker_map,
+        write_alignment,
+    )
+    from .plan import PlanError, load_calibration
+    from .session import Session, SessionError
+
+    try:
+        session = Session.load(resolve_session(args.store, args.session_id))
+        calibration = load_calibration(args.store, args.level)
+        if not calibration.is_calibrated:
+            raise PlanError(
+                f"level {args.level!r} is not calibrated; run 'cadastre plan calibrate' first"
+            )
+
+        pairs = []
+        if args.pairs:
+            clicks = {}
+            for token in args.pairs.split():
+                label, _, pixel = token.partition("=")
+                if not label or not pixel:
+                    raise ValueError(f"expected 'label=x,y', got {token!r}")
+                clicks[label] = _points(pixel, 1)[0]
+            pairs += landmark_pairs(session, calibration, clicks)
+        if args.use_markers:
+            pairs += marker_pairs(session, args.store, project_slug(session))
+        if not pairs:
+            raise AlignError("no correspondences; pass --pairs and/or --use-markers")
+
+        alignment = solve(session, calibration, pairs, force=args.force)
+    except (AlignError, PlanError, SessionError, FileNotFoundError, ValueError) as error:
+        print(f"cadastre align: {error}", file=sys.stderr)
+        return 1
+
+    print(f"{alignment.session_id} -> level {alignment.level}")
+    print(f"  method        {alignment.method} ({len(alignment.pairs)} correspondences)")
+    print(f"  yaw           {alignment.yaw_deg:+.2f} deg")
+    x, y, z = alignment.T_hs[:3, 3]
+    print(f"  translation   ({x:+.3f}, {y:+.3f}, {z:+.3f}) m  [floor: {alignment.floor_source}]")
+    print(f"  rms           {alignment.rms_m * 100:.1f} cm")
+    print(f"  max residual  {alignment.max_residual_m * 100:.1f} cm")
+    if alignment.rms_m > WARN_RMS_M:
+        print(
+            f"\nWARN: {alignment.rms_m * 100:.0f} cm is a poor fit. "
+            "Check the pairs before trusting this alignment."
+        )
+
+    print(f"\nwrote {write_alignment(args.store, alignment)}")
+    added = update_marker_map(args.store, project_slug(session), session, alignment)
+    if added:
+        print(f"added to the house marker map: {', '.join(added)}")
+    return 0
+
+
 def _run_apriltag(args: argparse.Namespace) -> int:
     from .apriltag import aggregate, check_anchor_frame, solve_session, write_detections
     from .session import Session, SessionError
@@ -305,6 +371,7 @@ _HANDLERS = {
     "synth": _run_synth,
     "apriltag": _run_apriltag,
     "plan": _run_plan,
+    "align": _run_align,
 }
 
 

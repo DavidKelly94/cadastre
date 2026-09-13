@@ -174,7 +174,7 @@ final class RecordsTests: XCTestCase {
   }
 
   func testUnknownFieldsAreIgnored() throws {
-    // Section 12: additive fields keep format_version 1 and readers must ignore
+    // Section 12: additive fields keep format_version 2 and readers must ignore
     // what they do not recognise.
     let line = """
       {"t":8.7,"i":60,"label":"corner-ne","kind":"corner","p_w":[1,2,3],\

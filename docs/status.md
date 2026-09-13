@@ -68,14 +68,22 @@ Design; the canvas itself has not been made.
 
 ## CI
 
-| Check | Runs on | State |
+Colours are not recorded here — they go stale within minutes and GitHub is the
+source of truth. What each check *covers* is the durable fact:
+
+| Check | Runs on | Covers |
 |---|---|---|
-| `swift` | every push, Linux | green |
-| `python` | every push, Linux | green |
-| `contract` | every push, Linux | green — the only check that puts both implementations in contact |
-| `ios-check` | **pull requests only** | green |
-| `ios-testflight` | push to the work branch | no-ops; Linux preflight gates the macOS build on secrets |
-| `Claude Review` | pull requests | green — first ran 2026-09-13, having never run before |
+| `swift` | every push, Linux | `CadastreCore` unit tests. Cannot see the app target. |
+| `python` | every push, Linux | ruff and the full pipeline suite. |
+| `contract` | every push, Linux | `CadastreCore` writes a session, `cadastre validate` reads it. **The only check that puts both implementations in contact.** |
+| `ios-check` | **pull requests only** | `xcodebuild` of the app target. The only thing that compiles the ARKit layer, and the only check that catches a core change breaking the app. |
+| `ios-testflight` | push to the work branch | No-ops: a Linux preflight gates the macOS build on `ASC_KEY_ID`. |
+| `Claude Review` | pull requests | The shared review rubric. First ran 2026-09-13, having silently failed at startup before that. |
+
+Two gaps worth knowing. `swift` passing does **not** mean the app compiles —
+Linux never builds the app target, so a `CadastreCore` change can break
+`SessionRecorder` and only `ios-check` will say so. And nothing in CI runs
+ARKit, so no check here can tell you the capture works.
 
 ## Blocked on the owner
 

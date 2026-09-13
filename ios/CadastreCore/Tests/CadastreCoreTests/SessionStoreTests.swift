@@ -92,7 +92,7 @@ final class SessionStoreTests: XCTestCase {
 
   func testProjectsAndSessionsAreListed() throws {
     try makeSession(project: "our-house")
-    try makeSession(project: "cabin", id: "20261104-090000_main_hall_framing_bbbbbb")
+    try makeSession(project: "cabin", id: "20261104-090000_main_hall_bbbbbb")
 
     XCTAssertEqual(try store.projects(), ["cabin", "our-house"])
     XCTAssertEqual(try store.sessions(inProject: "our-house").count, 1)
@@ -101,13 +101,13 @@ final class SessionStoreTests: XCTestCase {
   func testSessionsAreNewestFirstByIdNotByFileDate() throws {
     // The id starts with a timestamp, so the name is the capture order. A file
     // date is whenever the bytes landed, which copying off the phone changes.
-    try makeSession(id: "20261101-090000_main_a_framing_aaaaaa")
-    try makeSession(id: "20261105-090000_main_b_framing_bbbbbb")
-    try makeSession(id: "20261103-090000_main_c_framing_cccccc")
+    try makeSession(id: "20261101-090000_main_a_aaaaaa")
+    try makeSession(id: "20261105-090000_main_b_bbbbbb")
+    try makeSession(id: "20261103-090000_main_c_cccccc")
 
     let ids = try store.sessions(inProject: "our-house").map(\.root.lastPathComponent)
-    XCTAssertEqual(ids.first, "20261105-090000_main_b_framing_bbbbbb")
-    XCTAssertEqual(ids.last, "20261101-090000_main_a_framing_aaaaaa")
+    XCTAssertEqual(ids.first, "20261105-090000_main_b_bbbbbb")
+    XCTAssertEqual(ids.last, "20261101-090000_main_a_aaaaaa")
   }
 
   func testHiddenDirectoriesAreIgnored() throws {
@@ -160,14 +160,14 @@ final class SessionStoreTests: XCTestCase {
   }
 
   func testRepairAllFindsEverySessionThatNeedsIt() throws {
-    try makeSession(id: "20261101-090000_main_a_framing_aaaaaa", status: .incomplete)
-    try makeSession(id: "20261102-090000_main_b_framing_bbbbbb", status: .complete)
-    try makeSession(project: "cabin", id: "20261103-090000_main_c_framing_cccccc", status: .incomplete)
+    try makeSession(id: "20261101-090000_main_a_aaaaaa", status: .incomplete)
+    try makeSession(id: "20261102-090000_main_b_bbbbbb", status: .complete)
+    try makeSession(project: "cabin", id: "20261103-090000_main_c_cccccc", status: .incomplete)
 
     let repaired = try store.repairAll()
     XCTAssertEqual(
       repaired.sorted(),
-      ["20261101-090000_main_a_framing_aaaaaa", "20261103-090000_main_c_framing_cccccc"])
+      ["20261101-090000_main_a_aaaaaa", "20261103-090000_main_c_cccccc"])
   }
 
   func testASessionWithNoManifestIsSkippedRatherThanCrashing() throws {

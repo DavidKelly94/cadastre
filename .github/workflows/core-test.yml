@@ -32,6 +32,13 @@ jobs:
         run: |
           swift run --package-path ios/CadastreCore cadastre-fixture "$PWD/fixture-session"
       - name: Validate it with the pipeline
+        # Warnings fail this job as well as errors. On a synthetic session every
+        # rule should pass outright, so a warning here means something drifted.
         run: |
           uv sync --project pipeline
-          uv run --project pipeline cadastre validate "$PWD/fixture-session" --skip-images
+          uv run --project pipeline cadastre validate "$PWD/fixture-session" --skip-images \
+            | tee validate.txt
+          if grep -q "^WARN" validate.txt; then
+            echo "::error::the fixture session should validate with no warnings"
+            exit 1
+          fi

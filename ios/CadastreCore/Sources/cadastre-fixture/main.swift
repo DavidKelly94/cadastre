@@ -47,7 +47,14 @@ var stats = SessionStats()
 
 for index in 0..<keyframes {
   // Depth and confidence at exactly the sizes validation rule 3 requires.
-  let depth = Data(repeating: 0, count: depthWidth * depthHeight * 4)
+  //
+  // Plausible metres, not zeros: the format calls 0 invalid, so an all-zero map
+  // would warn on rule 6 every single run, and a check that always warns is one
+  // nobody reads. With real values, any warning here is a real signal.
+  var depth = Data(capacity: depthWidth * depthHeight * 4)
+  for _ in 0..<(depthWidth * depthHeight) {
+    withUnsafeBytes(of: Float32(2.5).bitPattern.littleEndian) { depth.append(contentsOf: $0) }
+  }
   let confidence = Data(repeating: 2, count: depthWidth * depthHeight)
   try depth.write(to: layout.depth(keyframe: index))
   try confidence.write(to: layout.confidence(keyframe: index))
@@ -79,7 +86,11 @@ try framesWriter.close()
 // have to be there even though this cannot encode one. Empty files would fail
 // the decode check, which is exactly why the contract job skips it.
 for index in 0..<keyframes {
-  FileManager.default.createFile(atPath: layout.rgb(keyframe: index).path, contents: Data())
+  guard FileManager.default.createFile(atPath: layout.rgb(keyframe: index).path, contents: Data())
+  else {
+    FileHandle.standardError.write(Data("could not create a placeholder colour frame\n".utf8))
+    exit(1)
+  }
 }
 
 let markersWriter = try JSONLWriter(url: layout.markers)

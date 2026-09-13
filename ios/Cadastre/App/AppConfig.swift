@@ -18,6 +18,9 @@ enum AppConfig {
   static let defaultJPEGQuality = 0.85
   static let markerPhysicalWidth = 0.20
 
+  /// `CD-000` to `CD-059`, matching the generated sheet and `docs/markers.md`.
+  static let markerCount = 60
+
   /// At most one still per second, and one high-resolution capture in flight.
   static let minimumStillInterval: TimeInterval = 1.0
 

@@ -14,7 +14,6 @@ MVP_COMMANDS = frozenset(
 
 #: A minimal valid invocation of each subcommand, including both plan sub-commands.
 STUB_INVOCATIONS = [
-    ["ingest", "some-session"],
     ["markers"],
 ]
 
@@ -34,7 +33,7 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
 
 
 #: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
-IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan", "align", "inspect"})
+IMPLEMENTED = frozenset({"validate", "synth", "apriltag", "plan", "align", "inspect", "ingest"})
 
 
 def test_every_mvp_command_is_covered() -> None:
@@ -207,3 +206,59 @@ def test_inspect_reports_when_nothing_is_aligned(
 ) -> None:
     assert main(["--store", str(tmp_path / "empty"), "inspect"]) == 1
     assert "run 'cadastre align'" in capsys.readouterr().err
+
+
+def test_ingest_then_validate_by_id(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    from cadastre.synth import SynthSpec, build
+
+    captured = build(
+        tmp_path / "capture" / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=4, colour_w=160, colour_h=120),
+    )
+    store = str(tmp_path / "cadastre-data")
+
+    assert main(["--store", store, "ingest", str(captured.root), "--project", "our-house"]) == 0
+    assert "ingested" in capsys.readouterr().out
+
+    assert main(["--store", store, "validate", captured.root.name]) == 0
+    assert "OK" in capsys.readouterr().out
+
+
+def test_ingest_refuses_a_duplicate(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    from cadastre.synth import SynthSpec, build
+
+    captured = build(
+        tmp_path / "capture" / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=4, colour_w=160, colour_h=120),
+    )
+    store = str(tmp_path / "cadastre-data")
+    main(["--store", store, "ingest", str(captured.root)])
+    capsys.readouterr()
+
+    assert main(["--store", store, "ingest", str(captured.root)]) == 1
+    assert "already in the store" in capsys.readouterr().err
+
+
+def test_a_closed_pipe_is_not_an_error(tmp_path, monkeypatch) -> None:
+    """`cadastre ... | head` closes the pipe; that is the reader's choice."""
+    from cadastre import cli
+
+    def explode(_args):
+        raise BrokenPipeError
+
+    monkeypatch.setitem(cli._HANDLERS, "validate", explode)
+    monkeypatch.setattr(cli.os, "dup2", lambda *a, **k: None)
+    assert cli.main(["validate", str(tmp_path)]) == cli.BROKEN_PIPE
+
+
+def test_an_interrupt_exits_cleanly(
+    tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from cadastre import cli
+
+    def explode(_args):
+        raise KeyboardInterrupt
+
+    monkeypatch.setitem(cli._HANDLERS, "validate", explode)
+    assert cli.main(["validate", str(tmp_path)]) == 130
+    assert "interrupted" in capsys.readouterr().err

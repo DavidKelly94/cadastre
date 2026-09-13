@@ -9,6 +9,8 @@ markers, apriltag, plan, align, inspector, ingest.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -26,6 +28,12 @@ def _add_ingest(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("ingest", help="copy or unzip a session into the store, then validate")
     p.add_argument("source", help="session directory or .zip produced by the app")
     p.add_argument("--project", default="default", help="project the session belongs to")
+    p.add_argument("--force", action="store_true", help="replace a session already in the store")
+    p.add_argument(
+        "--keep-going",
+        action="store_true",
+        help="keep the session even if it fails validation",
+    )
 
 
 def _add_validate(sub: argparse._SubParsersAction) -> None:
@@ -254,6 +262,31 @@ def _run_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_ingest(args: argparse.Namespace) -> int:
+    from .ingest import IngestError, ingest
+
+    try:
+        result = ingest(
+            args.store,
+            args.source,
+            args.project,
+            force=args.force,
+            keep_going=args.keep_going,
+        )
+    except IngestError as error:
+        print(f"cadastre ingest: {error}", file=sys.stderr)
+        return 1
+
+    print(f"ingested {result.session_id}")
+    print(f"  {result.destination}")
+    print(f"  {result.bytes_copied / 1e6:.1f} MB, {result.report.keyframes} keyframes")
+    if not result.ok:
+        print(f"  kept despite {len(result.report.errors)} validation error(s)")
+    elif result.report.warnings:
+        print(f"  {len(result.report.warnings)} warning(s); run 'cadastre validate' for detail")
+    return 0 if result.ok else 1
+
+
 def _run_inspect(args: argparse.Namespace) -> int:
     from .inspector import build_page, levels_with_alignments
     from .plan import PlanError
@@ -412,13 +445,34 @@ _HANDLERS = {
     "plan": _run_plan,
     "align": _run_align,
     "inspect": _run_inspect,
+    "ingest": _run_ingest,
 }
+
+
+#: Exit code for a pipe closed by the reader, the shell convention for SIGPIPE.
+BROKEN_PIPE = 141
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse arguments and dispatch. Returns the process exit code."""
     args = build_parser().parse_args(argv)
 
+    try:
+        return _dispatch(args)
+    except BrokenPipeError:
+        # `cadastre apriltag ... | head` closes the pipe partway through. That is
+        # the reader's choice, not an error, but Python flushes stdout again at
+        # exit and would raise a second time and print a traceback, so stdout is
+        # pointed at the null device first.
+        with contextlib.suppress(OSError):
+            os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        return BROKEN_PIPE
+    except KeyboardInterrupt:
+        print("\ninterrupted", file=sys.stderr)
+        return 130
+
+
+def _dispatch(args: argparse.Namespace) -> int:
     handler = _HANDLERS.get(args.command)
     if handler is not None:
         return handler(args)

@@ -131,7 +131,10 @@ def _add_markers(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("markers", help="generate the printable marker PDF and the bundled PNGs")
     p.add_argument("--out", help="destination PDF path")
     p.add_argument("--png", help="destination directory for the PNG exports")
-    p.add_argument("--ids", default="0-59", help="inclusive id range, e.g. 0-59")
+    p.add_argument("--ids", default="0-59", help="ids, e.g. 0-59 or 3,7,12")
+    p.add_argument(
+        "--page-size", default="letter", choices=["letter", "a4"], help="paper size for the PDF"
+    )
 
 
 def _add_synth(sub: argparse._SubParsersAction) -> None:
@@ -259,6 +262,28 @@ def _run_plan(args: argparse.Namespace) -> int:
     print(f"  {result.metres_per_pixel * 1000:.4f} mm per pixel")
     print(f"  origin at pixel {result.origin_px[0]:.1f}, {result.origin_px[1]:.1f}")
     print(f"  rotation {result.rotation_deg:.2f} deg, floor {result.floor_height_m:.3f} m")
+    return 0
+
+
+def _run_markers(args: argparse.Namespace) -> int:
+    from .markers import parse_ids, write_pdf, write_pngs
+
+    if not args.out and not args.png:
+        print("cadastre markers: give --out, --png, or both", file=sys.stderr)
+        return 1
+
+    try:
+        numbers = parse_ids(args.ids)
+        if args.out:
+            target = write_pdf(args.out, numbers, page_size=args.page_size)
+            print(f"wrote {target} ({len(numbers)} pages, {args.page_size})")
+            print("  print at 100% with no scaling; the square must measure 200 mm")
+        if args.png:
+            written = write_pngs(args.png, numbers)
+            print(f"wrote {len(written)} PNGs to {args.png}")
+    except ValueError as error:
+        print(f"cadastre markers: {error}", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -446,6 +471,7 @@ _HANDLERS = {
     "align": _run_align,
     "inspect": _run_inspect,
     "ingest": _run_ingest,
+    "markers": _run_markers,
 }
 
 

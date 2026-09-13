@@ -88,9 +88,12 @@ final class SessionIDTests: XCTestCase {
   }
 
   func testGeneratedID6UsesOnlyTheBaseThirtyTwoAlphabet() {
-    // 0, 1, 8 and 9 are excluded to avoid confusion with letters when read aloud.
+    // The alphabet is a-z plus 2-7, so 0, 1, 8 and 9 are the excluded digits.
     XCTAssertEqual(SessionID.id6Alphabet.count, 32)
-    for excluded in Array("01789") {
+    for included in Array("234567") {
+      XCTAssertTrue(SessionID.id6Alphabet.contains(included))
+    }
+    for excluded in Array("0189") {
       XCTAssertFalse(SessionID.id6Alphabet.contains(excluded))
     }
   }

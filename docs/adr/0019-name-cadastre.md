@@ -2,9 +2,11 @@
 
 ## Status
 
+Superseded by [ADR-0020](0020-bundle-id-cadastre-build.md), 2026-09-13, on the bundle identifier only: it is now `build.cadastre.app`. The name decision below, and the research behind it, are unchanged and carried forward.
+
 Accepted, 2026-09-12. Supersedes [ADR-0015](0015-name-igloo.md).
 
-The wordmark question was reopened the same day; see [docs/naming-investigation.md](../naming-investigation.md). This record stands until a superseding ADR replaces it.
+The wordmark question was reopened the same day; see [docs/naming-investigation.md](../naming-investigation.md). That question is still open, and the name recorded here stands until an ADR settles it.
 
 ## Context
 

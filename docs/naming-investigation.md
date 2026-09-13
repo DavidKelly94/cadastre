@@ -9,7 +9,7 @@ wordmark be "Cadastre" or "Cadastre AI"?**
 
 - **Decided and shipped:** the product is **Cadastre**. The repository is `DavidKelly94/cadastre`,
   every identifier carries the name (CLI `cadastre`, Swift package `CadastreCore`, markers `CD-000`
-  to `CD-059`, store `cadastre-data`), and the bundle identifier is `com.davidkelly.cadastre`.
+  to `CD-059`, store `cadastre-data`), and the bundle identifier is `build.cadastre.app` ([ADR-0020](adr/0020-bundle-id-cadastre-build.md)).
 - **ADR-0019 explicitly rejects "Cadastre AI" as the wordmark**, while permitting it as a
   descriptor. That distinction is the whole of the open question.
 - **Reopened by the owner**, who now thinks "Cadastre AI" makes more sense. That instinct deserves
@@ -62,17 +62,18 @@ and needs the work below.
 
 ## What changes if "Cadastre AI" becomes the wordmark
 
-- **A new ADR superseding 0019.** The repository rule is that an accepted decision is never edited;
-  write ADR-0020 with `Supersedes ADR-0019` and set 0019's status accordingly. Record the Cadastral
+- **A new ADR superseding 0020.** The repository rule is that an accepted decision is never edited;
+  write the next unused record with `Supersedes ADR-0020` and set 0020's status accordingly. (0020
+  is the live name record: it superseded 0019 to change the bundle identifier.) Record the Cadastral
   collision as a known, accepted risk rather than dropping it, so a future reader knows it was
   weighed and not missed.
 - **Display-name occurrences only.** `README.md`, `docs/ui/design-brief.md` sections 1 and 2, and
   `docs/owner-setup.md`. The identifiers do **not** change: `cadastre`, `CadastreCore`, `CD-NNN`
   and `cadastre-data` stay, because a hyphenated or suffixed slug is worse in every one of those
   positions.
-- **The bundle identifier does not change.** `com.davidkelly.cadastre` is deliberately decoupled
-  from both the domain and the marketing name, and it is permanent once an App Store Connect record
-  exists. Leave it.
+- **The bundle identifier does not change.** `build.cadastre.app` is decoupled from the marketing
+  name — a wordmark can gain a suffix without the identifier following — and it is permanent once an
+  App Store Connect record exists. Leave it.
 - **The design brief's wordmark lockup and icon.** A two-word wordmark sets differently from a
   one-word one, and the parcel-grid icon concept is unaffected.
 - **Search defence gets more expensive**, because the whole point of the objection is that
@@ -84,8 +85,9 @@ and needs the work below.
    `.ai`, so it is probably taken; it has no DNS record, which is consistent with a parked or
    defensive registration. `cadastre.com` and `cadastre.io` resolve to live French products.
    **`cadastre.build` had no DNS record**, is construction-native, costs roughly a third of `.ai`
-   with no two-year minimum, and the sector already uses the TLD (`clearstory.build`). That is the
-   one to chase. A subdomain such as `app.cadastre.ai` is not a separate purchase; it belongs to
+   with no two-year minimum, and the sector already uses the TLD (`clearstory.build`). It is no
+   longer merely the one to chase: ADR-0020 roots the bundle identifier in it, so it must be
+   registered before the App ID is created. A subdomain such as `app.cadastre.ai` is not a separate purchase; it belongs to
    whoever owns the apex.
 2. **No trademark clearance has been done.** The research environment could not reach USPTO or
    WIPO. Everything above is search-index and DNS evidence. A real clearance search is required

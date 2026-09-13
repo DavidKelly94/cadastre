@@ -2,7 +2,7 @@
 
 This is the runbook for everything only you can do: the Apple and GitHub accounts, the phone, the markers and the PC. None of it needs a Mac. The implementer handles all code, CI and build failures; you handle this list and report what you see.
 
-You need an iPhone 15 Pro or newer, your Apple Account with a payment method, admin rights on `github.com/DavidKelly94/homescanner`, and the Windows PC.
+You need an iPhone 15 Pro or newer, your Apple Account with a payment method, admin rights on `github.com/DavidKelly94/cadastre`, and the Windows PC.
 
 ## 1. Day 0: Apple Developer Program
 
@@ -10,13 +10,15 @@ You need an iPhone 15 Pro or newer, your Apple Account with a payment method, ad
 2. Enroll as an **individual** (not an organization) at https://developer.apple.com/programs/enroll/ or in the Apple Developer app on the phone (Account tab, Enroll). Cost is $99 per year.
 3. Pay and wait for the welcome email. Apple says about 24 hours; reports in 2026 range up to several days. Steps 2 to 5 are blocked until it arrives, which is why this is day 0.
 
-## 2. Register the App ID
+## 2. Register the domain, then the App ID
 
-Sign in at https://developer.apple.com/account, open Certificates, Identifiers & Profiles, then Identifiers. Click the plus button, choose App IDs, then App. Description `Cadastre`, Bundle ID **Explicit**, `com.davidkelly.cadastre`. Tick no capabilities. Register. This identifier is permanent; do not vary it.
+**Buy `cadastre.build` first.** The bundle identifier is `build.cadastre.app`, the reverse-DNS form of that domain ([ADR-0020](adr/0020-bundle-id-cadastre-build.md)). Apple never checks who owns it, so registration will succeed either way — but the identifier can never be changed after the next section, and it should not be left pointing at a domain someone else holds. `cadastre.build` had no DNS record when it was checked on 2026-09-12; if it has gone since, stop and settle a new identifier before going further.
+
+Then sign in at https://developer.apple.com/account, open Certificates, Identifiers & Profiles, then Identifiers. Click the plus button, choose App IDs, then App. Description `Cadastre`, Bundle ID **Explicit**, `build.cadastre.app`. Tick no capabilities. Register. This identifier is permanent; do not vary it.
 
 ## 3. Create the app in App Store Connect
 
-At https://appstoreconnect.apple.com open My Apps, click the plus button, New App. Platform iOS, Name **`Cadastre: Building Record`**, Bundle ID `com.davidkelly.cadastre`, SKU anything (for example `cadastre-ios`).
+At https://appstoreconnect.apple.com open My Apps, click the plus button, New App. Platform iOS, Name **`Cadastre: Building Record`**, Bundle ID `build.cadastre.app`, SKU anything (for example `cadastre-ios`).
 
 **Do not type just `Cadastre`.** App Store names must be unique across the whole store, and `Cadastre` is already taken by a French cadastre and parcel viewer (app id 1507993968). Names are capped at 30 characters; `Cadastre: Building Record` is 25 and puts the word *building* beside the wordmark, which is the counterweight to the land reading of the name. The display name can be changed up until first release; the bundle ID cannot be changed at all once this record exists.
 

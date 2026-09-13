@@ -76,7 +76,7 @@ Use only `Foundation`. No `simd`, no `ARKit`, no `UIKit`. Linux Foundation diffe
 ```yaml
 name: Cadastre
 options:
-  bundleIdPrefix: com.davidkelly
+  bundleIdPrefix: build.cadastre
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -94,7 +94,7 @@ targets:
         product: CadastreCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.davidkelly.cadastre
+        PRODUCT_BUNDLE_IDENTIFIER: build.cadastre.app
         PRODUCT_NAME: Cadastre
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"

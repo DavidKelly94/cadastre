@@ -4,7 +4,7 @@ import XCTest
 @testable import CadastreCore
 
 final class SessionLifecycleTests: XCTestCase {
-  private let sessionID = SessionID("20261103-141502_main_kitchen_electrical_k3x7qa")!
+  private let sessionID = SessionID("20261103-141502_main_kitchen_k3x7qa")!
 
   private func starting() -> Manifest {
     Manifest.starting(
@@ -12,6 +12,7 @@ final class SessionLifecycleTests: XCTestCase {
       project: SlugRef(slug: "our-house", name: "Our House"),
       level: LevelRef(slug: "main", name: "Main Floor", index: 1),
       room: SlugRef(slug: "kitchen", name: "Kitchen"),
+      phases: [.electrical, .plumbing],
       expectedMarkers: ["CD-012"],
       device: DeviceInfo(
         model: "iPhone16,1", iosVersion: "26.6", appVersion: "0.1.0", appBuild: "37"),
@@ -30,9 +31,10 @@ final class SessionLifecycleTests: XCTestCase {
     XCTAssertNil(manifest.capture.endedAt)
     XCTAssertEqual(manifest.capture.duration, 0)
     XCTAssertEqual(manifest.stats.keyframes, 0)
-    // The phase comes from the id, so the two cannot disagree.
-    XCTAssertEqual(manifest.phase, .electrical)
-    XCTAssertEqual(manifest.formatVersion, 1)
+    // Phases are carried on the manifest, not the id, and a pass can expose
+    // more than one trade at a time (ADR-0022).
+    XCTAssertEqual(manifest.phases, [.electrical, .plumbing])
+    XCTAssertEqual(manifest.formatVersion, 2)
   }
 
   func testFinalizingFillsInWhatIsKnownAtTheStop() {

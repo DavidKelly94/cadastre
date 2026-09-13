@@ -22,22 +22,27 @@ Phases are the second dimension of that grid. A parcel filling in as framing, el
 
 Surfaces: near-white paper grounds and a single cool ink-blue, with one warm accent reserved for record and primary actions so the eye always finds the one thing to press. The reference is a survey drawing rather than a consumer app: ruled, precise, quiet, with ink on paper as the dominant relationship. High contrast for direct sun: dark text on near-white cards, no light grey on white, visible outlines. Cards are ruled rectangles with a hairline border rather than soft floating shapes. Status colours (green, amber, red) are semantic: dots, icons and chip tints only; text on light surfaces stays ink.
 
+Starter tokens. Every ratio below was computed against WCAG 2.1 rather than
+estimated, and three values were corrected when that measurement was first run on 2026-09-13; the dark palette lives in
+[design-canvas-brief.md](design-canvas-brief.md) §5.
+
 Starter tokens:
 
 | Role | Value | Use |
 |---|---|---|
 | surface/ground | #F4F8FB | Screen background |
 | surface/raised | #FFFFFF | Cards, sheets |
-| surface/outline | #C9D6E2 | Card outlines, dividers |
+| surface/outline | **#78899A** | Card boundaries. Was `#C9D6E2`, measured at 1.38:1 on the ground — below the 3:1 that a boundary carrying information needs, and invisible in sun |
+| surface/divider | #C9D6E2 | Decorative rules inside a card only, where nothing depends on seeing them |
 | ink/primary | #0F1E2E | Body text, icons |
 | ink/secondary | #4A5A6A | Secondary text (6.6:1 on surface/ground) |
 | accent-cool/500 | #2E7FD0 | Brand ink-blue: selection, active chips, large text only |
 | accent-cool/700 | #1D5C9E | Links and small blue text (6.8:1 on white) |
 | accent-cool/100 | #D6E8F8 | Tints, selected rows |
-| accent-warm/500 | #D9480F | REC, primary buttons (4.3:1 with white text) |
+| accent-warm/500 | #D9480F | REC, primary buttons. White on it measures 4.30:1, which passes for large text (>=18.66 pt bold) and fails for normal text — never small white text on this |
 | accent-warm/300 | #FF7A3D | Recording pulse, glow |
 | status/ok | #1E9E5A, HUD #43D17C | Tracking normal |
-| status/warn | #F2B01E, HUD #FFC24D | Tracking limited, 5-minute warning, thermal serious |
+| status/warn | **#B87D06** on light, HUD #FFC24D | Tracking limited, 5-minute warning, thermal serious. #F2B01E measured 1.79:1 on the ground — amber on near-white is invisible; it survives only on the HUD scrim |
 | status/error | #D3323C, HUD #FF5A5F | Errors, auto-stop |
 | hud/scrim | #0A121C at 72% | Translucent strips over the camera; rises to 88% when the scene under the strip is bright |
 | hud/hairline | #FFFFFF at 12% | Strip edges |
@@ -53,13 +58,13 @@ Projects
   Project (name, address, created)
     Levels (L1, L2, basement, garage; height in m)
       Rooms (name, expected marker IDs, notes)
-        Sessions (one per room per phase visit)
+        Sessions (one per room per capture pass)
 Markers (CD-000 to CD-059)
 Settings
 Test plan
 ```
 
-Phases in order: framing, electrical, plumbing, hvac, insulation, drywall, finish, other. A room may have several sessions in one phase (re-shoots). A session folder is named `<YYYYMMDD-HHMMSS>_<level>_<room>_<phase>_<id6>`.
+Phases in order: framing, electrical, plumbing, hvac, insulation, drywall, finish, other. **A session carries a set of phases, not one** ([ADR-0022](../adr/0022-session-is-one-pass-carrying-phases.md)): concurrent rough-in is normal, so one pass often covers electrical and plumbing together. A room may also have several sessions covering the same phase (re-shoots). A session folder is named `<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>` — the phases are in the manifest, not the folder name, because they can be corrected after the capture.
 
 Navigation is a single NavigationStack, no tab bar in the MVP. Markers and Settings are toolbar items on the Project list; Test plan is reached from Settings and from the build label on Onboarding.
 
@@ -111,7 +116,7 @@ Success: room, phase and markers chosen in under 15 s with one hand.
 
 Purpose: record one room while showing only what affects the result.
 Primary action: REC, which becomes STOP in the same position while recording.
-Content. Top status strip: tracking quality with reason, elapsed, keyframes kept, dropped frames, free GB, thermal state, markers seen (count; IDs on tap). Coverage chip strip: the phase checklist as chips (Doorway, Corners 0/4, N wall, E wall, S wall, W wall, Stills, Markers 0/2, Loop), ticked automatically where the app can tell and by tap otherwise. Bottom bar: Still, REC/STOP, Mark landmark, mesh toggle (live LiDAR mesh wireframe as a coverage aid, off by default), room and phase label. Mark landmark arms one tap on the camera view: a ring appears where the tap hits a surface, a label sheet offers the fixed vocabulary as one-tap chips (corner NW, door D3 threshold), and an Undo chip stays for 5 s.
+Content. Top status strip: tracking quality with reason, elapsed, keyframes kept, dropped frames, free GB, thermal state, markers seen (count; IDs on tap). Coverage chip strip: the phase checklist as chips (Doorway, Corners 0/4, N wall, E wall, S wall, W wall, Stills, Markers 0/2, Loop), ticked automatically where the app can tell and by tap otherwise. Bottom bar: Still, REC/STOP, Mark landmark, mesh toggle (live LiDAR mesh wireframe as a coverage aid, off by default), room and phase label. Mark landmark uses a **pre-armed, contextual label** (§10.7): a chip strip above the bottom bar holds the vocabulary, tapping a chip arms it, and tapping the camera view places a ring at the surface already labelled. The armed chip auto-advances, and the strip itself swaps from the four corners to the openings once Corners reads 4/4. Four corners is four taps, no sheet ever covers the camera, and the row never scrolls. An Undo chip stays for 5 s.
 
 ```
  iPhone 15 Pro portrait, 393 x 852 pt
@@ -257,23 +262,69 @@ Place and register markers
 
 ## 9. Deliverables
 
-1. iPhone 15 Pro portrait mockups (393 by 852 pt, exported at 3x) for every screen in section 4, including empty and error states.
-2. HUD state sheet: one page with the seven HUD states side by side, plus the 5-minute warning and thermal variants.
-3. App icon, parcel-grid motif, 1024 by 1024, light and dark tinted variants.
-4. Web layouts for the four surfaces in section 5 at 1440 pt wide.
-5. Design tokens as a JSON file (colour, type, spacing, radius, elevation) with a short usage note.
-6. PNG and PDF export of everything.
+The design is a **canvas**: one pan-and-zoom board of artboards, edited in place
+rather than exported and re-imported. That is what the tooling produces, and it
+suits a design that is still moving.
 
-File naming: `cadastre-ios-<screen>-<state>@3x.png` (for example `cadastre-ios-capture-hud-limited-low-light@3x.png`), `cadastre-hud-states.pdf`, `cadastre-icon-1024.png`, `cadastre-web-<surface>.png`, `cadastre-tokens.json`, `cadastre-tokens.md`. Screen names: onboarding, project-list, project-overview, level, room-detail, capture-hud, session-review, markers, settings, test-plan. Surface names: calibrate, align, inspect, viewer.
+1. One artboard per screen in §4, at iPhone 15 Pro portrait (393 by 852 pt),
+   including empty and error states.
+2. The seven Capture HUD states as their own artboard group, plus the 5-minute
+   warning and the thermal variant. This group is the priority: it is the only
+   screen with real-time constraints, and a mistake there costs a re-capture
+   rather than a tap.
+3. Both palettes. Every artboard that differs between light and dark gets both;
+   the rest state which tokens change.
+4. App icon artboard, 1024 by 1024, light and dark tinted variants.
+5. Web layouts for the four surfaces in §5, 1440 pt wide.
+6. `cadastre-tokens.json` generated into the repository from the agreed palette,
+   with a short usage note. A token file is code rather than a design artifact,
+   so it belongs in the repo and in review, not in an export folder.
 
-## 10. Open questions for the designer
+PNG and PDF export on demand, for anything that has to leave the canvas.
 
-1. Light chrome outside the HUD is proposed for sun readability. Is there a case for a dark site theme with light for home use?
-2. Should each phase get its own colour, or only its position in the block courses? Eight colours are hard to keep apart in sun.
-3. How should the cadastre progress glyph read at 24 pt in a list row?
-4. Coverage chips: fixed order as listed, or most urgent first?
-5. Left-hand layout: mirror the whole bottom bar, or only swap Still and Mark?
-6. Glove use: is a larger-target site mode worth a toggle, or should the defaults already be that large?
-7. The landmark label sheet interrupts capture. Is there a faster way to pick one of about ten labels with one thumb?
-8. App icon: dome only, or dome with doorway; does the warm accent belong on the icon?
-9. Does anything in the token set fail in direct sun at full brightness? Please test on a device, not a monitor.
+## 10. Answered by the owner, 2026-09-13
+
+These were open questions; they are now decisions. Anything still open is in §11.
+
+1. **Light chrome, plus a dark theme.** Rough-in happens in unlit basements and
+   closed interiors, so a near-white screen at full brightness is not usable for
+   the phases this product exists to record. Two full palettes, both meeting the
+   contrast requirements in §§7 and 8.
+2. **No colour per phase.** A parcel fills in phase order and the phase is read
+   from position plus label. Green, amber and red stay semantic — tracking,
+   warnings, errors — so a colour on screen never means a category. This also
+   survives a session carrying several phases at once, which per-phase hues
+   would not.
+3. **The progress glyph** is the parcel grid partly filled, matching the icon
+   and §2's motif. At 24 pt in a list row it reads as a small ruled square with
+   some cells inked; the count beside it carries the precision.
+4. **Coverage chips keep a fixed order and shrink when complete.** Position
+   stays stable so it can be learned, and finished work compresses to a tick
+   rather than reordering the strip under the thumb mid-capture.
+5. **Right-handed layout is primary.** Mark bottom-right, Still bottom-left, as
+   drawn in §4. A mirrored variant is not required for the MVP.
+6. **No glove mode.** Bare hands, standard 44 pt minimum targets. The capture
+   bar is already oversized for the actions that matter while recording.
+7. **Landmark labels are pre-armed and contextual.** A chip strip above the
+   bottom bar holds the vocabulary; tapping a chip arms it, tapping the surface
+   places it, and the selection auto-advances. The strip starts as the four
+   corners (NW → NE → SE → SW) and swaps to openings — door, window, floor,
+   other — once Corners reads 4/4, which the HUD already tracks. Four corners
+   is four taps, nothing covers the camera, and six chips fit one 44 pt row on a
+   393 pt screen without scrolling. The strip changes exactly once per room, at
+   a moment the owner caused; a chip to swap back is always present. The label
+   sheet in §4 is replaced by this.
+8. **App icon: the parcel grid with a survey benchmark mark** — the ruled plat
+   with the surveyor's triangle-and-dot over it. Ink-blue rules on near-white;
+   the warm accent is reserved for record and primary actions and does not
+   appear on the icon.
+
+## 11. Still open
+
+1. Does anything in the token set fail in direct sun at full brightness? Please
+   test on a device, not a monitor. Nothing in this document can settle it.
+2. The dark palette needs the same test in the opposite condition: an unlit
+   basement at night, where the failure is glare rather than washout.
+3. The pre-armed landmark chips need a vocabulary that fits one row without
+   scrolling at 44 pt. If it does not fit, which labels earn a place and which
+   move behind a "more" chip?

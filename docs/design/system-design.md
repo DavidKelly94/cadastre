@@ -15,7 +15,7 @@ Non-goals (MVP): reconstruction beyond the ARKit mesh, AI labeling, AR x-ray, ac
 
 | Component | Runs on | Language | Responsibility |
 |---|---|---|---|
-| Cadastre app | iPhone 15 Pro or newer, iOS 17+ | Swift, SwiftUI, ARKit, RealityKit | Record sessions per room and phase; expose them as files |
+| Cadastre app | iPhone 15 Pro or newer, iOS 17+ | Swift, SwiftUI, ARKit, RealityKit | Record sessions per room and pass; expose them as files |
 | CadastreCore | inside the app, and on Linux CI | Swift (no ARKit/simd) | Pure logic: keyframe policy, transforms, manifest/JSONL encoding, health policy |
 | Pipeline (`cadastre` CLI) | owner's PC (Windows, RTX 4070 Super) and Linux CI | Python 3.12 | Validate, detect markers, calibrate plans, align sessions, inspect; later meshes, splats, AI |
 | Viewer | browser | TypeScript, three.js, Spark | Plan overlay, phases, click-to-photo, measurement (weeks 3+) |

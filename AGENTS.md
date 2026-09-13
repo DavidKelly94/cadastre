@@ -84,7 +84,11 @@ the one-line local gate: `cd pipeline && uv run ruff check . && uv run pytest -q
    data beside them under `derived/`.
 7. **Architectural decisions get an ADR** under `docs/adr/`. An accepted ADR is never
    edited to change its decision; write a new one that supersedes it.
-8. **AI output is a candidate, not a fact.** Anything a model infers about a building
+8. **Keep `docs/status.md` true.** It records what is built, what only compiles,
+   and what is blocked. Update it in the commit that changes the answer, not
+   afterwards. "Compiles" and "works" are different claims and the file keeps
+   them apart on purpose.
+9. **AI output is a candidate, not a fact.** Anything a model infers about a building
    is stored with its source and confidence and stays unconfirmed until a human
    confirms it. Never present a code-compliance conclusion as authoritative.
 

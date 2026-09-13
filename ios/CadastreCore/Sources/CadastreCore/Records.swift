@@ -256,7 +256,8 @@ public struct Manifest: Codable, Equatable, Sendable {
   public var project: SlugRef
   public var level: LevelRef
   public var room: SlugRef
-  public var phase: CapturePhase
+  /// Every trade exposed during the pass, never empty (ADR-0022).
+  public var phases: [CapturePhase]
   public var notes: String?
   public var expectedMarkers: [String]
   public var device: DeviceInfo
@@ -271,7 +272,7 @@ public struct Manifest: Codable, Equatable, Sendable {
     project: SlugRef,
     level: LevelRef,
     room: SlugRef,
-    phase: CapturePhase,
+    phases: [CapturePhase],
     notes: String? = nil,
     expectedMarkers: [String] = [],
     device: DeviceInfo,
@@ -285,7 +286,7 @@ public struct Manifest: Codable, Equatable, Sendable {
     self.project = project
     self.level = level
     self.room = room
-    self.phase = phase
+    self.phases = phases
     self.notes = notes
     self.expectedMarkers = expectedMarkers
     self.device = device
@@ -301,7 +302,7 @@ public struct Manifest: Codable, Equatable, Sendable {
     case project
     case level
     case room
-    case phase
+    case phases
     case notes
     case expectedMarkers = "expected_markers"
     case device

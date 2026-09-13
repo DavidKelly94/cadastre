@@ -142,13 +142,13 @@ def build_session(root: Path, *, keyframes: int = 3) -> Path:
     )
 
     manifest = {
-        "format_version": 1,
-        "session_id": "20261103-141502_main_kitchen_electrical_k3x7qa",
+        "format_version": 2,
+        "session_id": "20261103-141502_main_kitchen_k3x7qa",
         "status": "complete",
         "project": {"slug": "our-house", "name": "Our House"},
         "level": {"slug": "main", "name": "Main Floor", "index": 1},
         "room": {"slug": "kitchen", "name": "Kitchen"},
-        "phase": "electrical",
+        "phases": ["electrical", "plumbing"],
         "expected_markers": ["CD-012"],
         "device": {
             "model": "iPhone16,1",

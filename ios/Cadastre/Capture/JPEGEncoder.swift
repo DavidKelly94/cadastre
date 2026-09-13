@@ -1,6 +1,7 @@
 import CoreImage
 import CoreVideo
 import Foundation
+import ImageIO
 import Metal
 
 /// Encoding ARKit's captured image to JPEG.
@@ -31,13 +32,22 @@ final class JPEGEncoder {
     colorSpace = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
   }
 
+  /// The quality key, built once.
+  ///
+  /// `jpegRepresentation` takes `CIImageRepresentationOption`, not the
+  /// `CIImageOption` that reads more naturally and that most examples show; the
+  /// two are distinct wrapper types over `String` and the compiler will not
+  /// bridge one to the other.
+  private static let qualityKey = CIImageRepresentationOption(
+    rawValue: kCGImageDestinationLossyCompressionQuality as String)
+
   func encode(_ buffer: CVPixelBuffer, quality: Double) throws -> Data {
     let image = CIImage(cvPixelBuffer: buffer)
     guard
       let data = context.jpegRepresentation(
         of: image,
         colorSpace: colorSpace,
-        options: [kCGImageDestinationLossyCompressionQuality as CIImageOption: quality])
+        options: [Self.qualityKey: quality])
     else {
       throw Failure.encodingFailed
     }

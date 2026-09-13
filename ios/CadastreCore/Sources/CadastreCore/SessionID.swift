@@ -1,6 +1,7 @@
 import Foundation
 
-/// The construction phase a session records.
+/// One construction phase. A session carries a set of these in its manifest,
+/// because a single pass can expose several trades at once (ADR-0022).
 ///
 /// The raw values are the vocabulary in `docs/session-format.md` §1; they appear
 /// both in the session id and in `manifest.json`.
@@ -15,7 +16,7 @@ public enum CapturePhase: String, Codable, CaseIterable, Sendable {
   case other
 }
 
-/// A session identifier: `<YYYYMMDD-HHMMSS>_<level>_<room>_<phase>_<id6>`.
+/// A session identifier: `<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>`.
 ///
 /// The format is specified in `docs/session-format.md` §1 and is also the
 /// directory name on the phone, so it has to round-trip exactly. Parsing is
@@ -34,17 +35,20 @@ public struct SessionID: Equatable, Sendable {
   public let timestamp: String
   public let level: String
   public let room: String
-  public let phase: CapturePhase
   public let id6: String
 
   /// The identifier as it appears on disk.
+  ///
+  /// No phase. A pass can expose several trades at once, and a phase can be
+  /// corrected after the capture — neither works in a string that is also a
+  /// directory name. Phases live in `manifest.json` (ADR-0022).
   public var stringValue: String {
-    "\(timestamp)_\(level)_\(room)_\(phase.rawValue)_\(id6)"
+    "\(timestamp)_\(level)_\(room)_\(id6)"
   }
 
   /// Creates an identifier from already-valid parts, or nil if any part is not
   /// in the shape the format requires.
-  public init?(timestamp: String, level: String, room: String, phase: CapturePhase, id6: String) {
+  public init?(timestamp: String, level: String, room: String, id6: String) {
     guard Self.isValidTimestamp(timestamp),
       Self.isValidSlug(level),
       Self.isValidSlug(room),
@@ -53,7 +57,6 @@ public struct SessionID: Equatable, Sendable {
     self.timestamp = timestamp
     self.level = level
     self.room = room
-    self.phase = phase
     self.id6 = id6
   }
 
@@ -67,7 +70,6 @@ public struct SessionID: Equatable, Sendable {
     timeZone: TimeZone = .current,
     levelName: String,
     roomName: String,
-    phase: CapturePhase,
     id6: String
   ) {
     guard let level = Self.slug(levelName), let room = Self.slug(roomName) else { return nil }
@@ -75,16 +77,14 @@ public struct SessionID: Equatable, Sendable {
       timestamp: Self.timestamp(for: date, timeZone: timeZone),
       level: level,
       room: room,
-      phase: phase,
       id6: id6)
   }
 
   /// Parses an identifier, returning nil if it does not match the format.
   public init?(_ raw: String) {
     let parts = raw.split(separator: "_", omittingEmptySubsequences: false).map(String.init)
-    guard parts.count == 5, let phase = CapturePhase(rawValue: parts[3]) else { return nil }
-    self.init(
-      timestamp: parts[0], level: parts[1], room: parts[2], phase: phase, id6: parts[4])
+    guard parts.count == 4 else { return nil }
+    self.init(timestamp: parts[0], level: parts[1], room: parts[2], id6: parts[3])
   }
 
   // MARK: - Building blocks

@@ -23,6 +23,31 @@ from numpy.typing import NDArray
 
 from .transforms import K_from_list, mat_from_cm
 
+#: The only session format version this pipeline reads.
+#:
+#: Version 1 was never captured — it existed in the spec and in code that had
+#: not yet run on a device when ADR-0022 replaced it — so there is nothing to
+#: migrate and nothing to stay compatible with.
+FORMAT_VERSION = 2
+
+#: The construction phases a pass may carry, in the order work happens.
+#:
+#: The order is meaningful: the inspector groups and sorts by it, and a session
+#: covering several trades sorts by its earliest one.
+PHASE_ORDER = (
+    "framing",
+    "electrical",
+    "plumbing",
+    "hvac",
+    "insulation",
+    "drywall",
+    "finish",
+    "other",
+)
+
+#: Set form, for membership checks.
+KNOWN_PHASES = frozenset(PHASE_ORDER)
+
 __all__ = [
     "Frame",
     "Landmark",
@@ -258,8 +283,18 @@ class Session:
         return str(self.manifest.get("status", "unknown"))
 
     @property
-    def phase(self) -> str:
-        return str(self.manifest.get("phase", "other"))
+    def phases(self) -> list[str]:
+        """Every trade the pass exposed, in manifest order.
+
+        A list rather than one value since format_version 2: concurrent
+        rough-in is normal, so one capture routinely covers several trades
+        (ADR-0022). Falls back to ``["other"]`` so a damaged manifest still
+        sorts and groups rather than raising.
+        """
+        value = self.manifest.get("phases")
+        if isinstance(value, list) and value:
+            return [str(item) for item in value]
+        return ["other"]
 
     @property
     def expected_markers(self) -> list[str]:

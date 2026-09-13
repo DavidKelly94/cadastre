@@ -89,12 +89,12 @@ final class RecordsTests: XCTestCase {
 
   func testManifestEncodesTheDocumentedKeys() throws {
     let manifest = Manifest(
-      sessionID: "20261103-141502_main_kitchen_electrical_k3x7qa",
+      sessionID: "20261103-141502_main_kitchen_k3x7qa",
       status: .complete,
       project: SlugRef(slug: "our-house", name: "Our House"),
       level: LevelRef(slug: "main", name: "Main Floor", index: 1),
       room: SlugRef(slug: "kitchen", name: "Kitchen"),
-      phase: .electrical,
+      phases: [.electrical, .plumbing],
       notes: "Panel side rough-in done.",
       expectedMarkers: ["CD-012", "CD-013"],
       device: DeviceInfo(
@@ -113,7 +113,7 @@ final class RecordsTests: XCTestCase {
     XCTAssertEqual(
       try encodedKeys(manifest),
       [
-        "format_version", "session_id", "status", "project", "level", "room", "phase",
+        "format_version", "session_id", "status", "project", "level", "room", "phases",
         "notes", "expected_markers", "device", "capture", "coordinate_frame", "stats",
       ])
   }
@@ -174,7 +174,7 @@ final class RecordsTests: XCTestCase {
   }
 
   func testUnknownFieldsAreIgnored() throws {
-    // Section 12: additive fields keep format_version 1 and readers must ignore
+    // Section 12: additive fields keep format_version 2 and readers must ignore
     // what they do not recognise.
     let line = """
       {"t":8.7,"i":60,"label":"corner-ne","kind":"corner","p_w":[1,2,3],\

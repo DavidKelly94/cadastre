@@ -1,9 +1,18 @@
 name: ios-check
+# Pull requests, not pushes. A macOS runner bills at 10x against the monthly
+# allowance the moment this repository is private, and a branch under active
+# work can easily take four pushes to reach one reviewable change — four builds
+# where one would do. ADR-0018 deferred this until the repository went private;
+# the owner asked for it now regardless, so it holds in both states.
+#
+# The trade is real and worth restating: a Swift error no longer surfaces on the
+# push that caused it, only when a PR opens or updates. Everything else — the
+# Swift core tests, the pipeline and the cross-language contract — still runs on
+# every push in about a minute on Linux, so only the app target's compile waits.
+# Use workflow_dispatch to force a build mid-branch.
 on:
-  push:
-    paths: ["ios/**", ".github/workflows/ios-check.yml"]
   pull_request:
-    paths: ["ios/**"]
+    paths: ["ios/**", ".github/workflows/ios-check.yml"]
   workflow_dispatch:
 # macOS runners bill at a 10x multiplier once this repo goes private, so never
 # let a superseded push keep a runner. See docs/adr/0018.
@@ -19,10 +28,16 @@ jobs:
       - run: sudo xcode-select -s /Applications/Xcode_26.6.app
       - run: brew install xcodegen
       - run: xcodegen generate --spec ios/project.yml --project ios
-      - run: >
-          xcodebuild build -project ios/Cadastre.xcodeproj -scheme Cadastre
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" | tee build.log | grep -E "error:|warning: unre|BUILD"
+      # pipefail is load-bearing: the exit status of a pipeline is the LAST
+      # command's, so without it xcodebuild's failure is replaced by grep's
+      # success as soon as grep matches "BUILD FAILED". This check reported
+      # green over a failing build until 2026-09-13. `-e` does not help.
+      - run: |
+          set -o pipefail
+          xcodebuild build -project ios/Cadastre.xcodeproj -scheme Cadastre \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|warning: unre|BUILD"
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: ios-check-log, path: build.log }

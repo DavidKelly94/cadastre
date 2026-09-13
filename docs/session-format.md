@@ -1,19 +1,20 @@
-# Cadastre session format (format_version 1)
+# Cadastre session format (format_version 2)
 
-A **session** is one continuous capture of one room at one construction phase. The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
+A **session** is one continuous capture of one room in one pass, carrying the set of construction phases exposed while it was recorded ([ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md)). The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
 
 ## 1. Location and naming
 
 On the phone: `Documents/sessions/<project-slug>/<session-id>/` (visible in the Files app because the app sets `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace`).
 
-Session ID: `<YYYYMMDD-HHMMSS>_<level>_<room>_<phase>_<id6>`
+Session ID: `<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>`
 
 - timestamp is local time at session start;
 - `<level>`, `<room>` are slugs: lowercase `a-z0-9-`, 1–24 characters, derived from the names typed by the owner (`"Main Floor"` → `main-floor`);
-- `<phase>` is one of `framing`, `electrical`, `plumbing`, `hvac`, `insulation`, `drywall`, `finish`, `other`;
 - `<id6>` is 6 random lowercase base-32 characters (`a-z2-7`) so two sessions started in the same second never collide.
 
-Example: `20261103-141502_main_kitchen_electrical_k3x7qa`.
+Example: `20261103-141502_main_kitchen_k3x7qa`.
+
+**Phases are not in the id.** They live in `manifest.json` as `phases`, because a pass can expose several trades at once and because a phase may be corrected after the capture; an identifier that is also a directory name cannot be. `cadastre inspect` prints the phases for a session, since the folder name no longer says. See [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md).
 
 ## 2. Directory layout
 
@@ -64,14 +65,14 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
 
 ```json
 {
-  "format_version": 1,
-  "session_id": "20261103-141502_main_kitchen_electrical_k3x7qa",
+  "format_version": 2,
+  "session_id": "20261103-141502_main_kitchen_k3x7qa",
   "status": "complete",
   "project": { "slug": "our-house", "name": "Our House" },
   "level":   { "slug": "main", "name": "Main Floor", "index": 1 },
   "room":    { "slug": "kitchen", "name": "Kitchen" },
-  "phase":   "electrical",
-  "notes":   "Panel side rough-in done; plumbing not started.",
+  "phases":  ["electrical", "plumbing"],
+  "notes":   "Panel and supply lines both open in the north wall.",
   "expected_markers": ["CD-012", "CD-013", "CD-014"],
   "device":  { "model": "iPhone16,1", "ios_version": "26.6", "app_version": "0.1.0", "app_build": "37" },
   "capture": {
@@ -128,7 +129,7 @@ Same fields as a keyframe line plus `s` (still index) and `path` (`stills/000.jp
 ## 7. `panos.jsonl` (reserved, optional)
 
 Panoramas are **not produced by the MVP app**, but the slot is reserved now so
-adding them later is additive and keeps `format_version` at 1. A reader must
+adding them later is additive and keeps `format_version` at 2. A reader must
 tolerate the directory and the file being absent, and must ignore fields it does
 not recognise.
 
@@ -185,7 +186,7 @@ Per keyframe: JPEG 250–400 KB at quality 0.85, depth 196,608 B, confidence 49,
 
 ## 11. Validation rules (`cadastre validate`)
 
-1. `manifest.json` parses, `format_version == 1`, `status != "incomplete"` (a warning, not an error, for `repaired`).
+1. `manifest.json` parses, `format_version == 2`, `status != "incomplete"` (a warning, not an error, for `repaired`). `phases` is a non-empty array whose entries are each one of `framing`, `electrical`, `plumbing`, `hvac`, `insulation`, `drywall`, `finish`, `other`.
 2. Every JSONL line parses; `i` strictly increasing; `t` non-decreasing and within `[0, duration_s + 1]`.
 3. Every referenced file exists; depth files are exactly `dw*dh*4` bytes; confidence files exactly `dw*dh` bytes; JPEGs decode and have the declared size.
 4. Every `T_wc` rotation block is orthonormal (`|R Rᵀ − I| < 1e-3`, `det R ≈ +1`).
@@ -198,4 +199,6 @@ The command prints a summary and exits non-zero on any error.
 
 ## 12. Evolution
 
-Additive fields keep `format_version` 1; the pipeline must ignore unknown fields. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading older versions. Never rewrite raw session files; all processing output goes under `derived/`.
+Additive fields keep `format_version` 2; the pipeline must ignore unknown fields. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading every version that was ever captured. Never rewrite raw session files; all processing output goes under `derived/`.
+
+**Version 1 was never captured.** It existed only in this document and in code that had not yet run on a device when [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md) replaced it, so there is no version 1 session anywhere and readers need not accept one. This is the only version the pipeline may ever refuse: from version 2 on, a version that has written a real session must keep being readable.

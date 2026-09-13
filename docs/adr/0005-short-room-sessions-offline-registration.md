@@ -2,6 +2,8 @@
 
 ## Status
 
+Superseded by [ADR-0022](0022-session-is-one-pass-carrying-phases.md), 2026-09-13, on the phase clause only: a session is one room in one **pass**, carrying a set of phases. Every other decision below stands and is carried forward.
+
 Accepted, 2026-09-11.
 
 ## Context

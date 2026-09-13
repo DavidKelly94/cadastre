@@ -110,8 +110,13 @@ def _add_align(sub: argparse._SubParsersAction) -> None:
 
 def _add_inspect(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("inspect", help="generate the per-level inspection page")
-    p.add_argument("--level", help="level slug; omit to generate every calibrated level")
-    p.add_argument("--serve", action="store_true", help="serve the pages instead of only writing")
+    p.add_argument("--level", help="level slug; omit to generate every aligned level")
+    p.add_argument("--serve", action="store_true", help="serve the pages after writing them")
+    p.add_argument("--port", type=int, default=8765, help="port for --serve")
+    p.add_argument(
+        "--no-thumbnails", action="store_true", help="skip the hover thumbnails (faster)"
+    )
+    p.add_argument("--thumbnail-stride", type=int, default=5, help="thumbnail every Nth keyframe")
 
 
 def _add_markers(sub: argparse._SubParsersAction) -> None:
@@ -249,6 +254,40 @@ def _run_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_inspect(args: argparse.Namespace) -> int:
+    from .inspector import build_page, levels_with_alignments
+    from .plan import PlanError
+
+    levels = [args.level] if args.level else levels_with_alignments(args.store)
+    if not levels:
+        print("no aligned sessions yet; run 'cadastre align' first", file=sys.stderr)
+        return 1
+
+    written = []
+    for level in levels:
+        try:
+            written.append(
+                build_page(
+                    args.store,
+                    level,
+                    thumbnails=not args.no_thumbnails,
+                    thumbnail_stride=args.thumbnail_stride,
+                )
+            )
+        except PlanError as error:
+            print(f"cadastre inspect: {error}", file=sys.stderr)
+            return 1
+
+    for path in written:
+        print(f"wrote {path}")
+
+    if args.serve:
+        from .serve import serve
+
+        serve(args.store, port=args.port, open_path=f"inspect/{levels[0]}.html")
+    return 0
+
+
 def _run_align(args: argparse.Namespace) -> int:
     from .align import (
         WARN_RMS_M,
@@ -372,6 +411,7 @@ _HANDLERS = {
     "apriltag": _run_apriltag,
     "plan": _run_plan,
     "align": _run_align,
+    "inspect": _run_inspect,
 }
 
 

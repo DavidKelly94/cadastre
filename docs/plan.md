@@ -94,7 +94,7 @@ ADRs: 0001 native Swift/SwiftUI + ARKit over RN/Flutter/Unity/WebXR · 0002 iOS 
 ## Repo layout
 
 ```
-homescanner/
+cadastre/
   README.md
   docs/  feasibility.md  design/  adr/  ui/design-brief.md  ai-roadmap.md  schedule.md
          session-format.md  capture-protocol.md  markers.md  owner-setup.md  testplans/

@@ -23,9 +23,15 @@ Claude-specific additions.
 - **Local quality gates:** `pre-commit` runs ruff, gitleaks, shellcheck, actionlint
   and whitespace checks. Run `pre-commit run --all-files` before pushing if you
   changed many files.
-- **The product is being renamed.** Identifiers still carry the old name in `docs/`
-  and are being replaced in a follow-up change tracked by an ADR. Do not introduce
-  new uses of it, and do not rename half of it opportunistically.
+- **Commit at milestones, open a PR per coherent change.** A module landing, a bug
+  fixed, a doc corrected — each is a commit on the feature branch, verified locally,
+  with a real message. The PR comes when the change is reviewable as one thing. Use
+  judgement about the size: eleven PRs for one pipeline is as wrong as one PR for the
+  whole app.
+- **The rename is done.** The product is Cadastre; the old brand survives only in
+  ADR-0015, the ADR index, and `docs/plan.md`'s historical decision table, where it
+  is correct. `IG-NNN` strings in tests are deliberate negative fixtures — a marker
+  ID that must *not* validate. Do not "fix" those.
 
 ## Where things live
 

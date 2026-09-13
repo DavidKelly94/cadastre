@@ -19,10 +19,16 @@ jobs:
       - run: sudo xcode-select -s /Applications/Xcode_26.6.app
       - run: brew install xcodegen
       - run: xcodegen generate --spec ios/project.yml --project ios
-      - run: >
-          xcodebuild build -project ios/Cadastre.xcodeproj -scheme Cadastre
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" | tee build.log | grep -E "error:|warning: unre|BUILD"
+      # pipefail is load-bearing: the exit status of a pipeline is the LAST
+      # command's, so without it xcodebuild's failure is replaced by grep's
+      # success as soon as grep matches "BUILD FAILED". This check reported
+      # green over a failing build until 2026-09-13. `-e` does not help.
+      - run: |
+          set -o pipefail
+          xcodebuild build -project ios/Cadastre.xcodeproj -scheme Cadastre \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" \
+            | tee build.log | grep -E "error:|warning: unre|BUILD"
       - uses: actions/upload-artifact@v4
         if: failure()
         with: { name: ios-check-log, path: build.log }

@@ -82,12 +82,14 @@ def _add_plan(sub: argparse._SubParsersAction) -> None:
     calibrate = plan_sub.add_parser("calibrate", help="set scale, origin and rotation for a level")
     calibrate.add_argument("--level", required=True, help="level slug")
     calibrate.add_argument(
-        "--scale-points", required=True, help="two pixels a known distance apart, 'x,y x,y'"
+        "--web", action="store_true", help="click the points in a browser instead"
     )
+    calibrate.add_argument("--port", type=int, default=8765, help="port for --web")
+    calibrate.add_argument("--scale-points", help="two pixels a known distance apart, 'x,y x,y'")
     calibrate.add_argument(
-        "--distance", required=True, help="the real distance between them, e.g. 3.81m or 12' 6\""
+        "--distance", help="the real distance between them, e.g. 3.81m or 12' 6\""
     )
-    calibrate.add_argument("--origin", required=True, help="the pixel at house (0, 0), 'x,y'")
+    calibrate.add_argument("--origin", help="the pixel at house (0, 0), 'x,y'")
     calibrate.add_argument(
         "--rotation-deg", type=float, default=0.0, help="angle from image +u to house +x"
     )
@@ -108,6 +110,8 @@ def _add_align(sub: argparse._SubParsersAction) -> None:
         help="landmark to plan-pixel pairs, 'label=x,y label=x,y' (at least two, "
         "or use --use-markers)",
     )
+    p.add_argument("--web", action="store_true", help="click the pairs in a browser instead")
+    p.add_argument("--port", type=int, default=8765, help="port for --web")
     p.add_argument(
         "--use-markers",
         action="store_true",
@@ -217,6 +221,66 @@ def _points(value: str, count: int) -> list[tuple[float, float]]:
     return [(numbers[i * 2], numbers[i * 2 + 1]) for i in range(count)]
 
 
+def _calibrate_in_browser(args: argparse.Namespace):
+    """Serve calibrate.html and turn what the owner clicked into arguments."""
+    from .plan import load_calibration, parse_distance
+    from .webflow import collect, stage
+
+    existing = load_calibration(args.store, args.level)
+    task = stage(
+        args.store,
+        "calibrate.html",
+        {
+            "level": args.level,
+            "image": f"../plans/{existing.image}",
+            "rotation_deg": existing.rotation_deg,
+            "floor_height_m": existing.floor_height_m,
+        },
+    )
+    result = collect(args.store, task, port=args.port)
+    if result is None:
+        print("cadastre plan: nothing was saved", file=sys.stderr)
+        return None
+    return (
+        tuple(result["point_a"]),
+        tuple(result["point_b"]),
+        tuple(result["origin_px"]),
+        parse_distance(str(result["distance"])),
+        float(result.get("rotation_deg", 0.0)),
+        float(result.get("floor_height_m", 0.0)),
+    )
+
+
+def _align_in_browser(args: argparse.Namespace, session, calibration):
+    """Serve align.html and turn the clicked pairs into landmark correspondences."""
+    from .align import landmark_pairs
+    from .webflow import collect, stage
+
+    landmarks = [
+        {"label": landmark.label, "xz": [landmark.p_w[0], landmark.p_w[2]]}
+        for landmark in session.landmarks()
+    ]
+    room = session.manifest.get("room")
+    task = stage(
+        args.store,
+        "align.html",
+        {
+            "session_id": session.session_id,
+            "room": room.get("name") if isinstance(room, dict) else "",
+            "level": calibration.level,
+            "image": f"../plans/{calibration.image}",
+            "landmarks": landmarks,
+            "trajectory": [[float(p[0]), float(p[2])] for p in session.trajectory()],
+        },
+    )
+    result = collect(args.store, task, port=args.port)
+    if result is None:
+        print("cadastre align: nothing was saved", file=sys.stderr)
+        return None
+    clicks = {pair["label"]: tuple(pair["pixel"]) for pair in result.get("pairs", [])}
+    return landmark_pairs(session, calibration, clicks)
+
+
 def _run_plan(args: argparse.Namespace) -> int:
     from .plan import (
         PlanError,
@@ -243,15 +307,37 @@ def _run_plan(args: argparse.Namespace) -> int:
             print(f"wrote {target}")
             return 0
 
+        if args.web:
+            clicked = _calibrate_in_browser(args)
+            if clicked is None:
+                return 1
+            point_a, point_b, origin, distance, rotation, floor = clicked
+        else:
+            missing = [
+                name
+                for name, value in (
+                    ("--scale-points", args.scale_points),
+                    ("--distance", args.distance),
+                    ("--origin", args.origin),
+                )
+                if not value
+            ]
+            if missing:
+                raise ValueError(f"{', '.join(missing)} required without --web")
+            point_a, point_b = _points(args.scale_points, 2)
+            origin = _points(args.origin, 1)[0]
+            distance = parse_distance(args.distance)
+            rotation, floor = args.rotation_deg, args.floor_height
+
         result = calibrate(
             args.store,
             args.level,
-            point_a=_points(args.scale_points, 2)[0],
-            point_b=_points(args.scale_points, 2)[1],
-            distance_m=parse_distance(args.distance),
-            origin_px=_points(args.origin, 1)[0],
-            rotation_deg=args.rotation_deg,
-            floor_height_m=args.floor_height,
+            point_a=point_a,
+            point_b=point_b,
+            distance_m=distance,
+            origin_px=origin,
+            rotation_deg=rotation,
+            floor_height_m=floor,
             force=args.force,
         )
     except (PlanError, ValueError) as error:
@@ -369,6 +455,11 @@ def _run_align(args: argparse.Namespace) -> int:
             )
 
         pairs = []
+        if args.web:
+            from_browser = _align_in_browser(args, session, calibration)
+            if from_browser is None:
+                return 1
+            pairs += from_browser
         if args.pairs:
             clicks = {}
             for token in args.pairs.split():

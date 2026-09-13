@@ -1,0 +1,135 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Cadastre — calibrate plan</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 14px system-ui, sans-serif; display: flex; height: 100vh; }
+  #panel { width: 320px; padding: 16px; overflow-y: auto; border-right: 1px solid #8884; }
+  #stage { flex: 1; overflow: auto; position: relative; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  p.hint { opacity: .7; margin: 0 0 14px; }
+  ol { padding-left: 18px; margin: 0 0 14px; }
+  li { margin: 6px 0; }
+  li.done { opacity: .45; text-decoration: line-through; }
+  li.active { font-weight: 600; }
+  label { display: block; margin: 10px 0 2px; font-size: 12px; opacity: .8; }
+  input { width: 100%; padding: 6px; box-sizing: border-box; }
+  button { margin-top: 14px; padding: 8px 12px; width: 100%; font: inherit; }
+  button:disabled { opacity: .4; }
+  #status { margin-top: 12px; min-height: 3em; }
+  .err { color: #c0392b; }
+  .ok { color: #218c5a; }
+  svg { position: absolute; top: 0; left: 0; }
+  img { display: block; }
+</style>
+<div id="panel">
+  <h1>Calibrate <span id="level"></span></h1>
+  <p class="hint">Click on the plan. Scroll to see more of it.</p>
+  <ol>
+    <li id="s0">First end of a known distance</li>
+    <li id="s1">Second end of it</li>
+    <li id="s2">The point that is house origin (0, 0)</li>
+  </ol>
+  <label for="distance">Real distance between the first two points</label>
+  <input id="distance" placeholder="3.81m, 381cm or 12' 6&quot;">
+  <label for="rotation">Rotation (degrees from image right to house +x)</label>
+  <input id="rotation" value="0">
+  <label for="floor">Floor height for this level (metres)</label>
+  <input id="floor" value="0">
+  <button id="save" disabled>Save calibration</button>
+  <button id="reset" type="button">Start the clicks again</button>
+  <div id="status"></div>
+</div>
+<div id="stage"><img id="plan" alt="plan"><svg id="marks"></svg></div>
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const clicks = [];
+let task = null;
+
+const el = id => document.getElementById(id);
+const status = (text, cls) => { el("status").textContent = text; el("status").className = cls || ""; };
+
+fetch("task.json", {cache: "no-store"})
+  .then(r => r.json())
+  .then(data => {
+    task = data;
+    el("level").textContent = data.level;
+    el("plan").src = data.image;
+    el("rotation").value = data.rotation_deg ?? 0;
+    el("floor").value = data.floor_height_m ?? 0;
+    el("plan").onload = () => {
+      el("marks").setAttribute("width", el("plan").naturalWidth);
+      el("marks").setAttribute("height", el("plan").naturalHeight);
+    };
+    step();
+  })
+  .catch(() => status("Could not load task.json. Is this page open through cadastre?", "err"));
+
+function step() {
+  ["s0", "s1", "s2"].forEach((id, index) => {
+    el(id).className = index < clicks.length ? "done" : (index === clicks.length ? "active" : "");
+  });
+  el("save").disabled = clicks.length < 3;
+}
+
+el("plan").addEventListener("click", event => {
+  if (clicks.length >= 3) return;
+  const box = event.target.getBoundingClientRect();
+  // The image may be laid out at a different size than its pixels.
+  const scaleX = event.target.naturalWidth / box.width;
+  const scaleY = event.target.naturalHeight / box.height;
+  const point = [(event.clientX - box.left) * scaleX, (event.clientY - box.top) * scaleY];
+  clicks.push(point);
+
+  const dot = document.createElementNS(NS, "circle");
+  dot.setAttribute("cx", point[0]);
+  dot.setAttribute("cy", point[1]);
+  dot.setAttribute("r", "6");
+  dot.setAttribute("fill", clicks.length === 3 ? "#3182bd" : "#e6550d");
+  el("marks").appendChild(dot);
+
+  if (clicks.length === 2) {
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("x1", clicks[0][0]); line.setAttribute("y1", clicks[0][1]);
+    line.setAttribute("x2", clicks[1][0]); line.setAttribute("y2", clicks[1][1]);
+    line.setAttribute("stroke", "#e6550d");
+    line.setAttribute("stroke-width", "2");
+    el("marks").appendChild(line);
+  }
+  step();
+});
+
+el("reset").addEventListener("click", () => {
+  clicks.length = 0;
+  el("marks").textContent = "";
+  status("");
+  step();
+});
+
+el("save").addEventListener("click", () => {
+  const distance = el("distance").value.trim();
+  if (!distance) { status("Type the real distance first.", "err"); return; }
+
+  el("save").disabled = true;
+  fetch("/save", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      path: task.result_path,
+      data: {
+        kind: "calibrate",
+        level: task.level,
+        point_a: clicks[0],
+        point_b: clicks[1],
+        origin_px: clicks[2],
+        distance: distance,
+        rotation_deg: Number(el("rotation").value) || 0,
+        floor_height_m: Number(el("floor").value) || 0
+      }
+    })
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+    .then(() => status("Saved. You can close this tab; the terminal has taken over.", "ok"))
+    .catch(error => { status("Save failed: " + error, "err"); el("save").disabled = false; });
+});
+</script>

@@ -22,22 +22,27 @@ Phases are the second dimension of that grid. A parcel filling in as framing, el
 
 Surfaces: near-white paper grounds and a single cool ink-blue, with one warm accent reserved for record and primary actions so the eye always finds the one thing to press. The reference is a survey drawing rather than a consumer app: ruled, precise, quiet, with ink on paper as the dominant relationship. High contrast for direct sun: dark text on near-white cards, no light grey on white, visible outlines. Cards are ruled rectangles with a hairline border rather than soft floating shapes. Status colours (green, amber, red) are semantic: dots, icons and chip tints only; text on light surfaces stays ink.
 
+Starter tokens. Every ratio below was computed against WCAG 2.1 rather than
+estimated, and three values were corrected when that measurement was first run on 2026-09-13; the dark palette lives in
+[design-canvas-brief.md](design-canvas-brief.md) §5.
+
 Starter tokens:
 
 | Role | Value | Use |
 |---|---|---|
 | surface/ground | #F4F8FB | Screen background |
 | surface/raised | #FFFFFF | Cards, sheets |
-| surface/outline | #C9D6E2 | Card outlines, dividers |
+| surface/outline | **#78899A** | Card boundaries. Was `#C9D6E2`, measured at 1.38:1 on the ground — below the 3:1 that a boundary carrying information needs, and invisible in sun |
+| surface/divider | #C9D6E2 | Decorative rules inside a card only, where nothing depends on seeing them |
 | ink/primary | #0F1E2E | Body text, icons |
 | ink/secondary | #4A5A6A | Secondary text (6.6:1 on surface/ground) |
 | accent-cool/500 | #2E7FD0 | Brand ink-blue: selection, active chips, large text only |
 | accent-cool/700 | #1D5C9E | Links and small blue text (6.8:1 on white) |
 | accent-cool/100 | #D6E8F8 | Tints, selected rows |
-| accent-warm/500 | #D9480F | REC, primary buttons (4.3:1 with white text) |
+| accent-warm/500 | #D9480F | REC, primary buttons. White on it measures 4.30:1, which passes for large text (>=18.66 pt bold) and fails for normal text — never small white text on this |
 | accent-warm/300 | #FF7A3D | Recording pulse, glow |
 | status/ok | #1E9E5A, HUD #43D17C | Tracking normal |
-| status/warn | #F2B01E, HUD #FFC24D | Tracking limited, 5-minute warning, thermal serious |
+| status/warn | **#B87D06** on light, HUD #FFC24D | Tracking limited, 5-minute warning, thermal serious. #F2B01E measured 1.79:1 on the ground — amber on near-white is invisible; it survives only on the HUD scrim |
 | status/error | #D3323C, HUD #FF5A5F | Errors, auto-stop |
 | hud/scrim | #0A121C at 72% | Translucent strips over the camera; rises to 88% when the scene under the strip is bright |
 | hud/hairline | #FFFFFF at 12% | Strip edges |

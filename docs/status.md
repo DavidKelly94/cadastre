@@ -62,8 +62,9 @@ Onboarding, ProjectPicker, Project overview, Level view, RoomPicker, Capture
 HUD, Session review, Markers, Settings, Test plan. The app currently shows one
 build-check screen and a bare AR view, both scaffolding from day 1.
 
-Design decisions for these are settled in `docs/ui/design-brief.md` §10; the
-canvas has not been made.
+Design decisions for these are settled in `docs/ui/design-brief.md` §10.
+`docs/ui/design-canvas-brief.md` is the self-contained handoff for Claude
+Design; the canvas itself has not been made.
 
 ## CI
 

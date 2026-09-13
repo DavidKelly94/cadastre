@@ -31,4 +31,12 @@ enum AppConfig {
 
   /// JSONL is flushed every this many lines, and on close.
   static let flushEveryLines = 50
+
+  /// How often, in seconds of session time, to re-check free space and heat.
+  static let healthCheckInterval: Double = 1.0
+
+  /// At most five lines per marker per second. ARKit updates a tracked image
+  /// anchor every frame, and the pipeline gains nothing from thirty
+  /// near-identical sightings a second.
+  static let markerThrottleSeconds: Double = 0.2
 }

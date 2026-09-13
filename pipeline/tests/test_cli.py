@@ -305,3 +305,23 @@ def test_markers_needs_a_destination(capsys: pytest.CaptureFixture[str]) -> None
 def test_markers_reports_a_bad_id_range(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["markers", "--out", str(tmp_path / "x.pdf"), "--ids", "9-2"]) == 1
     assert "backwards" in capsys.readouterr().err
+
+
+def test_plan_calibrate_says_what_is_missing_without_web(
+    tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without --web the points must be given, and the message names which."""
+    from PIL import Image
+
+    source = tmp_path / "plan.png"
+    Image.new("RGB", (40, 30), (255, 255, 255)).save(source, "PNG")
+    store = str(tmp_path / "cadastre-data")
+    main(["--store", store, "plan", "add", str(source), "--level", "main"])
+    capsys.readouterr()
+
+    assert main(["--store", store, "plan", "calibrate", "--level", "main"]) == 1
+    error = capsys.readouterr().err
+    assert "--scale-points" in error
+    assert "--distance" in error
+    assert "--origin" in error
+    assert "without --web" in error

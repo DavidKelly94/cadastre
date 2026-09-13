@@ -70,7 +70,10 @@ the one-line local gate: `cd pipeline && uv run ruff check . && uv run pytest -q
 2. **`docs/session-format.md` is a contract** between the app and the pipeline. Any
    change to units, axes, matrix order, file encodings or file names requires a
    `format_version` decision and updates on both sides. Additive optional fields
-   keep version 1; readers must ignore unknown fields.
+   keep version 1; readers must ignore unknown fields. It is also the **only**
+   cross-language contract: clients are independent implementations of it, never
+   consumers of a shared library, and a new client (Android, web) joins by adding
+   an arm to the `contract` CI job (ADR-0021).
 3. **Keep logic out of the ARKit layer.** Anything testable belongs in the
    pure-Swift core package so Linux CI can cover it. The ARKit layer stays thin and
    follows Apple's documented patterns.

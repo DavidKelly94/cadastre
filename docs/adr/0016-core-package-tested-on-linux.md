@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted, 2026-09-11.
+Accepted, 2026-09-11. Still current.
+
+This record's alternatives table dismisses a Kotlin Multiplatform core in one line. [ADR-0021](0021-session-format-is-the-only-cross-language-contract.md) gives the full reasoning and the rule it implies; it changes no decision here.
 
 ## Context
 

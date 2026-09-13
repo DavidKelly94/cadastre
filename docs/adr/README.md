@@ -1,6 +1,6 @@
 # Architecture decision records
 
-This folder holds the architecture decision records (ADRs) for Cadastre. Each record captures one decision that is expensive to reverse: the forces behind it, what was decided, what we accept as a consequence, and the alternatives that were on the table. The layout follows MADR (https://adr.github.io/madr/): title, status, context, decision, consequences, alternatives considered. Records 0001 to 0016 were accepted with the owner on 2026-09-11, the day the plan was approved; 0017, 0018 and 0019 followed on 2026-09-12, and 0020 on 2026-09-13. They are the reference whenever code, docs and memory disagree. Three of them run longer than the word guidance below, deliberately: 0017 carries a dependency on a decision it cannot yet make, 0018 carries cost arithmetic that loses its value if summarised, and 0019 preserves four rounds of naming research so a future rename starts at the finish line rather than the start.
+This folder holds the architecture decision records (ADRs) for Cadastre. Each record captures one decision that is expensive to reverse: the forces behind it, what was decided, what we accept as a consequence, and the alternatives that were on the table. The layout follows MADR (https://adr.github.io/madr/): title, status, context, decision, consequences, alternatives considered. Records 0001 to 0016 were accepted with the owner on 2026-09-11, the day the plan was approved; 0017, 0018 and 0019 followed on 2026-09-12, and 0020 and 0021 on 2026-09-13. They are the reference whenever code, docs and memory disagree. Four of them run longer than the word guidance below, deliberately: 0017 carries a dependency on a decision it cannot yet make, 0018 carries cost arithmetic that loses its value if summarised, 0019 preserves four rounds of naming research so a future rename starts at the finish line rather than the start, and 0021 preserves the cross-platform reasoning so the Android and Kotlin question is answered rather than re-argued.
 
 Read them in order the first time. Afterwards, use the index.
 
@@ -28,6 +28,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0018](0018-staged-private-and-runner-budget.md) | Stay public through the build sprint, then go private | Accepted |
 | [ADR-0019](0019-name-cadastre.md) | The product is named Cadastre, bundle ID `com.davidkelly.cadastre` | Superseded by [ADR-0020](0020-bundle-id-cadastre-build.md) |
 | [ADR-0020](0020-bundle-id-cadastre-build.md) | The product is named Cadastre, bundle ID `build.cadastre.app` | Accepted |
+| [ADR-0021](0021-session-format-is-the-only-cross-language-contract.md) | The session format is the only cross-language contract | Accepted |
 
 ## Adding a new ADR
 

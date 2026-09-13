@@ -17,3 +17,28 @@ jobs:
       - run: uv sync --project pipeline
       - run: uv run --project pipeline ruff check pipeline
       - run: uv run --project pipeline pytest pipeline -q
+
+  # The only job that puts the two implementations in contact: Swift writes a
+  # session with CadastreCore, Python validates it with the pipeline. Every other
+  # test checks one side against its own idea of the other, so this is what would
+  # catch the two halves of docs/session-format.md drifting apart.
+  contract:
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Write a session with CadastreCore
+        run: |
+          swift run --package-path ios/CadastreCore cadastre-fixture "$PWD/fixture-session"
+      - name: Validate it with the pipeline
+        # Warnings fail this job as well as errors. On a synthetic session every
+        # rule should pass outright, so a warning here means something drifted.
+        run: |
+          uv sync --project pipeline
+          uv run --project pipeline cadastre validate "$PWD/fixture-session" --skip-images \
+            | tee validate.txt
+          if grep -q "^WARN" validate.txt; then
+            echo "::error::the fixture session should validate with no warnings"
+            exit 1
+          fi

@@ -40,6 +40,14 @@ def _add_validate(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("validate", help="check a session against docs/session-format.md")
     p.add_argument("session", help="session directory or id within the store")
     p.add_argument("--json", action="store_true", help="also write derived/validate.json")
+    p.add_argument(
+        "--skip-images",
+        action="store_true",
+        help="do not decode the JPEGs (much faster on a long session)",
+    )
+    p.add_argument(
+        "--skip-depth", action="store_true", help="do not read the depth maps for rule 6"
+    )
 
 
 def _add_apriltag(sub: argparse._SubParsersAction) -> None:
@@ -204,7 +212,14 @@ def _run_validate(args: argparse.Namespace) -> int:
         print(f"cadastre validate: {error}", file=sys.stderr)
         return 1
 
-    report = validate_session(session)
+    report = validate_session(
+        session, check_images=not args.skip_images, check_depth=not args.skip_depth
+    )
+    if args.skip_images or args.skip_depth:
+        skipped = ", ".join(
+            name for name, on in (("images", args.skip_images), ("depth", args.skip_depth)) if on
+        )
+        print(f"note: {skipped} not checked\n")
     print(report.render())
     if args.json:
         target = write_report(session, report)

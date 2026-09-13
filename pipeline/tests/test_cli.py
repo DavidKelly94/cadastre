@@ -15,7 +15,6 @@ MVP_COMMANDS = frozenset(
 #: A minimal valid invocation of each subcommand, including both plan sub-commands.
 STUB_INVOCATIONS = [
     ["ingest", "some-session"],
-    ["apriltag", "some-session"],
     ["plan", "add", "plan.pdf", "--level", "main"],
     ["plan", "correct", "plan.jpg", "--level", "main"],
     ["plan", "calibrate", "--level", "main"],
@@ -40,7 +39,7 @@ def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> 
 
 
 #: Subcommands that now do real work, so they are not in STUB_INVOCATIONS.
-IMPLEMENTED = frozenset({"validate", "synth"})
+IMPLEMENTED = frozenset({"validate", "synth", "apriltag"})
 
 
 def test_every_mvp_command_is_covered() -> None:
@@ -131,3 +130,15 @@ def test_synth_rejects_a_nonsense_keyframe_count(
 ) -> None:
     assert main(["synth", "--out", str(tmp_path / "x"), "--keyframes", "0"]) == 1
     assert "at least 1" in capsys.readouterr().err
+
+
+def test_apriltag_solves_a_synthetic_session(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    out = tmp_path / "synthetic"
+    assert main(["synth", "--out", str(out)]) == 0
+    capsys.readouterr()
+
+    assert main(["apriltag", str(out), "--check-anchor-frame"]) == 0
+    printed = capsys.readouterr().out
+    assert "CD-012" in printed
+    assert "anchor frame agreement" in printed
+    assert (out / "derived" / "markers_detected.json").exists()

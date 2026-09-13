@@ -276,12 +276,18 @@ def build(out: Path | str, spec: SynthSpec | None = None) -> SyntheticSession:
     k_list = [float(v) for v in k.flatten()]
     cx_room, cz_room = spec.centre
 
+    # Deliberately offset along each wall rather than sitting at the foot of the
+    # perpendicular from the camera path. A marker at that foot is viewed exactly
+    # head-on, and a fronto-parallel square is the worst case for PnP orientation:
+    # the position is well constrained but the out-of-plane rotation barely is.
+    # No real marker would be so conveniently placed, and a fixture built on that
+    # one geometry would understate what the solver can do.
     marker_poses = {
         marker_id(spec.marker_numbers[0]): _marker_pose(
-            np.array([cx_room, 1.4, 0.0]), np.array([0.0, 0.0, 1.0])
+            np.array([cx_room + 0.9, 1.4, 0.0]), np.array([0.0, 0.0, 1.0])
         ),
         marker_id(spec.marker_numbers[1]): _marker_pose(
-            np.array([0.0, 1.4, cz_room]), np.array([1.0, 0.0, 0.0])
+            np.array([0.0, 1.4, cz_room + 1.1]), np.array([1.0, 0.0, 0.0])
         ),
     }
 

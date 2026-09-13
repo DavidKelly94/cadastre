@@ -170,6 +170,45 @@ def _run_validate(args: argparse.Namespace) -> int:
     return report.exit_code
 
 
+def _run_apriltag(args: argparse.Namespace) -> int:
+    from .apriltag import aggregate, check_anchor_frame, solve_session, write_detections
+    from .session import Session, SessionError
+
+    try:
+        session = Session.load(resolve_session(args.store, args.session))
+    except (FileNotFoundError, SessionError) as error:
+        print(f"cadastre apriltag: {error}", file=sys.stderr)
+        return 1
+
+    observations = solve_session(session, stride=args.stride, tag_size_m=args.tag_size)
+    solutions = aggregate(observations)
+    if not solutions:
+        print("no markers detected")
+        return 0
+
+    print(f"{len(observations)} accepted observations of {len(solutions)} markers")
+    for marker, solution in solutions.items():
+        x, y, z = solution.T_wm[:3, 3]
+        print(
+            f"  {marker}  n={solution.n_obs:<3d} "
+            f"({x:+.3f}, {y:+.3f}, {z:+.3f}) m  "
+            f"spread {solution.spread_m * 100:.1f} cm / {solution.spread_deg:.1f} deg"
+        )
+
+    if args.check_anchor_frame:
+        print("\nanchor frame agreement (ARKit anchors via R_am, against PnP):")
+        for agreement in check_anchor_frame(session, solutions):
+            axes = ", ".join(f"{value:.2f}" for value in agreement.per_axis_deg)
+            print(
+                f"  {agreement.marker_id}  "
+                f"{agreement.translation_error_m * 100:.2f} cm  "
+                f"{agreement.rotation_error_deg:.2f} deg  per-axis [{axes}]"
+            )
+
+    print(f"\nwrote {write_detections(session, solutions)}")
+    return 0
+
+
 def _run_synth(args: argparse.Namespace) -> int:
     from .synth import SynthSpec, build
 
@@ -187,7 +226,11 @@ def _run_synth(args: argparse.Namespace) -> int:
 
 
 #: Subcommands that are implemented. Everything else still exits NOT_IMPLEMENTED.
-_HANDLERS = {"validate": _run_validate, "synth": _run_synth}
+_HANDLERS = {
+    "validate": _run_validate,
+    "synth": _run_synth,
+    "apriltag": _run_apriltag,
+}
 
 
 def main(argv: Sequence[str] | None = None) -> int:

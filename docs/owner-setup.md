@@ -35,7 +35,7 @@ In App Store Connect open Cadastre, then the TestFlight tab. Under Internal Test
 
 ## 6. GitHub secrets and the build workflow
 
-Open https://github.com/DavidKelly94/homescanner/settings/secrets/actions and add four repository secrets:
+Open https://github.com/DavidKelly94/cadastre/settings/secrets/actions and add four repository secrets:
 
 | Secret | Value |
 |---|---|
@@ -67,7 +67,7 @@ Delete a session from the phone only after `cadastre validate` (step 9) has pass
 ## 9. The PC pipeline
 
 1. Install uv: in PowerShell run `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`. Install Git for Windows if `git` is missing.
-2. `git clone https://github.com/DavidKelly94/homescanner`, then `cd homescanner\pipeline` and `uv sync` (installs Python 3.12 and every dependency).
+2. `git clone https://github.com/DavidKelly94/cadastre`, then `cd cadastre\pipeline` and `uv sync` (installs Python 3.12 and every dependency).
 3. `uv run cadastre --help` lists the commands.
 4. After every capture: `uv run cadastre ingest D:\cadastre-inbox\<session>` copies it into the project store, then `uv run cadastre validate <session>` checks the files. Paste the full output to the implementer, even when it passes.
 5. As they land: `uv run cadastre apriltag`, `plan add`, `plan calibrate`, `align` and `inspect` (serves a page at http://localhost:8000). Run `git pull` and `uv sync` first to pick up new commands.

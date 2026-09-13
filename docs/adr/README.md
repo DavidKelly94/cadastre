@@ -12,7 +12,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0002](0002-ios-builds-on-github-actions-testflight.md) | iOS builds on GitHub Actions with TestFlight distribution | Accepted |
 | [ADR-0003](0003-cloud-managed-signing.md) | Cloud-managed signing from an unsigned archive | Accepted |
 | [ADR-0004](0004-session-format-posed-rgbd-keyframes.md) | Session format is posed RGB-D keyframes in per-frame files with JSONL sidecars | Accepted |
-| [ADR-0005](0005-short-room-sessions-offline-registration.md) | One room per session, registration offline | Accepted |
+| [ADR-0005](0005-short-room-sessions-offline-registration.md) | One room per session, registration offline | Superseded by [ADR-0022](0022-session-is-one-pass-carrying-phases.md) |
 | [ADR-0006](0006-fiducials-and-plan-as-invariant-frame.md) | AprilTag hybrid markers, with the plan as the invariant frame | Accepted |
 | [ADR-0007](0007-per-level-se2-alignment.md) | Per-level SE(2) alignment from tapped landmarks and plan corners | Accepted |
 | [ADR-0008](0008-offline-processing-on-owner-pc.md) | Offline processing on the owner's PC | Accepted |
@@ -29,6 +29,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0019](0019-name-cadastre.md) | The product is named Cadastre, bundle ID `com.davidkelly.cadastre` | Superseded by [ADR-0020](0020-bundle-id-cadastre-build.md) |
 | [ADR-0020](0020-bundle-id-cadastre-build.md) | The product is named Cadastre, bundle ID `build.cadastre.app` | Accepted |
 | [ADR-0021](0021-session-format-is-the-only-cross-language-contract.md) | The session format is the only cross-language contract | Accepted |
+| [ADR-0022](0022-session-is-one-pass-carrying-phases.md) | A session is one room in one pass, carrying a set of phases | Accepted |
 
 ## Adding a new ADR
 

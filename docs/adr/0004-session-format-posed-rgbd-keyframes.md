@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted, 2026-09-11.
+Accepted, 2026-09-11. Still current in substance.
+
+The session directory name below has since changed: [ADR-0022](0022-session-is-one-pass-carrying-phases.md) removed the `<phase>` segment and moved phases into `manifest.json` as a list, taking `format_version` to 2. Everything else in this record — the per-frame files, the JSONL lines, the encodings and the keyframe policy — is unchanged. `docs/session-format.md` is the live specification.
 
 ## Context
 

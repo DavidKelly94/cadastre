@@ -102,7 +102,7 @@ def _add_markers(sub: argparse._SubParsersAction) -> None:
 def _add_synth(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("synth", help="write a synthetic, format-valid session for tests")
     p.add_argument("--out", required=True, help="destination directory")
-    p.add_argument("--seed", type=int, default=0, help="seed for the generated geometry")
+    p.add_argument("--keyframes", type=int, help="number of keyframes (default: the documented 48)")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -170,8 +170,24 @@ def _run_validate(args: argparse.Namespace) -> int:
     return report.exit_code
 
 
+def _run_synth(args: argparse.Namespace) -> int:
+    from .synth import SynthSpec, build
+
+    # `is not None`, not truthiness: --keyframes 0 is a value the user typed and
+    # must reach the check below, not silently fall back to the default.
+    spec = SynthSpec(keyframes=args.keyframes) if args.keyframes is not None else SynthSpec()
+    if spec.keyframes < 1:
+        print("cadastre synth: --keyframes must be at least 1", file=sys.stderr)
+        return 1
+    result = build(Path(args.out), spec)
+    print(f"wrote {result.root} ({spec.keyframes} keyframes)")
+    for identifier in sorted(result.marker_poses):
+        print(f"  marker {identifier}")
+    return 0
+
+
 #: Subcommands that are implemented. Everything else still exits NOT_IMPLEMENTED.
-_HANDLERS = {"validate": _run_validate}
+_HANDLERS = {"validate": _run_validate, "synth": _run_synth}
 
 
 def main(argv: Sequence[str] | None = None) -> int:

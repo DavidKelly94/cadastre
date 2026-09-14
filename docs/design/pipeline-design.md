@@ -34,11 +34,24 @@ Project store (default `./vividhome-data`, override with `--store`):
 ```
 vividhome-data/
   sessions/<project>/<session-id>/        raw sessions (copied in by ingest)
-  plans/<level>.png  plans/<level>.json    calibrated rasters
+  plans/<level>.png  plans/<level>.json    plan raster and metadata
   alignments/<session-id>.json            T_hs + residuals
   markers/<project>.json                  marker poses in house frame (accumulated)
   inspect/<level>.html                    generated pages
 ```
+
+`plans/` may arrive two ways. `plan add` creates it from a PDF or photo on the PC,
+as before. Or the app has already imported the plan and `ingest` copies
+`plans/` across with the sessions ([ADR-0025](../adr/0025-plans-are-a-project-level-asset.md),
+`session-format.md` section 13). The file shape is the same either way, and
+`calibrated` says which state it is in: the app never sets it, because the app
+solves nothing. `plan calibrate` adds `scale_m_per_px` and the origin and flips it.
+
+`rooms[]` in a plan file is a room slug and a pixel coordinate the owner tapped.
+It exists so the app can shade a room by coverage, and `inspect` can label the
+plan without a solve. **It is never an input to `align`** — that reads
+`landmarks.jsonl` and marker poses only. A placement and a correspondence have the
+same shape, so the separation is a rule rather than a type.
 
 ## 2. Core math (`transforms.py`)
 

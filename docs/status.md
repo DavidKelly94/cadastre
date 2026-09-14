@@ -76,6 +76,23 @@ app id 1507993968, the `.com`/`.io` French products). `docs/naming-investigation
 was rewritten as a closed record because every factual claim in it had inverted.
 Identifiers were never affected — only prose. Sweep by symbol, not by word.
 
+## Floor plans in the app
+
+**Specified, not built, on either side.** [ADR-0025](adr/0025-plans-are-a-project-level-asset.md)
+decides that the app imports, displays and places rooms on a floor plan while
+alignment stays on the PC, and `docs/session-format.md` section 13 now carries
+the contract for it. Nothing implements it yet:
+
+- iOS: no plan import, no plan view, no placement UI. Two screens that do not
+  exist, on top of the ten that already do not.
+- Pipeline: `vividhome validate --project` does not exist, `ingest` does not copy
+  a `plans/` directory, and `plan add` still assumes it creates one.
+
+The schedule risk is real and is named in ADR-0025's consequences: this is scope
+added during a 14-day sprint, deliberately. Nothing in sections 1 to 12 of the
+format depends on it, and a project with no `plans/` directory stays valid, so
+the capture path is not blocked by it.
+
 ## App icon
 
 `ios/VividHome/Resources/Assets.xcassets/AppIcon.appiconset` holds an **interim**

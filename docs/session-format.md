@@ -1,6 +1,6 @@
 # VividHome session format (format_version 3)
 
-A **session** is one continuous capture of one room in one pass, carrying the set of construction phases exposed while it was recorded ([ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md)). The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
+A **session** is one continuous capture of one room in one pass, carrying the set of construction phases exposed while it was recorded ([ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md)). The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two, and it is the **only** one ([ADR-0021](adr/0021-session-format-is-the-only-cross-language-contract.md)): anything the app writes and the pipeline reads is specified here, including the project-level files in section 13, which are not session data. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
 
 ## 1. Location and naming
 
@@ -199,6 +199,52 @@ The command prints a summary and exits non-zero on any error.
 
 ## 12. Evolution
 
-Additive fields keep `format_version` 3; the pipeline must ignore unknown fields. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading every version that was ever captured. Never rewrite raw session files; all processing output goes under `derived/`.
+Additive fields keep `format_version` 3; the pipeline must ignore unknown fields. Adding a project-level file (section 13) is additive by the same rule: it changes no session field, so it does not bump the version. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading every version that was ever captured. Never rewrite raw session files; all processing output goes under `derived/`.
 
 **Versions 1 and 2 were never captured.** Each existed only in this document and in code that had not yet run on a device: version 1 when [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md) replaced it, and version 2 when [ADR-0024](adr/0024-name-vividhome.md) changed the marker prefix to `VH-`. No session exists at either version anywhere, so readers need not accept one. These are the only versions the pipeline may ever refuse: from version 3 on, a version that has written a real session must keep being readable.
+
+## 13. Project-level files
+
+Everything above describes one session. A **floor plan** is not session data: it belongs to the project, it is imported rather than captured, and it is edited after the fact. It is specified here anyway, because the app writes it and the pipeline reads it, and ADR-0021 allows exactly one document to carry that kind of contract. See [ADR-0025](adr/0025-plans-are-a-project-level-asset.md).
+
+```
+Documents/sessions/<project-slug>/
+  plans/
+    <level>.png            normalised raster written by the app; RGB, long edge <= 4096 px
+    <level>.source.pdf     OPTIONAL, the imported file kept verbatim (.pdf, .jpg or .heic)
+    <level>.json           plan metadata and room placements
+  <session-id>/            one folder per session, as in section 2
+```
+
+`<level>` is the same slug used in a session id. `<level>.json`:
+
+```json
+{
+  "format_version": 3,
+  "level": "main",
+  "raster": { "file": "main.png", "w": 3300, "h": 2550 },
+  "source": { "file": "main.source.pdf", "kind": "pdf", "page": 2 },
+  "calibrated": false,
+  "rooms": [
+    { "room": "kitchen", "x": 1840, "y": 990, "placed_at": "2026-11-03T14:02:11Z" }
+  ]
+}
+```
+
+- `rooms[].x`, `rooms[].y` are **pixel coordinates in the raster**, origin top-left, x right, y down. Not metres, not plan units: the app has no scale, which is the point of `calibrated`.
+- `rooms[].room` is the `<room>` slug used in session ids, and is how a placement finds its captures.
+- `calibrated` is `false` in everything the app writes. `vividhome plan calibrate` is what adds `scale_m_per_px` and an origin and sets it `true`; until then the raster has no metric meaning.
+- `source` is omitted when the original was not retained.
+
+**A room placement is not a correspondence.** It is a fingertip on a drawing, recorded so the app can shade a room by what has been captured. It has no accuracy claim and it is never an input to alignment: `vividhome align` uses `landmarks.jsonl` and marker poses, and nothing else. This matters because a placement and a correspondence have the same shape — a label and a 2D point — so nothing but this rule stops one being fed in where the other belongs, and the result would be a plausible-looking wrong answer rather than an error. The same caution the project applies to inferred facts (rule 9 of `AGENTS.md`) applies here: it is a human's rough claim, stored with its source, not a measurement.
+
+Validation, run by `vividhome validate --project` rather than per session:
+
+1. `<level>.json` parses and `format_version == 3`.
+2. `raster.file` exists, decodes, and its size matches `raster.w`/`raster.h`.
+3. Every `rooms[].x` is within `[0, raster.w]` and every `y` within `[0, raster.h]`.
+4. `rooms[].room` slugs are unique within a level, and each matches `^[a-z0-9-]{1,24}$`.
+5. A room slug with no session, or a session whose room has no placement, is a **warning**: both are normal mid-capture.
+6. If `calibrated` is `true`, `scale_m_per_px` is present and positive.
+
+A project with no `plans/` directory is valid. Plans are optional, and everything in sections 1 to 12 works without one.

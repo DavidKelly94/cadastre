@@ -1,6 +1,6 @@
 # Architecture decision records
 
-This folder holds the architecture decision records (ADRs) for Cadastre. Each record captures one decision that is expensive to reverse: the forces behind it, what was decided, what we accept as a consequence, and the alternatives that were on the table. The layout follows MADR (https://adr.github.io/madr/): title, status, context, decision, consequences, alternatives considered. Records 0001 to 0016 were accepted with the owner on 2026-09-11, the day the plan was approved; 0017, 0018 and 0019 followed on 2026-09-12, and 0020 and 0021 on 2026-09-13. They are the reference whenever code, docs and memory disagree. Four of them run longer than the word guidance below, deliberately: 0017 carries a dependency on a decision it cannot yet make, 0018 carries cost arithmetic that loses its value if summarised, 0019 preserves four rounds of naming research so a future rename starts at the finish line rather than the start, and 0021 preserves the cross-platform reasoning so the Android and Kotlin question is answered rather than re-argued.
+This folder holds the architecture decision records (ADRs) for VividHome. Each record captures one decision that is expensive to reverse: the forces behind it, what was decided, what we accept as a consequence, and the alternatives that were on the table. The layout follows MADR (https://adr.github.io/madr/): title, status, context, decision, consequences, alternatives considered. Records 0001 to 0016 were accepted with the owner on 2026-09-11, the day the plan was approved; 0017, 0018 and 0019 followed on 2026-09-12, and 0020 and 0021 on 2026-09-13. They are the reference whenever code, docs and memory disagree. Five of them run longer than the word guidance below, deliberately: 0017 carries a dependency on a decision it cannot yet make, 0018 carries cost arithmetic that loses its value if summarised, 0019 preserves four rounds of naming research so a future rename starts at the finish line rather than the start, 0021 preserves the cross-platform reasoning so the Android and Kotlin question is answered rather than re-argued, and 0025 spells out the boundary between placing a room on a plan and aligning to one, because the two look alike and conflating them silently produces a wrong answer.
 
 Read them in order the first time. Afterwards, use the index.
 
@@ -32,6 +32,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0022](0022-session-is-one-pass-carrying-phases.md) | A session is one room in one pass, carrying a set of phases | Accepted |
 | [ADR-0023](0023-bundle-id-needs-no-domain.md) | The bundle identifier is `com.cadastrerecord.app` and depends on no domain | Superseded by [ADR-0024](0024-name-vividhome.md) |
 | [ADR-0024](0024-name-vividhome.md) | The product is named VividHome, bundle ID `ai.vividhome.app` | Accepted |
+| [ADR-0025](0025-plans-are-a-project-level-asset.md) | The floor plan is a project-level asset the app carries | Accepted |
 
 ## Adding a new ADR
 

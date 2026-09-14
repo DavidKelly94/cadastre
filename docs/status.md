@@ -68,6 +68,14 @@ Design. **Both it and the design brief's §2 motif are orphaned by the rename**:
 the parcel/plat imagery came from the meaning of "cadastre" and needs
 replacing. The tokens, type and contrast work are unaffected.
 
+The rename also left false prose in six documents, since corrected: the sweep
+replaced the old name inside sentences that were *about* that word rather than
+labels for the product ("a *vividhome* is the authoritative register of what
+exists on a parcel of land", "pronounced kuh-DASS-ter", the App Store clash with
+app id 1507993968, the `.com`/`.io` French products). `docs/naming-investigation.md`
+was rewritten as a closed record because every factual claim in it had inverted.
+Identifiers were never affected — only prose. Sweep by symbol, not by word.
+
 ## CI
 
 Colours are not recorded here — they go stale within minutes and GitHub is the

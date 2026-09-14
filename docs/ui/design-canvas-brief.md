@@ -238,11 +238,16 @@ Three related marks, all from the same motif:
    square with some cells inked — the count beside it carries the precision. This
    is a distinct drawing from the icon, not a scaled-down copy.
 3. **Wordmark.** "VividHome", set in the type family above. Needed only if there
-   is ever a landing page; not required for the app. If drawn, note that the
-   store name is **"VividHome: Building Record"** — bare "VividHome" is taken.
+   is ever a landing page; not required for the app. One word, capital V and
+   capital H — never "Vivid Home", and never abbreviated to "VH" outside the
+   printed marker IDs. The store listing may need a qualifier such as
+   **"VividHome: Building Record"** if the bare name is unavailable; design the
+   lockup for the bare wordmark either way.
 
-Pronounced *kuh-DASS-ter*. Never abbreviate it to "CAD" — that is a live word in
-this industry and the collision is bad.
+"Vivid" is a claim about the **record**, not about decor: the point is that what
+the walls hide stays sharply visible years later. Keep the visual language away
+from interior styling, paint chips and swatches — that is the wrong reading the
+word invites, and it is the one risk this name carries.
 
 ## 8. What to report back with
 

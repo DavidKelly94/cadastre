@@ -2,7 +2,7 @@
 
 This is the runbook for everything only you can do: the Apple and GitHub accounts, the phone, the markers and the PC. None of it needs a Mac. The implementer handles all code, CI and build failures; you handle this list and report what you see.
 
-You need an iPhone 15 Pro or newer, your Apple Account with a payment method, admin rights on `github.com/DavidKelly94/vividhome`, and the Windows PC.
+You need an iPhone 15 Pro or newer, your Apple Account with a payment method, admin rights on `github.com/DavidKelly94/cadastre`, and the Windows PC.
 
 ## 1. Day 0: Apple Developer Program
 
@@ -34,7 +34,11 @@ Register. **This identifier is permanent** — check the spelling before clickin
 
 At https://appstoreconnect.apple.com open My Apps, click the plus button, New App. Platform iOS, Name **`VividHome: Building Record`**, Bundle ID `ai.vividhome.app`, SKU anything (for example `vividhome-ios`).
 
-**Do not type just `VividHome`.** App Store names must be unique across the whole store, and `VividHome` is already taken by a French vividhome and parcel viewer (app id 1507993968). Names are capped at 30 characters; `VividHome: Building Record` is 25 and puts the word *building* beside the wordmark, which is the counterweight to the land reading of the name. The display name can be changed up until first release; the bundle ID cannot be changed at all once this record exists.
+**Try bare `VividHome` first, and have the qualifier ready.** App Store names must be unique across the whole store, and the form tells you immediately if one is taken — that check is the only authority, so use it rather than trusting this file. If `VividHome` is refused, use `VividHome: Building Record` (25 characters, inside the 30-character cap), which puts *building* beside the wordmark and steers away from the interior-decor reading of "vivid".
+
+The earlier version of this section asserted that the bare name was already taken by app id 1507993968. That was evidence about the **previous** product name — 1507993968 is a French *cadastre* and parcel viewer — and the rename carried it across mechanically. Nothing has been verified about "VividHome" on the App Store.
+
+The display name can be changed up until first release; the bundle ID cannot be changed at all once this record exists.
 
 ## 4. App Store Connect API key (Admin) and Team ID
 
@@ -49,7 +53,7 @@ In App Store Connect open VividHome, then the TestFlight tab. Under Internal Tes
 
 ## 6. GitHub secrets and the build workflow
 
-Open https://github.com/DavidKelly94/vividhome/settings/secrets/actions and add four repository secrets:
+Open https://github.com/DavidKelly94/cadastre/settings/secrets/actions and add four repository secrets:
 
 | Secret | Value |
 |---|---|
@@ -58,7 +62,7 @@ Open https://github.com/DavidKelly94/vividhome/settings/secrets/actions and add 
 | `ASC_PRIVATE_KEY_P8` | The entire `.p8` file contents, including the BEGIN and END lines |
 | `APPLE_TEAM_ID` | Team ID from step 4 |
 
-The repository is public, so GitHub-hosted runners, including the macOS ones, are free. Builds start automatically when code under `ios/` changes on the branch `claude/construction-3d-mapping-app-nzm3bb`. To start one by hand: Actions tab, `ios-testflight` in the left list, Run workflow, pick that branch, Run workflow. A run takes up to 30 minutes.
+The repository is public, so GitHub-hosted runners, including the macOS ones, are free. Builds start automatically when code under `ios/` changes on the branch `claude/confident-cerf-q37nev` (the workflow also still tracks the original `claude/construction-3d-mapping-app-nzm3bb`). To start one by hand: Actions tab, `ios-testflight` in the left list, Run workflow, pick `claude/confident-cerf-q37nev`, Run workflow. A run takes up to 30 minutes.
 
 Never paste the `.p8` into an issue, a chat or a commit.
 
@@ -81,7 +85,7 @@ Delete a session from the phone only after `vividhome validate` (step 9) has pas
 ## 9. The PC pipeline
 
 1. Install uv: in PowerShell run `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`. Install Git for Windows if `git` is missing.
-2. `git clone https://github.com/DavidKelly94/vividhome`, then `cd vividhome\pipeline` and `uv sync` (installs Python 3.12 and every dependency).
+2. `git clone https://github.com/DavidKelly94/cadastre`, then `cd cadastre\pipeline` and `uv sync` (installs Python 3.12 and every dependency).
 3. `uv run vividhome --help` lists the commands.
 4. After every capture: `uv run vividhome ingest D:\vividhome-inbox\<session>` copies it into the project store, then `uv run vividhome validate <session>` checks the files. Paste the full output to the implementer, even when it passes.
 5. As they land: `uv run vividhome apriltag`, `plan add`, `plan calibrate`, `align` and `inspect` (serves a page at http://localhost:8000). Run `git pull` and `uv sync` first to pick up new commands.

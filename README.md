@@ -53,7 +53,7 @@ The floor plan is the permanent reference frame. Each session is aligned to it w
 
 - iOS builds run on GitHub Actions `macos-26` runners and upload to TestFlight (no Mac required). See [owner setup](docs/owner-setup.md) for the four secrets.
 - Core Swift logic and the Python pipeline are tested on Linux on every push.
-- Development branch: `claude/construction-3d-mapping-app-nzm3bb`.
+- Development branch: `claude/confident-cerf-q37nev`.
 - Agent instructions live in [AGENTS.md](AGENTS.md) (cross-tool) and [CLAUDE.md](CLAUDE.md) (Claude-specific). The repository carries the shared harness from `DavidKelly94/base`: `.harness.yml` configures it, and `/base:check`, `/base:review` and `/base:ship` are the gates.
 - Enable local gates once per clone: `pip install pre-commit && pre-commit install`.
 - The product is being renamed, and both this repository and `base` move to a personal account and later go private. See [ADR-0017](docs/adr/0017-product-scope-record-and-collaboration.md), [ADR-0018](docs/adr/0018-staged-private-and-runner-budget.md) and the [transfer runbook](docs/transfer-runbook.md).

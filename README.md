@@ -8,7 +8,7 @@ Cadastre is a toolchain for a homeowner (first) and, later, a product:
 - a **Python pipeline** on the owner's PC that validates sessions, finds the markers, aligns every session to the floor plans, and (later) builds meshes, Gaussian splats and AI labels;
 - a **web viewer** (later) to find studs, pipes, gas lines, ducts and wires behind finished walls, years after they were covered.
 
-Product name: **Cadastre** (the authoritative register of what exists on a parcel, borrowed and applied to a building). Bundle ID `build.cadastre.app`.
+Product name: **Cadastre** (the authoritative register of what exists on a parcel, borrowed and applied to a building). Bundle ID `com.cadastrerecord.app`.
 
 ## Status
 

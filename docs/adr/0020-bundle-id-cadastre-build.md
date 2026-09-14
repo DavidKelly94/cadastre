@@ -2,6 +2,8 @@
 
 ## Status
 
+Superseded by [ADR-0023](0023-bundle-id-needs-no-domain.md), 2026-09-14: the identifier is now `com.cadastrerecord.app` and depends on no domain. The name decision below carries forward unchanged.
+
 Accepted, 2026-09-13. Supersedes [ADR-0019](0019-name-cadastre.md).
 
 The name decision and the four rounds of research behind it carry forward unchanged; ADR-0019 remains the place to read that reasoning. Only the bundle identifier changes here.

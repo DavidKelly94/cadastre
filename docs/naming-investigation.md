@@ -9,7 +9,7 @@ wordmark be "Cadastre" or "Cadastre AI"?**
 
 - **Decided and shipped:** the product is **Cadastre**. The repository is `DavidKelly94/cadastre`,
   every identifier carries the name (CLI `cadastre`, Swift package `CadastreCore`, markers `CD-000`
-  to `CD-059`, store `cadastre-data`), and the bundle identifier is `build.cadastre.app` ([ADR-0020](adr/0020-bundle-id-cadastre-build.md)).
+  to `CD-059`, store `cadastre-data`), and the bundle identifier is `com.cadastrerecord.app` ([ADR-0023](adr/0023-bundle-id-needs-no-domain.md)).
 - **ADR-0019 explicitly rejects "Cadastre AI" as the wordmark**, while permitting it as a
   descriptor. That distinction is the whole of the open question.
 - **Reopened by the owner**, who now thinks "Cadastre AI" makes more sense. That instinct deserves
@@ -71,7 +71,7 @@ and needs the work below.
   `docs/owner-setup.md`. The identifiers do **not** change: `cadastre`, `CadastreCore`, `CD-NNN`
   and `cadastre-data` stay, because a hyphenated or suffixed slug is worse in every one of those
   positions.
-- **The bundle identifier does not change.** `build.cadastre.app` is decoupled from the marketing
+- **The bundle identifier does not change.** `com.cadastrerecord.app` is decoupled from the marketing
   name — a wordmark can gain a suffix without the identifier following — and it is permanent once an
   App Store Connect record exists. Leave it.
 - **The design brief's wordmark lockup and icon.** A two-word wordmark sets differently from a

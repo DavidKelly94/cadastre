@@ -91,8 +91,8 @@ ARKit, so no check here can tell you the capture works.
    `ASC_PRIVATE_KEY_P8`, `APPLE_TEAM_ID`. Until these exist `ios-testflight`
    no-ops and there is no build on a phone. This is the single biggest blocker:
    everything in the capture layer stays unverified without it.
-2. **Register `cadastre.build`** before creating the App ID (ADR-0020) — the
-   bundle identifier is rooted in it and the App ID is the point of no return.
+2. **Register the App ID** `com.cadastrerecord.app`. No domain purchase first —
+   ADR-0023 removed that dependency. The App ID is still the point of no return.
 3. **The first real capture** — needed to confirm `R_am`, ARKit buffer strides
    and `ARReferenceImage` validation, and to fill `samples/`, which is empty.
 4. **Print and laminate the markers** (`docs/markers.md`), verifying 20.0 cm

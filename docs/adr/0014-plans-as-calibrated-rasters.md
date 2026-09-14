@@ -10,7 +10,7 @@ The owner's plans are PDF drawings plus paper, some of which will arrive as phot
 
 ## Decision
 
-A plan level is a raster image plus a calibration file. `cadastre plan add <pdf|image> --level L1` rasterises PDF pages with pypdfium2 at 150-200 dpi (https://github.com/pypdfium2-team/pypdfium2) and applies an optional four-corner perspective correction to photographs. `cadastre plan calibrate` serves a local page where the owner clicks two points, types the real dimension, and sets north and the level's floor height; the result is `plans/<level>.json` with pixels per metre, origin, rotation, floor height, source page and dpi, and the perspective corners if any. Vector walls are deferred; if they are ever extracted (pdfplumber for vector PDFs) they will be a derived layer, never the frame.
+A plan level is a raster image plus a calibration file. `vividhome plan add <pdf|image> --level L1` rasterises PDF pages with pypdfium2 at 150-200 dpi (https://github.com/pypdfium2-team/pypdfium2) and applies an optional four-corner perspective correction to photographs. `vividhome plan calibrate` serves a local page where the owner clicks two points, types the real dimension, and sets north and the level's floor height; the result is `plans/<level>.json` with pixels per metre, origin, rotation, floor height, source page and dpi, and the perspective corners if any. Vector walls are deferred; if they are ever extracted (pdfplumber for vector PDFs) they will be a derived layer, never the frame.
 
 ## Consequences
 

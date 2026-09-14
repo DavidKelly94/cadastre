@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from cadastre.plan import (
+from vividhome.plan import (
     PlanCalibration,
     PlanError,
     add_plan,
@@ -27,7 +27,7 @@ from cadastre.plan import (
 
 @pytest.fixture
 def store(tmp_path: Path) -> Path:
-    return tmp_path / "cadastre-data"
+    return tmp_path / "vividhome-data"
 
 
 def make_png(path: Path, size=(400, 300)) -> Path:
@@ -207,7 +207,7 @@ def test_calibrate_rejects_degenerate_input(store: Path):
 
 
 def test_a_level_without_a_plan_cannot_be_loaded(store: Path):
-    with pytest.raises(PlanError, match="run 'cadastre plan add'"):
+    with pytest.raises(PlanError, match="run 'vividhome plan add'"):
         load_calibration(store, "basement")
 
 

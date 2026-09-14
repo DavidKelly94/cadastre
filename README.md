@@ -1,14 +1,14 @@
-# Cadastre
+# VividHome
 
 Capture your house while it is being built. See behind the walls forever.
 
-Cadastre is a toolchain for a homeowner (first) and, later, a product:
+VividHome is a toolchain for a homeowner (first) and, later, a product:
 
 - an **iPhone app** (LiDAR iPhone Pro) that records, for each room at each construction phase, posed photos, LiDAR depth, high-resolution stills, tapped room corners and printed marker sightings, plus a mesh;
 - a **Python pipeline** on the owner's PC that validates sessions, finds the markers, aligns every session to the floor plans, and (later) builds meshes, Gaussian splats and AI labels;
 - a **web viewer** (later) to find studs, pipes, gas lines, ducts and wires behind finished walls, years after they were covered.
 
-Product name: **Cadastre** (the authoritative register of what exists on a parcel, borrowed and applied to a building). Bundle ID `com.cadastrerecord.app`.
+Product name: **VividHome** (the authoritative register of what exists on a parcel, borrowed and applied to a building). Bundle ID `com.vividhomerecord.app`.
 
 ## Status
 
@@ -26,14 +26,14 @@ Planning is complete (2026-09-11); the product was named and the repositories mo
 ## Repository layout (target)
 
 ```
-cadastre/
+vividhome/
   docs/                 plan, feasibility, design docs, ADRs, UI brief, schedule, protocols, format spec
   ios/
     project.yml         XcodeGen spec; the Xcode project is generated on the CI runner
     ExportOptions.plist App Store Connect export (TestFlight upload)
-    Cadastre/              SwiftUI app with a thin ARKit capture layer
-    CadastreCore/          pure-Swift package (no ARKit/simd); tests run on Linux CI
-  pipeline/             Python 3.12 package `cadastre` (uv): validate, apriltag, plan, align, inspect, markers
+    VividHome/              SwiftUI app with a thin ARKit capture layer
+    VividHomeCore/          pure-Swift package (no ARKit/simd); tests run on Linux CI
+  pipeline/             Python 3.12 package `vividhome` (uv): validate, apriltag, plan, align, inspect, markers
   samples/              one trimmed real session for pipeline tests
   web/                  browser viewer (weeks 3+)
   .github/workflows/    core-test.yml, ios-check.yml, ios-testflight.yml
@@ -42,7 +42,7 @@ cadastre/
 ## How it fits together
 
 ```
-iPhone (Cadastre app)  --sessions (files)-->  PC (cadastre pipeline)  --JSON/GLB/SOG-->  browser viewer
+iPhone (VividHome app)  --sessions (files)-->  PC (vividhome pipeline)  --JSON/GLB/SOG-->  browser viewer
 ARKit poses + LiDAR depth              validate, markers, align to plan           plan overlay, phases,
 + stills + landmarks + markers         (later: mesh, splats, AI labels)            click-to-photo, measure
 ```

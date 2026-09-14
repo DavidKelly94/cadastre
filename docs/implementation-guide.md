@@ -1,6 +1,6 @@
 # Implementation guide
 
-Step-by-step instructions for implementing Cadastre from the docs in this repository. Written for a coding agent working in a Linux container with no Xcode and possibly no Swift toolchain; all iOS compilation happens on GitHub Actions. The owner tests on the phone via TestFlight.
+Step-by-step instructions for implementing VividHome from the docs in this repository. Written for a coding agent working in a Linux container with no Xcode and possibly no Swift toolchain; all iOS compilation happens on GitHub Actions. The owner tests on the phone via TestFlight.
 
 Read first: `docs/plan.md` (approved plan), `docs/session-format.md` (the contract), `docs/design/system-design.md`, `docs/design/ios-app-design.md`, `docs/design/pipeline-design.md`, `docs/schedule.md`, `docs/adr/README.md`.
 
@@ -38,18 +38,18 @@ git status && git branch --show-current
 Create:
 
 ```
-.gitignore                  (macOS, Xcode, Python, uv, node, cadastre-data/, *.xcodeproj, DerivedData, .build)
+.gitignore                  (macOS, Xcode, Python, uv, node, vividhome-data/, *.xcodeproj, DerivedData, .build)
 pipeline/pyproject.toml     see §6
-pipeline/cadastre/__init__.py  __version__ = "0.1.0"
-pipeline/cadastre/cli.py       argparse with all subcommands stubbed (print "not implemented", exit 2)
-pipeline/tests/test_cli.py  `cadastre --help` works
-ios/CadastreCore/Package.swift see §4
+pipeline/vividhome/__init__.py  __version__ = "0.1.0"
+pipeline/vividhome/cli.py       argparse with all subcommands stubbed (print "not implemented", exit 2)
+pipeline/tests/test_cli.py  `vividhome --help` works
+ios/VividHomeCore/Package.swift see §4
 .github/workflows/core-test.yml, ios-check.yml, ios-testflight.yml   see §7
 ```
 
 Run `cd pipeline && uv sync && uv run pytest` locally. Commit and push. `core-test` must be green before continuing.
 
-## 3. CadastreCore (pure Swift)
+## 3. VividHomeCore (pure Swift)
 
 Implement, with tests, in this order: `Transform` (column-major `[Double]` 4x4: identity, multiply, invert, translation, rotationAngle between two matrices), `SessionID` (slug + id6), `Records` (Codable structs matching `session-format.md` exactly; golden-string tests), `KeyframePolicy`, `HealthPolicy`, `JSONLWriter` (Foundation `FileHandle`; test on Linux with a temp file).
 
@@ -59,12 +59,12 @@ Implement, with tests, in this order: `Transform` (column-major `[Double]` 4x4: 
 // swift-tools-version: 5.9
 import PackageDescription
 let package = Package(
-  name: "CadastreCore",
+  name: "VividHomeCore",
   platforms: [.iOS(.v17), .macOS(.v13)],
-  products: [.library(name: "CadastreCore", targets: ["CadastreCore"])],
+  products: [.library(name: "VividHomeCore", targets: ["VividHomeCore"])],
   targets: [
-    .target(name: "CadastreCore"),
-    .testTarget(name: "CadastreCoreTests", dependencies: ["CadastreCore"]),
+    .target(name: "VividHomeCore"),
+    .testTarget(name: "VividHomeCoreTests", dependencies: ["VividHomeCore"]),
   ]
 )
 ```
@@ -74,28 +74,28 @@ Use only `Foundation`. No `simd`, no `ARKit`, no `UIKit`. Linux Foundation diffe
 ## 4. iOS project (`ios/project.yml`)
 
 ```yaml
-name: Cadastre
+name: VividHome
 options:
-  bundleIdPrefix: com.cadastrerecord
+  bundleIdPrefix: com.vividhomerecord
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 packages:
-  CadastreCore:
-    path: CadastreCore
+  VividHomeCore:
+    path: VividHomeCore
 targets:
-  Cadastre:
+  VividHome:
     type: application
     platform: iOS
-    sources: [Cadastre]
+    sources: [VividHome]
     dependencies:
-      - package: CadastreCore
-        product: CadastreCore
+      - package: VividHomeCore
+        product: VividHomeCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.cadastrerecord.app
-        PRODUCT_NAME: Cadastre
+        PRODUCT_BUNDLE_IDENTIFIER: com.vividhomerecord.app
+        PRODUCT_NAME: VividHome
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
@@ -104,20 +104,20 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
     info:
-      path: Cadastre/Info.plist
+      path: VividHome/Info.plist
       properties:
-        CFBundleDisplayName: Cadastre
+        CFBundleDisplayName: VividHome
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiredDeviceCapabilities: [arkit, arm64]
-        NSCameraUsageDescription: "Cadastre records the camera and LiDAR to document your house during construction."
+        NSCameraUsageDescription: "VividHome records the camera and LiDAR to document your house during construction."
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         ITSAppUsesNonExemptEncryption: false
         UIApplicationSupportsIndirectInputEvents: true
 ```
 
-Start with a minimal app: `CadastreApp.swift` (`@main`), one `ContentView` showing "Cadastre build <CFBundleVersion>", whether `ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)` is true, and a button that opens a full-screen `ARView`. Get `ios-check` green, then `ios-testflight` (once the owner adds secrets). This is **TestFlight build #1** (schedule day 2–3).
+Start with a minimal app: `VividHomeApp.swift` (`@main`), one `ContentView` showing "VividHome build <CFBundleVersion>", whether `ARWorldTrackingConfiguration.supportsSceneReconstruction(.meshWithClassification)` is true, and a button that opens a full-screen `ARView`. Get `ios-check` green, then `ios-testflight` (once the owner adds secrets). This is **TestFlight build #1** (schedule day 2–3).
 
 Then implement the screens and capture pipeline in the order of `docs/design/ios-app-design.md`, pushing a TestFlight build at each milestone in `docs/schedule.md`, each with an updated `Resources/TestPlan.md`.
 
@@ -143,21 +143,21 @@ The workflow substitutes `TEAM_ID_PLACEHOLDER` with the `APPLE_TEAM_ID` secret a
 
 ## 5. Marker images
 
-Before the marker detection feature: `cd pipeline && uv run cadastre markers --png ../ios/Cadastre/Resources/Markers --ids 0-59`. Commit the PNGs: they are about 38 KB each, 2.4 MB for the set, and the app bundles them as ARKit reference images, so they have to exist at build time on the runner.
+Before the marker detection feature: `cd pipeline && uv run vividhome markers --png ../ios/VividHome/Resources/Markers --ids 0-59`. Commit the PNGs: they are about 38 KB each, 2.4 MB for the set, and the app bundles them as ARKit reference images, so they have to exist at build time on the runner.
 
-The PDF is **not** committed. It is 3.3 MB, one command and four seconds to regenerate, and a single binary that would diff in full every time it was rebuilt — and it exceeds the 1 MB ceiling this repository's own `check-added-large-files` hook enforces outside `samples/`. `docs/owner-setup.md` already tells the owner to run `cadastre markers --out markers.pdf` when it is time to print, which is the only moment it is needed.
+The PDF is **not** committed. It is 3.3 MB, one command and four seconds to regenerate, and a single binary that would diff in full every time it was rebuilt — and it exceeds the 1 MB ceiling this repository's own `check-added-large-files` hook enforces outside `samples/`. `docs/owner-setup.md` already tells the owner to run `vividhome markers --out markers.pdf` when it is time to print, which is the only moment it is needed.
 
 ## 6. Pipeline (`pipeline/pyproject.toml`)
 
 ```toml
 [project]
-name = "cadastre"
+name = "vividhome"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = ["numpy>=2.0", "opencv-python-headless>=4.10", "pypdfium2>=4.30", "reportlab>=4.2", "pillow>=10.4"]
 
 [project.scripts]
-cadastre = "cadastre.cli:main"
+vividhome = "vividhome.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
@@ -187,7 +187,7 @@ jobs:
     container: swift:6.1
     steps:
       - uses: actions/checkout@v4
-      - run: swift test --package-path ios/CadastreCore
+      - run: swift test --package-path ios/VividHomeCore
   python:
     runs-on: ubuntu-latest
     steps:
@@ -223,7 +223,7 @@ jobs:
       - run: brew install xcodegen
       - run: xcodegen generate --spec ios/project.yml --project ios
       - run: >
-          xcodebuild build -project ios/Cadastre.xcodeproj -scheme Cadastre
+          xcodebuild build -project ios/VividHome.xcodeproj -scheme VividHome
           -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" | tee build.log | grep -E "error:|warning: unre|BUILD"
       - uses: actions/upload-artifact@v4
@@ -273,14 +273,14 @@ jobs:
           sed "s/TEAM_ID_PLACEHOLDER/$TEAM_ID/" ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
       - name: Archive (unsigned)
         run: >
-          xcodebuild archive -project ios/Cadastre.xcodeproj -scheme Cadastre
-          -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
+          xcodebuild archive -project ios/VividHome.xcodeproj -scheme VividHome
+          -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/VividHome.xcarchive"
           CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
           DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
           CURRENT_PROJECT_VERSION=${{ github.run_number }}
       - name: Export and upload (cloud signing)
         run: >
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/VividHome.xcarchive"
           -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export"
           -allowProvisioningUpdates
           -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey.p8"
@@ -301,5 +301,5 @@ After the owner's first valid capture, copy a trimmed session (≤ 10 keyframes,
 
 - `core-test` and `ios-check` green on the branch; the latest `ios-testflight` run uploaded and the build processed.
 - The owner completed the Test plan of the latest build, including a 5-minute room with 3 markers, 3 stills and 4 landmarks.
-- `cadastre validate` passes on that session; `apriltag` finds all 3 markers with < 3 cm spread; `plan add` + `calibrate` done for one level; `align` residual < 10 cm; `inspect` shows the trajectory on the plan.
+- `vividhome validate` passes on that session; `apriltag` finds all 3 markers with < 3 cm spread; `plan add` + `calibrate` done for one level; `align` residual < 10 cm; `inspect` shows the trajectory on the plan.
 - Docs updated to match; ADRs current; `docs/schedule.md` checked off through day 12.

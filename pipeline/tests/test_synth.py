@@ -9,10 +9,10 @@ import cv2
 import numpy as np
 import pytest
 
-from cadastre.markers import marker_id
-from cadastre.session import Session
-from cadastre.synth import SynthSpec, _project, _tag_corners_world, build
-from cadastre.validate import validate_session
+from vividhome.markers import marker_id
+from vividhome.session import Session
+from vividhome.synth import SynthSpec, _project, _tag_corners_world, build
+from vividhome.validate import validate_session
 
 
 @pytest.fixture(scope="module")

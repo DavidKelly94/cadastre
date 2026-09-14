@@ -8,7 +8,7 @@ import json
 import numpy as np
 import pytest
 
-from cadastre.apriltag import (
+from vividhome.apriltag import (
     MAX_DISTANCE_M,
     MIN_TAG_SIDE_PX,
     R_AM,
@@ -17,8 +17,8 @@ from cadastre.apriltag import (
     solve_session,
     write_detections,
 )
-from cadastre.session import Session
-from cadastre.synth import build
+from vividhome.session import Session
+from vividhome.synth import build
 
 #: The accuracy docs/design/pipeline-design.md §9 asks of this fixture.
 TOLERANCE_M = 0.01
@@ -132,7 +132,7 @@ def test_anchor_frame_agrees_with_pnp(synth, solved):
 
 def test_a_wrong_r_am_would_be_caught(synth, solved, monkeypatch):
     """The check has to be capable of failing, or it proves nothing."""
-    import cadastre.apriltag as module
+    import vividhome.apriltag as module
 
     wrong = np.eye(4)  # the identity: treat the anchor frame as the marker frame
     monkeypatch.setattr(module, "R_AM", wrong)

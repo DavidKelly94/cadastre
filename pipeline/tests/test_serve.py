@@ -11,12 +11,12 @@ from pathlib import Path
 
 import pytest
 
-from cadastre.serve import MAX_BODY_BYTES, make_server
+from vividhome.serve import MAX_BODY_BYTES, make_server
 
 
 @pytest.fixture
 def server(tmp_path: Path):
-    store = tmp_path / "cadastre-data"
+    store = tmp_path / "vividhome-data"
     (store / "inspect").mkdir(parents=True)
     (store / "inspect" / "main.html").write_text("<h1>plan</h1>", encoding="utf-8")
 

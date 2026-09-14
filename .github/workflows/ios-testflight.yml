@@ -46,9 +46,9 @@ jobs:
       - name: Archive (unsigned)
         run: |
           set -o pipefail
-          xcodebuild archive -project ios/Cadastre.xcodeproj -scheme Cadastre \
+          xcodebuild archive -project ios/VividHome.xcodeproj -scheme VividHome \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/Cadastre.xcarchive" \
+            -archivePath "$RUNNER_TEMP/VividHome.xcarchive" \
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
@@ -57,7 +57,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/Cadastre.xcarchive" \
+            -archivePath "$RUNNER_TEMP/VividHome.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -exportPath "$RUNNER_TEMP/export" \
             -allowProvisioningUpdates \

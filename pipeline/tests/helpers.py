@@ -1,6 +1,6 @@
 """Builders for a minimal, format-valid session on disk.
 
-This is deliberately small and hand-written. `cadastre synth` will later build a
+This is deliberately small and hand-written. `vividhome synth` will later build a
 richer session with real geometry; until it exists, the loader and validator
 still need something to read, and a fixture whose every number is visible in the
 test file is easier to reason about when an assertion fails.
@@ -119,7 +119,7 @@ def build_session(root: Path, *, keyframes: int = 3) -> Path:
             {
                 "t": 0.5,
                 "i": 1,
-                "marker_id": "CD-012",
+                "marker_id": "VH-012",
                 "T_wa": pose_cm(1.0, 1.2, -2.0),
                 "tracked": True,
                 "physical_width_m": 0.20,
@@ -142,14 +142,14 @@ def build_session(root: Path, *, keyframes: int = 3) -> Path:
     )
 
     manifest = {
-        "format_version": 2,
+        "format_version": 3,
         "session_id": "20261103-141502_main_kitchen_k3x7qa",
         "status": "complete",
         "project": {"slug": "our-house", "name": "Our House"},
         "level": {"slug": "main", "name": "Main Floor", "index": 1},
         "room": {"slug": "kitchen", "name": "Kitchen"},
         "phases": ["electrical", "plumbing"],
-        "expected_markers": ["CD-012"],
+        "expected_markers": ["VH-012"],
         "device": {
             "model": "iPhone16,1",
             "ios_version": "26.6",

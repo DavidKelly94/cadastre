@@ -7,7 +7,7 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-13, after PR #28.
+Last updated: 2026-09-14, after the rename to VividHome (ADR-0024).
 
 ## The short version
 
@@ -22,7 +22,7 @@ as "works". The screens do not exist.
 |---|---|---|
 | `validate` | done | All 8 rules, `--skip-images`, `--skip-depth` |
 | `synth` | done | Writes a format_version 2 session |
-| `markers` | done | Generates `CD-000`–`CD-059`, PDF and PNG |
+| `markers` | done | Generates `VH-000`–`VH-059`, PDF and PNG |
 | `apriltag` | done | 36h11 via `cv2.aruco`, subpixel refinement, IPPE_SQUARE |
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
@@ -32,14 +32,14 @@ as "works". The screens do not exist.
 
 14 modules, **232 tests passing**, ruff clean.
 
-## Swift core (`ios/CadastreCore/`) — complete
+## Swift core (`ios/VividHomeCore/`) — complete
 
 13 modules, 11 test files, all Linux-tested. `Transform`, `SessionID`,
 `Records`, `Coding`, `KeyframePolicy`, `HealthPolicy`, `JSONLWriter`,
 `RowPacker`, `SessionLayout`, `SessionLifecycle`, `BoundedWriteQueue`,
-`SessionStore`, plus the `cadastre-fixture` binary the contract job runs.
+`SessionStore`, plus the `vividhome-fixture` binary the contract job runs.
 
-## iOS capture layer (`ios/Cadastre/`) — written, never run
+## iOS capture layer (`ios/VividHome/`) — written, never run
 
 | File | State |
 |---|---|
@@ -64,7 +64,9 @@ build-check screen and a bare AR view, both scaffolding from day 1.
 
 Design decisions for these are settled in `docs/ui/design-brief.md` §10.
 `docs/ui/design-canvas-brief.md` is the self-contained handoff for Claude
-Design; the canvas itself has not been made.
+Design. **Both it and the design brief's §2 motif are orphaned by the rename**:
+the parcel/plat imagery came from the meaning of "cadastre" and needs
+replacing. The tokens, type and contrast work are unaffected.
 
 ## CI
 
@@ -73,15 +75,15 @@ source of truth. What each check *covers* is the durable fact:
 
 | Check | Runs on | Covers |
 |---|---|---|
-| `swift` | every push, Linux | `CadastreCore` unit tests. Cannot see the app target. |
+| `swift` | every push, Linux | `VividHomeCore` unit tests. Cannot see the app target. |
 | `python` | every push, Linux | ruff and the full pipeline suite. |
-| `contract` | every push, Linux | `CadastreCore` writes a session, `cadastre validate` reads it. **The only check that puts both implementations in contact.** |
+| `contract` | every push, Linux | `VividHomeCore` writes a session, `vividhome validate` reads it. **The only check that puts both implementations in contact.** |
 | `ios-check` | **pull requests only** | `xcodebuild` of the app target. The only thing that compiles the ARKit layer, and the only check that catches a core change breaking the app. |
 | `ios-testflight` | push to the work branch | No-ops: a Linux preflight gates the macOS build on `ASC_KEY_ID`. |
 | `Claude Review` | pull requests | The shared review rubric. First ran 2026-09-13, having silently failed at startup before that. |
 
 Two gaps worth knowing. `swift` passing does **not** mean the app compiles —
-Linux never builds the app target, so a `CadastreCore` change can break
+Linux never builds the app target, so a `VividHomeCore` change can break
 `SessionRecorder` and only `ios-check` will say so. And nothing in CI runs
 ARKit, so no check here can tell you the capture works.
 
@@ -91,8 +93,9 @@ ARKit, so no check here can tell you the capture works.
    `ASC_PRIVATE_KEY_P8`, `APPLE_TEAM_ID`. Until these exist `ios-testflight`
    no-ops and there is no build on a phone. This is the single biggest blocker:
    everything in the capture layer stays unverified without it.
-2. **Register the App ID** `com.cadastrerecord.app`. No domain purchase first —
-   ADR-0023 removed that dependency. The App ID is still the point of no return.
+2. **Register `vividhome.ai`, then the App ID** `ai.vividhome.app` (ADR-0024).
+   The domain comes first: the identifier is its reverse-DNS form and the App
+   ID is the point of no return. `.ai` carries a two-year minimum.
 3. **The first real capture** — needed to confirm `R_am`, ARKit buffer strides
    and `ARReferenceImage` validation, and to fill `samples/`, which is empty.
 4. **Print and laminate the markers** (`docs/markers.md`), verifying 20.0 cm

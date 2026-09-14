@@ -1,25 +1,25 @@
-name: Cadastre
+name: VividHome
 options:
-  bundleIdPrefix: com.cadastrerecord
+  bundleIdPrefix: ai.vividhome
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 packages:
-  CadastreCore:
-    path: CadastreCore
+  VividHomeCore:
+    path: VividHomeCore
 targets:
-  Cadastre:
+  VividHome:
     type: application
     platform: iOS
-    sources: [Cadastre]
+    sources: [VividHome]
     dependencies:
-      - package: CadastreCore
-        product: CadastreCore
+      - package: VividHomeCore
+        product: VividHomeCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.cadastrerecord.app
-        PRODUCT_NAME: Cadastre
+        PRODUCT_BUNDLE_IDENTIFIER: ai.vividhome.app
+        PRODUCT_NAME: VividHome
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
@@ -28,13 +28,13 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
     info:
-      path: Cadastre/Info.plist
+      path: VividHome/Info.plist
       properties:
-        CFBundleDisplayName: Cadastre
+        CFBundleDisplayName: VividHome
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiredDeviceCapabilities: [arkit, arm64]
-        NSCameraUsageDescription: "Cadastre records the camera and LiDAR to document your house during construction."
+        NSCameraUsageDescription: "VividHome records the camera and LiDAR to document your house during construction."
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         ITSAppUsesNonExemptEncryption: false

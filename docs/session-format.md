@@ -1,4 +1,4 @@
-# Cadastre session format (format_version 2)
+# VividHome session format (format_version 3)
 
 A **session** is one continuous capture of one room in one pass, carrying the set of construction phases exposed while it was recorded ([ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md)). The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
 
@@ -14,7 +14,7 @@ Session ID: `<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>`
 
 Example: `20261103-141502_main_kitchen_k3x7qa`.
 
-**Phases are not in the id.** They live in `manifest.json` as `phases`, because a pass can expose several trades at once and because a phase may be corrected after the capture; an identifier that is also a directory name cannot be. `cadastre inspect` prints the phases for a session, since the folder name no longer says. See [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md).
+**Phases are not in the id.** They live in `manifest.json` as `phases`, because a pass can expose several trades at once and because a phase may be corrected after the capture; an identifier that is also a directory name cannot be. `vividhome inspect` prints the phases for a session, since the folder name no longer says. See [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md).
 
 ## 2. Directory layout
 
@@ -65,7 +65,7 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
 
 ```json
 {
-  "format_version": 2,
+  "format_version": 3,
   "session_id": "20261103-141502_main_kitchen_k3x7qa",
   "status": "complete",
   "project": { "slug": "our-house", "name": "Our House" },
@@ -73,7 +73,7 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
   "room":    { "slug": "kitchen", "name": "Kitchen" },
   "phases":  ["electrical", "plumbing"],
   "notes":   "Panel and supply lines both open in the north wall.",
-  "expected_markers": ["CD-012", "CD-013", "CD-014"],
+  "expected_markers": ["VH-012", "VH-013", "VH-014"],
   "device":  { "model": "iPhone16,1", "ios_version": "26.6", "app_version": "0.1.0", "app_build": "37" },
   "capture": {
     "started_at": "2026-11-03T14:15:02-05:00",
@@ -129,7 +129,7 @@ Same fields as a keyframe line plus `s` (still index) and `path` (`stills/000.jp
 ## 7. `panos.jsonl` (reserved, optional)
 
 Panoramas are **not produced by the MVP app**, but the slot is reserved now so
-adding them later is additive and keeps `format_version` at 2. A reader must
+adding them later is additive and keeps `format_version` at 3. A reader must
 tolerate the directory and the file being absent, and must ignore fields it does
 not recognise.
 
@@ -163,10 +163,10 @@ second calibration path. Stitching offline is the cheaper first move and is why
 Marker observation (from `ARImageAnchor` add/update events):
 
 ```json
-{"t":31.02,"i":211,"marker_id":"CD-012","T_wa":[...16...],"tracked":true,"physical_width_m":0.20}
+{"t":31.02,"i":211,"marker_id":"VH-012","T_wa":[...16...],"tracked":true,"physical_width_m":0.20}
 ```
 
-`T_wa` is the **ARKit image-anchor** transform: origin at the image centre, `+x` to the right of the printed image, `+z` toward the bottom of the printed image, `+y` the normal pointing out of the printed face. The pipeline converts it to the canonical marker frame used for AprilTag PnP (`+x` right, `+y` toward the top of the tag, `+z` out of the face): `T_wm = T_wa · R_am` with `R_am` the 4x4 whose 3x3 block has columns `(1,0,0)`, `(0,0,-1)`, `(0,1,0)`. The first real capture must confirm this with `cadastre apriltag --check-anchor-frame`; if the axes disagree, fix the pipeline's constant, never the app.
+`T_wa` is the **ARKit image-anchor** transform: origin at the image centre, `+x` to the right of the printed image, `+z` toward the bottom of the printed image, `+y` the normal pointing out of the printed face. The pipeline converts it to the canonical marker frame used for AprilTag PnP (`+x` right, `+y` toward the top of the tag, `+z` out of the face): `T_wm = T_wa · R_am` with `R_am` the 4x4 whose 3x3 block has columns `(1,0,0)`, `(0,0,-1)`, `(0,1,0)`. The first real capture must confirm this with `vividhome apriltag --check-anchor-frame`; if the axes disagree, fix the pipeline's constant, never the app.
 
 Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowing: .estimatedPlane, alignment: .any)`):
 
@@ -184,21 +184,21 @@ Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowi
 
 Per keyframe: JPEG 250–400 KB at quality 0.85, depth 196,608 B, confidence 49,152 B. With motion-gated keyframes (typically 2–4 per second while walking, at most 10 per second) a 5-minute room is 300–800 MB plus 3–5 MB per still. The app refuses to start a session with less than 2 GB free and stops at 500 MB free.
 
-## 11. Validation rules (`cadastre validate`)
+## 11. Validation rules (`vividhome validate`)
 
-1. `manifest.json` parses, `format_version == 2`, `status != "incomplete"` (a warning, not an error, for `repaired`). `phases` is a non-empty array whose entries are each one of `framing`, `electrical`, `plumbing`, `hvac`, `insulation`, `drywall`, `finish`, `other`.
+1. `manifest.json` parses, `format_version == 3`, `status != "incomplete"` (a warning, not an error, for `repaired`). `phases` is a non-empty array whose entries are each one of `framing`, `electrical`, `plumbing`, `hvac`, `insulation`, `drywall`, `finish`, `other`.
 2. Every JSONL line parses; `i` strictly increasing; `t` non-decreasing and within `[0, duration_s + 1]`.
 3. Every referenced file exists; depth files are exactly `dw*dh*4` bytes; confidence files exactly `dw*dh` bytes; JPEGs decode and have the declared size.
 4. Every `T_wc` rotation block is orthonormal (`|R Rᵀ − I| < 1e-3`, `det R ≈ +1`).
 5. `K` has `fx, fy > 0`, `cx` within `[0, w]`, `cy` within `[0, h]`.
 6. At least 80% of depth pixels valid in at least 80% of keyframes (warning otherwise).
 7. Stats in the manifest match the counted files (warning otherwise).
-8. Marker IDs match `CD-\d{3}`; landmarks have finite coordinates.
+8. Marker IDs match `VH-\d{3}`; landmarks have finite coordinates.
 
 The command prints a summary and exits non-zero on any error.
 
 ## 12. Evolution
 
-Additive fields keep `format_version` 2; the pipeline must ignore unknown fields. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading every version that was ever captured. Never rewrite raw session files; all processing output goes under `derived/`.
+Additive fields keep `format_version` 3; the pipeline must ignore unknown fields. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading every version that was ever captured. Never rewrite raw session files; all processing output goes under `derived/`.
 
-**Version 1 was never captured.** It existed only in this document and in code that had not yet run on a device when [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md) replaced it, so there is no version 1 session anywhere and readers need not accept one. This is the only version the pipeline may ever refuse: from version 2 on, a version that has written a real session must keep being readable.
+**Versions 1 and 2 were never captured.** Each existed only in this document and in code that had not yet run on a device: version 1 when [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md) replaced it, and version 2 when [ADR-0024](adr/0024-name-vividhome.md) changed the marker prefix to `VH-`. No session exists at either version anywhere, so readers need not accept one. These are the only versions the pipeline may ever refuse: from version 3 on, a version that has written a real session must keep being readable.

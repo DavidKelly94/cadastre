@@ -30,7 +30,8 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0020](0020-bundle-id-cadastre-build.md) | The product is named Cadastre, bundle ID `build.cadastre.app` | Superseded by [ADR-0023](0023-bundle-id-needs-no-domain.md) |
 | [ADR-0021](0021-session-format-is-the-only-cross-language-contract.md) | The session format is the only cross-language contract | Accepted |
 | [ADR-0022](0022-session-is-one-pass-carrying-phases.md) | A session is one room in one pass, carrying a set of phases | Accepted |
-| [ADR-0023](0023-bundle-id-needs-no-domain.md) | The bundle identifier is `com.cadastrerecord.app` and depends on no domain | Accepted |
+| [ADR-0023](0023-bundle-id-needs-no-domain.md) | The bundle identifier is `com.cadastrerecord.app` and depends on no domain | Superseded by [ADR-0024](0024-name-vividhome.md) |
+| [ADR-0024](0024-name-vividhome.md) | The product is named VividHome, bundle ID `ai.vividhome.app` | Accepted |
 
 ## Adding a new ADR
 

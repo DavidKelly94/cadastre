@@ -52,7 +52,7 @@ owner. The steps are kept below as the record of what was done.
    | `docs/transfer-runbook.md` | the example strings in this very table |
 
    **Leave two files alone.** `docs/plan.md` records the plan as approved on a date,
-   and `docs/adr/0015-name-cadastre.md` is a superseded decision. Both are historical
+   and `docs/adr/0015-name-vividhome.md` is a superseded decision. Both are historical
    record, and rewriting them destroys the audit trail the ADRs exist to keep.
 
    Then confirm: `git grep -n 'DavidKelly94'` returns hits **only** in

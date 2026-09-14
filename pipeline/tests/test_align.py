@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from cadastre.align import (
+from vividhome.align import (
     REFUSE_RMS_M,
     AlignError,
     floor_y_session,
@@ -20,10 +20,10 @@ from cadastre.align import (
     update_marker_map,
     write_alignment,
 )
-from cadastre.plan import add_plan, calibrate, house_to_plan
-from cadastre.session import Session
-from cadastre.synth import SynthSpec, build
-from cadastre.transforms import mat_to_cm, se2_to_mat, theta_from_se2
+from vividhome.plan import add_plan, calibrate, house_to_plan
+from vividhome.session import Session
+from vividhome.synth import SynthSpec, build
+from vividhome.transforms import mat_to_cm, se2_to_mat, theta_from_se2
 
 
 @pytest.fixture(scope="module")
@@ -31,7 +31,7 @@ def scene(tmp_path_factory):
     """A synthetic session plus a calibrated plan, in one store."""
     root = tmp_path_factory.mktemp("align")
     truth = build(root / "20261103-141502_main_room_framing_aaaaaa", SynthSpec(keyframes=12))
-    store = root / "cadastre-data"
+    store = root / "vividhome-data"
 
     source = root / "plan.png"
     Image.new("RGB", (1200, 900), (255, 255, 255)).save(source, "PNG")
@@ -219,16 +219,16 @@ def test_t_y_puts_the_session_floor_at_the_level_height(scene, tmp_path: Path):
 def test_marker_pairs_require_detections(scene, tmp_path: Path):
     _truth, store, _ = scene
     fresh = build(tmp_path / "nodetect", SynthSpec(keyframes=3))
-    with pytest.raises(AlignError, match="run 'cadastre apriltag'"):
+    with pytest.raises(AlignError, match="run 'vividhome apriltag'"):
         marker_pairs(Session.load(fresh.root), store, "synthetic")
 
 
 def test_markers_are_added_to_the_house_map_then_reused(tmp_path: Path):
-    from cadastre.apriltag import aggregate, solve_session, write_detections
+    from vividhome.apriltag import aggregate, solve_session, write_detections
 
     result = build(tmp_path / "s")
     session = Session.load(result.root)
-    store = tmp_path / "cadastre-data"
+    store = tmp_path / "vividhome-data"
 
     source = tmp_path / "plan.png"
     Image.new("RGB", (1200, 900), (255, 255, 255)).save(source, "PNG")
@@ -266,11 +266,11 @@ def test_markers_are_added_to_the_house_map_then_reused(tmp_path: Path):
 
 def test_an_established_marker_is_not_moved_by_a_later_session(tmp_path: Path):
     """The house map must not drift one small correction at a time."""
-    from cadastre.apriltag import aggregate, solve_session, write_detections
+    from vividhome.apriltag import aggregate, solve_session, write_detections
 
     result = build(tmp_path / "s")
     session = Session.load(result.root)
-    store = tmp_path / "cadastre-data"
+    store = tmp_path / "vividhome-data"
     source = tmp_path / "plan.png"
     Image.new("RGB", (1200, 900), (255, 255, 255)).save(source, "PNG")
     add_plan(store, source, "main")

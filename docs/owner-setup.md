@@ -1,8 +1,8 @@
-# Cadastre owner setup
+# VividHome owner setup
 
 This is the runbook for everything only you can do: the Apple and GitHub accounts, the phone, the markers and the PC. None of it needs a Mac. The implementer handles all code, CI and build failures; you handle this list and report what you see.
 
-You need an iPhone 15 Pro or newer, your Apple Account with a payment method, admin rights on `github.com/DavidKelly94/cadastre`, and the Windows PC.
+You need an iPhone 15 Pro or newer, your Apple Account with a payment method, admin rights on `github.com/DavidKelly94/vividhome`, and the Windows PC.
 
 ## 1. Day 0: Apple Developer Program
 
@@ -12,37 +12,37 @@ You need an iPhone 15 Pro or newer, your Apple Account with a payment method, ad
 
 ## 2. Register the App ID
 
-Nothing to buy first. The bundle identifier is `com.cadastrerecord.app`, which is rooted in a coined
+Nothing to buy first. The bundle identifier is `com.vividhomerecord.app`, which is rooted in a coined
 string rather than a domain ([ADR-0023](adr/0023-bundle-id-needs-no-domain.md)). Apple never
 verifies domain ownership for a bundle identifier — reverse-DNS is a collision-avoidance convention,
 not a claim of control — so there is no purchase on the critical path and nothing that can be lost to
 a lapsed registration.
 
 Sign in at https://developer.apple.com/account, open Certificates, Identifiers & Profiles, then
-Identifiers. Click the plus button, choose App IDs, then App. Description `Cadastre`, Bundle ID
-**Explicit**, `com.cadastrerecord.app`. Tick no capabilities. Register. **This identifier is
+Identifiers. Click the plus button, choose App IDs, then App. Description `VividHome`, Bundle ID
+**Explicit**, `com.vividhomerecord.app`. Tick no capabilities. Register. **This identifier is
 permanent** — it cannot be changed after the next section, so check the spelling before clicking.
 
 ## 3. Create the app in App Store Connect
 
-At https://appstoreconnect.apple.com open My Apps, click the plus button, New App. Platform iOS, Name **`Cadastre: Building Record`**, Bundle ID `com.cadastrerecord.app`, SKU anything (for example `cadastre-ios`).
+At https://appstoreconnect.apple.com open My Apps, click the plus button, New App. Platform iOS, Name **`VividHome: Building Record`**, Bundle ID `com.vividhomerecord.app`, SKU anything (for example `vividhome-ios`).
 
-**Do not type just `Cadastre`.** App Store names must be unique across the whole store, and `Cadastre` is already taken by a French cadastre and parcel viewer (app id 1507993968). Names are capped at 30 characters; `Cadastre: Building Record` is 25 and puts the word *building* beside the wordmark, which is the counterweight to the land reading of the name. The display name can be changed up until first release; the bundle ID cannot be changed at all once this record exists.
+**Do not type just `VividHome`.** App Store names must be unique across the whole store, and `VividHome` is already taken by a French vividhome and parcel viewer (app id 1507993968). Names are capped at 30 characters; `VividHome: Building Record` is 25 and puts the word *building* beside the wordmark, which is the counterweight to the land reading of the name. The display name can be changed up until first release; the bundle ID cannot be changed at all once this record exists.
 
 ## 4. App Store Connect API key (Admin) and Team ID
 
 1. In App Store Connect open Users and Access, the Integrations tab, then App Store Connect API. If it shows a Request Access button, click it and accept the terms.
-2. Under Team Keys click Generate API Key. Name `github-actions-cadastre`, Access **Admin**. Admin is required: the build signs in the cloud, and any lower role fails with "Cloud signing permission error".
+2. Under Team Keys click Generate API Key. Name `github-actions-vividhome`, Access **Admin**. Admin is required: the build signs in the cloud, and any lower role fails with "Cloud signing permission error".
 3. Download the `.p8` file. Apple allows this **once**; keep it somewhere safe. Note the **Key ID** (10 characters) on that row and the **Issuer ID** (a long UUID) at the top of the page.
 4. Find your **Team ID** at https://developer.apple.com/account under Membership details (10 characters).
 
 ## 5. TestFlight
 
-In App Store Connect open Cadastre, then the TestFlight tab. Under Internal Testing click the plus button, name the group `Owner`, tick **Enable automatic distribution**, and add yourself as a tester. On the phone, install TestFlight from the App Store and sign in with the same Apple Account.
+In App Store Connect open VividHome, then the TestFlight tab. Under Internal Testing click the plus button, name the group `Owner`, tick **Enable automatic distribution**, and add yourself as a tester. On the phone, install TestFlight from the App Store and sign in with the same Apple Account.
 
 ## 6. GitHub secrets and the build workflow
 
-Open https://github.com/DavidKelly94/cadastre/settings/secrets/actions and add four repository secrets:
+Open https://github.com/DavidKelly94/vividhome/settings/secrets/actions and add four repository secrets:
 
 | Secret | Value |
 |---|---|
@@ -57,33 +57,33 @@ Never paste the `.p8` into an issue, a chat or a commit.
 
 ## 7. Install a build and follow the test plan
 
-TestFlight notifies you when a build has been processed, usually within 15 minutes of the workflow finishing. Open TestFlight, Cadastre, Install or Update. The build number is the GitHub run number and is shown on the app's first screen.
+TestFlight notifies you when a build has been processed, usually within 15 minutes of the workflow finishing. Open TestFlight, VividHome, Install or Update. The build number is the GitHub run number and is shown on the app's first screen.
 
 Every build carries its own test plan: open Settings in the app, then Test plan (the same text is in TestFlight under What to Test). Work through it and report the build number, each item as pass or fail, and your iPhone model and iOS version. If a session misbehaves, include its `log.txt` (step 8). Builds expire 90 days after upload; install the newest one.
 
 ## 8. Getting sessions to the PC
 
-Sessions live in the Files app: On My iPhone, Cadastre, `sessions`, a project folder, then one folder per session named like `20260926-101500_L1_kitchen_framing_a1b2c3`. A 5-minute room is about 800 MB.
+Sessions live in the Files app: On My iPhone, VividHome, `sessions`, a project folder, then one folder per session named like `20260926-101500_L1_kitchen_framing_a1b2c3`. A 5-minute room is about 800 MB.
 
-Over Wi-Fi (SMB): on the PC, right-click a folder such as `D:\cadastre-inbox`, Properties, Sharing, Share, add your Windows user, and note the PC's IP address (`ipconfig`). On the phone, in Files tap the three dots, Connect to Server, enter `smb://<pc-ip>`, sign in as a registered user; the share appears under Shared. Long-press the session folder, Copy, open the share, Paste. Use the 5 GHz network.
+Over Wi-Fi (SMB): on the PC, right-click a folder such as `D:\vividhome-inbox`, Properties, Sharing, Share, add your Windows user, and note the PC's IP address (`ipconfig`). On the phone, in Files tap the three dots, Connect to Server, enter `smb://<pc-ip>`, sign in as a registered user; the share appears under Shared. Long-press the session folder, Copy, open the share, Paste. Use the 5 GHz network.
 
-Over USB: install Apple Devices from the Microsoft Store, plug the phone in, tap Trust on the phone, select the iPhone, open Files, expand Cadastre and drag session folders to the PC.
+Over USB: install Apple Devices from the Microsoft Store, plug the phone in, tap Trust on the phone, select the iPhone, open Files, expand VividHome and drag session folders to the PC.
 
-Delete a session from the phone only after `cadastre validate` (step 9) has passed on the PC copy: Session review, Delete, or delete the folder in Files. Deleting the app deletes every session still on the phone.
+Delete a session from the phone only after `vividhome validate` (step 9) has passed on the PC copy: Session review, Delete, or delete the folder in Files. Deleting the app deletes every session still on the phone.
 
 ## 9. The PC pipeline
 
 1. Install uv: in PowerShell run `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`. Install Git for Windows if `git` is missing.
-2. `git clone https://github.com/DavidKelly94/cadastre`, then `cd cadastre\pipeline` and `uv sync` (installs Python 3.12 and every dependency).
-3. `uv run cadastre --help` lists the commands.
-4. After every capture: `uv run cadastre ingest D:\cadastre-inbox\<session>` copies it into the project store, then `uv run cadastre validate <session>` checks the files. Paste the full output to the implementer, even when it passes.
-5. As they land: `uv run cadastre apriltag`, `plan add`, `plan calibrate`, `align` and `inspect` (serves a page at http://localhost:8000). Run `git pull` and `uv sync` first to pick up new commands.
+2. `git clone https://github.com/DavidKelly94/vividhome`, then `cd vividhome\pipeline` and `uv sync` (installs Python 3.12 and every dependency).
+3. `uv run vividhome --help` lists the commands.
+4. After every capture: `uv run vividhome ingest D:\vividhome-inbox\<session>` copies it into the project store, then `uv run vividhome validate <session>` checks the files. Paste the full output to the implementer, even when it passes.
+5. As they land: `uv run vividhome apriltag`, `plan add`, `plan calibrate`, `align` and `inspect` (serves a page at http://localhost:8000). Run `git pull` and `uv sync` first to pick up new commands.
 
-Keep the project store outside the git checkout (for example `D:\cadastre\projects`) and back it up to an external drive after each visit.
+Keep the project store outside the git checkout (for example `D:\vividhome\projects`) and back it up to an external drive after each visit.
 
 ## 10. Printing markers
 
-`uv run cadastre markers --out markers.pdf` writes one marker per page, `CD-000` to `CD-059`. Print the first 20 pages on Letter or A4 at 100% (never Fit to page). Laminate with matte pouches; glossy lamination causes glare that breaks detection. Check with a tape that the outer square measures 20.0 cm. Placement and record keeping follow `docs/markers.md`: two per room, on surfaces that survive the next phase, never moved, position written down.
+`uv run vividhome markers --out markers.pdf` writes one marker per page, `VH-000` to `VH-059`. Print the first 20 pages on Letter or A4 at 100% (never Fit to page). Laminate with matte pouches; glossy lamination causes glare that breaks detection. Check with a tape that the outer square measures 20.0 cm. Placement and record keeping follow `docs/markers.md`: two per room, on surfaces that survive the next phase, never moved, position written down.
 
 ## 11. Troubleshooting
 
@@ -94,13 +94,13 @@ Keep the project store outside the git checkout (for example `D:\cadastre\projec
 | Workflow succeeded but no build in TestFlight | Apple processing delay. Wait up to an hour, then check App Store Connect, TestFlight, iOS builds for a processing or rejected state. |
 | TestFlight asks about export compliance | Should not happen: the app sets `ITSAppUsesNonExemptEncryption` to false. If it does, answer No. |
 | Build shows Expired in TestFlight | Builds last 90 days. Install a newer build or run the workflow again. |
-| App Store Connect rejects the app name | It is taken; add or change the qualifier, for example `Cadastre: Site Record`. Never change the bundle ID to work around a name clash. |
+| App Store Connect rejects the app name | It is taken; add or change the qualifier, for example `VividHome: Site Record`. Never change the bundle ID to work around a name clash. |
 | Phone cannot see the SMB share | Same Wi-Fi network, Windows file sharing on, use the IP address not the PC name. |
-| `cadastre validate` fails | Paste the output to the implementer. Do not delete the session from the phone. |
+| `vividhome validate` fails | Paste the output to the implementer. Do not delete the session from the phone. |
 
 ## 12. Fallback capture if the app is not ready
 
-If framing starts before Cadastre is capture-ready, capture anyway with a free ARKit recorder plus the same markers and protocol; `cadastre ingest` gets a converter for it and nothing downstream changes.
+If framing starts before VividHome is capture-ready, capture anyway with a free ARKit recorder plus the same markers and protocol; `vividhome ingest` gets a converter for it and nothing downstream changes.
 
 - NeRFCapture: free on the App Store, updated May 2026; saves posed images plus LiDAR depth offline.
 - Stray Scanner: RGB, depth, confidence, intrinsics and poses.

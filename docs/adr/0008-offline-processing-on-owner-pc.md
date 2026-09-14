@@ -10,7 +10,7 @@ The owner has a Windows PC with an RTX 4070 Super (12 GB) and no Mac. The scope 
 
 ## Decision
 
-The phone only records. All processing runs offline on the PC through the `cadastre` CLI (Python 3.12, `uv`; `ingest`, `validate`, `apriltag`, `plan add`, `plan calibrate`, `align`, `inspect`, `markers`), with local pages served by `python -m http.server` for calibration, alignment and inspection. Sessions reach the PC through the Files app (SMB share or USB with the Apple Devices app); LAN upload is a day-13 stretch. Raw sessions are the archive and are never modified; every output under `derived/` is reproducible. No server, no accounts, no telemetry.
+The phone only records. All processing runs offline on the PC through the `vividhome` CLI (Python 3.12, `uv`; `ingest`, `validate`, `apriltag`, `plan add`, `plan calibrate`, `align`, `inspect`, `markers`), with local pages served by `python -m http.server` for calibration, alignment and inspection. Sessions reach the PC through the Files app (SMB share or USB with the Apple Devices app); LAN upload is a day-13 stretch. Raw sessions are the archive and are never modified; every output under `derived/` is reproducible. No server, no accounts, no telemetry.
 
 ## Consequences
 

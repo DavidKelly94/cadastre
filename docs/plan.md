@@ -1,4 +1,4 @@
-# Cadastre — capture your house during construction, see behind the walls forever
+# VividHome — capture your house during construction, see behind the walls forever
 
 > **Changes since approval.** This document records the plan as approved on 2026-09-11 and its
 > decision table is left as written, including the working name of the time. Four things have
@@ -8,12 +8,12 @@
 >   a look behind walls ([ADR-0017](adr/0017-product-scope-record-and-collaboration.md)).
 > - The repositories stay public through the build sprint, then go private
 >   ([ADR-0018](adr/0018-staged-private-and-runner-budget.md)).
-> - The product is named **Cadastre** ([ADR-0019](adr/0019-name-cadastre.md)), with the bundle
->   identifier `com.cadastrerecord.app` ([ADR-0023](adr/0023-bundle-id-needs-no-domain.md), which
+> - The product is named **VividHome** ([ADR-0019](adr/0019-name-cadastre.md)), with the bundle
+>   identifier `com.vividhomerecord.app` ([ADR-0023](adr/0023-bundle-id-needs-no-domain.md), which
 >   replaced an identifier rooted in the owner's name). Identifiers below carry the new name; the
 >   decision table does not.
 > - Both repositories moved to `DavidKelly94`, so the repository is now
->   `DavidKelly94/cadastre` ([transfer runbook](transfer-runbook.md)).
+>   `DavidKelly94/vividhome` ([transfer runbook](transfer-runbook.md)).
 
 
 ## Context
@@ -50,9 +50,9 @@ Decisions made with the owner on 2026-09-11:
 ## Architecture
 
 ```
-iPhone 15 Pro — Cadastre app (Swift/SwiftUI + ARKit)     PC (RTX 4070 Super) — pipeline (Python)            Browser (TypeScript)
+iPhone 15 Pro — VividHome app (Swift/SwiftUI + ARKit)     PC (RTX 4070 Super) — pipeline (Python)            Browser (TypeScript)
 ┌────────────────────────────────┐   Files app /   ┌──────────────────────────────────────┐        ┌────────────────────────┐
-│ project/level/room/phase       │   USB / SMB     │ cadastre ingest → validate              │        │ web/ viewer (weeks 3+) │
+│ project/level/room/phase       │   USB / SMB     │ vividhome ingest → validate              │        │ web/ viewer (weeks 3+) │
 │ session recorder: RGB keyframes│ ──────────────▶ │ → apriltag poses → align (SE2/level) │ ─────▶ │ three.js + Spark       │
 │ + depth + confidence + pose + K│  session dirs   │ → inspector (plan + trajectories)    │  JSON  │ plan overlay, phases,  │
 │ high-res posed stills          │                 │ → (later) TSDF mesh, pose graph,     │  GLB   │ click→photos, measure  │
@@ -66,7 +66,7 @@ Coordinate frames: **session** (ARKit world: metres, +y up, gravity-aligned, ori
 
 ## 2-week MVP scope
 
-**In:** Cadastre iOS app on TestFlight; open session format; marker generator + placement protocol; capture protocol; pipeline `ingest`, `validate`, `apriltag`, `plan calibrate`, `align`, `inspect`; all docs below; fallback capture path documented day 1.
+**In:** VividHome iOS app on TestFlight; open session format; marker generator + placement protocol; capture protocol; pipeline `ingest`, `validate`, `apriltag`, `plan calibrate`, `align`, `inspect`; all docs below; fallback capture path documented day 1.
 
 **Out (weeks 3+):** TSDF meshing, pose graph, splats, AI features, full 3D viewer, AR x-ray, LAN upload (day-13 stretch only), accounts/cloud, Android.
 
@@ -87,44 +87,44 @@ Written in the first two days so they guide the build, kept current after:
 | `docs/ui/design-brief.md` | Self-contained Claude Design handoff (contents below). |
 | `docs/ai-roadmap.md` | AI feature ideas with inputs, approach, rough-in trial, effort, risk. |
 
-ADRs: 0001 native Swift/SwiftUI + ARKit over RN/Flutter/Unity/WebXR · 0002 iOS builds on GitHub Actions + TestFlight with an XcodeGen-generated project (no Mac) · 0003 unsigned archive + cloud-managed signed export via ASC API key; fastlane match fallback · 0004 session format = per-frame files + JSONL (JPEG, Float32 depth, UInt8 confidence, 4×4 poses), not video/vendor formats · 0005 one room per session, offline registration · 0006 AprilTag hybrid markers + plan as the invariant frame; ARWorldMap/Cloud Anchors rejected · 0007 per-level SE(2) alignment from tapped landmarks ↔ plan corners; auto-refinement deferred · 0008 offline processing on the owner's PC · 0009 posed photos + LiDAR mesh are truth, splats are a visual layer, no photogrammetry by default · 0010 AI labeling is assistive · 0011 viewer on three.js + Spark + SOG · 0012 monorepo; sessions in app Documents exposed to Files; no accounts · 0013 iOS 17 minimum, LiDAR required · 0014 plans as calibrated rasters · 0015 name "Igloo" on the brand of the time, superseded by 0019 and then 0020, then 0023 (name Cadastre, bundle ID `com.cadastrerecord.app`) · 0016 core logic in a pure-Swift package tested on Linux CI.
+ADRs: 0001 native Swift/SwiftUI + ARKit over RN/Flutter/Unity/WebXR · 0002 iOS builds on GitHub Actions + TestFlight with an XcodeGen-generated project (no Mac) · 0003 unsigned archive + cloud-managed signed export via ASC API key; fastlane match fallback · 0004 session format = per-frame files + JSONL (JPEG, Float32 depth, UInt8 confidence, 4×4 poses), not video/vendor formats · 0005 one room per session, offline registration · 0006 AprilTag hybrid markers + plan as the invariant frame; ARWorldMap/Cloud Anchors rejected · 0007 per-level SE(2) alignment from tapped landmarks ↔ plan corners; auto-refinement deferred · 0008 offline processing on the owner's PC · 0009 posed photos + LiDAR mesh are truth, splats are a visual layer, no photogrammetry by default · 0010 AI labeling is assistive · 0011 viewer on three.js + Spark + SOG · 0012 monorepo; sessions in app Documents exposed to Files; no accounts · 0013 iOS 17 minimum, LiDAR required · 0014 plans as calibrated rasters · 0015 name "Igloo" on the brand of the time, superseded by 0019 and then 0020, then 0023 (name VividHome, bundle ID `com.vividhomerecord.app`) · 0016 core logic in a pure-Swift package tested on Linux CI.
 
-`docs/ui/design-brief.md` contains: product one-liner and audience (owner on a dusty, bright, noisy site, one-handed, phone held up; later other homeowners); proposed theme (cadastre blocks as motif — each phase a course of blocks, the finished house the dome; ice-white/blue surfaces with one warm accent for record/primary actions; high outdoor contrast; rounded block-like cards); information architecture (Projects → Levels → Rooms → Sessions by phase; Markers; Settings; Test plan); every screen with purpose, primary action, content, states and success criteria — Onboarding (LiDAR check, camera permission, 3-card protocol tutorial), Project list + empty state, Project overview (per-phase coverage by room, storage, transfer status), Level view, Room detail (sessions by phase, checklist, notes, expected markers), **Capture HUD** (tracking quality with reasons, elapsed/keyframes/dropped/free GB/thermal, markers seen, coverage checklist strip, REC, Still, Mark landmark, mesh toggle, room/phase label; states: initializing, tracking normal/limited, recording, paused, finalizing with progress, error), Session review (top-down trajectory, thumbnails, stills, markers, landmarks, quality flags, notes, Open in Files/share/delete), Markers (IDs, placement notes, seen-in-N-sessions, print instructions), Settings, Test plan; web surfaces (plan calibration two-point scale, alignment correspondence picker, session inspector, later 3D viewer with phase slider, click-to-photo, measure); platform constraints (iOS HIG, SwiftUI-native components, Dynamic Type, ≥44 pt targets, dark HUD over camera, haptics on capture events, thumb reach for REC/Still, portrait-first); requested deliverables (iPhone 15 Pro portrait mockups per screen, HUD state sheet, app icon, web layouts, design tokens, PNG/PDF export); open questions.
+`docs/ui/design-brief.md` contains: product one-liner and audience (owner on a dusty, bright, noisy site, one-handed, phone held up; later other homeowners); proposed theme (vividhome blocks as motif — each phase a course of blocks, the finished house the dome; ice-white/blue surfaces with one warm accent for record/primary actions; high outdoor contrast; rounded block-like cards); information architecture (Projects → Levels → Rooms → Sessions by phase; Markers; Settings; Test plan); every screen with purpose, primary action, content, states and success criteria — Onboarding (LiDAR check, camera permission, 3-card protocol tutorial), Project list + empty state, Project overview (per-phase coverage by room, storage, transfer status), Level view, Room detail (sessions by phase, checklist, notes, expected markers), **Capture HUD** (tracking quality with reasons, elapsed/keyframes/dropped/free GB/thermal, markers seen, coverage checklist strip, REC, Still, Mark landmark, mesh toggle, room/phase label; states: initializing, tracking normal/limited, recording, paused, finalizing with progress, error), Session review (top-down trajectory, thumbnails, stills, markers, landmarks, quality flags, notes, Open in Files/share/delete), Markers (IDs, placement notes, seen-in-N-sessions, print instructions), Settings, Test plan; web surfaces (plan calibration two-point scale, alignment correspondence picker, session inspector, later 3D viewer with phase slider, click-to-photo, measure); platform constraints (iOS HIG, SwiftUI-native components, Dynamic Type, ≥44 pt targets, dark HUD over camera, haptics on capture events, thumb reach for REC/Still, portrait-first); requested deliverables (iPhone 15 Pro portrait mockups per screen, HUD state sheet, app icon, web layouts, design tokens, PNG/PDF export); open questions.
 
 ## Repo layout
 
 ```
-cadastre/
+vividhome/
   README.md
   docs/  feasibility.md  design/  adr/  ui/design-brief.md  ai-roadmap.md  schedule.md
          session-format.md  capture-protocol.md  markers.md  owner-setup.md  testplans/
   ios/
     project.yml                       # XcodeGen spec (single source of truth; project generated on the runner)
     ExportOptions.plist               # app-store-connect, destination upload, automatic signing
-    Cadastre/                            # app target: SwiftUI + thin ARKit layer
-      App/CadastreApp.swift  AppConfig.swift
+    VividHome/                            # app target: SwiftUI + thin ARKit layer
+      App/VividHomeApp.swift  AppConfig.swift
       Capture/{ARSessionController,SessionRecorder,FrameWriter,JPEGEncoder,MarkerLogger,LandmarkLogger,MeshExporter}.swift
       Screens/{Onboarding,ProjectPicker,RoomPicker,Capture,SessionReview,Markers,Settings,TestPlan}View.swift
-      Resources/{Markers/CD-000..059.png, TestPlan.md}
-    CadastreCore/                        # SwiftPM, pure Swift (no ARKit/simd): tests run on Linux
-      Package.swift  Sources/CadastreCore/{Transform,KeyframePolicy,FrameRecord,SessionManifest,JSONLWriter,HealthPolicy}.swift  Tests/
+      Resources/{Markers/VH-000..059.png, TestPlan.md}
+    VividHomeCore/                        # SwiftPM, pure Swift (no ARKit/simd): tests run on Linux
+      Package.swift  Sources/VividHomeCore/{Transform,KeyframePolicy,FrameRecord,SessionManifest,JSONLWriter,HealthPolicy}.swift  Tests/
   pipeline/
     pyproject.toml                    # uv; numpy, opencv-python-headless, pypdfium2, reportlab
-    cadastre/{ingest,validate,apriltag,plan,align,inspector,markers,synth}.py   tests/
+    vividhome/{ingest,validate,apriltag,plan,align,inspector,markers,synth}.py   tests/
   samples/                            # one trimmed real session (≤10 frames, <6 MB) for pipeline tests
   web/                                # weeks 3+
   .github/workflows/{core-test.yml, ios-check.yml, ios-testflight.yml}
 ```
 
-## iOS app (Cadastre)
+## iOS app (VividHome)
 
-- **Project**: XcodeGen pinned to the latest release (2.46.x; downloaded release asset with sha256 check, `brew install xcodegen` fallback). `project.yml`: iOS 17.0 target, Swift 5 language mode (avoids strict-concurrency compile failures we cannot iterate locally), `CODE_SIGN_STYLE Automatic`, team/build number from env, Info keys `NSCameraUsageDescription`, `UIFileSharingEnabled`, `LSSupportsOpeningDocumentsInPlace`, `ITSAppUsesNonExemptEncryption=false` (avoids the TestFlight compliance stall), `UIRequiredDeviceCapabilities [arkit]`, portrait only. System frameworks + the static CadastreCore package only; **no embedded frameworks** (they would break the unsigned-archive/signed-export flow).
+- **Project**: XcodeGen pinned to the latest release (2.46.x; downloaded release asset with sha256 check, `brew install xcodegen` fallback). `project.yml`: iOS 17.0 target, Swift 5 language mode (avoids strict-concurrency compile failures we cannot iterate locally), `CODE_SIGN_STYLE Automatic`, team/build number from env, Info keys `NSCameraUsageDescription`, `UIFileSharingEnabled`, `LSSupportsOpeningDocumentsInPlace`, `ITSAppUsesNonExemptEncryption=false` (avoids the TestFlight compliance stall), `UIRequiredDeviceCapabilities [arkit]`, portrait only. System frameworks + the static VividHomeCore package only; **no embedded frameworks** (they would break the unsigned-archive/signed-export flow).
 - **Screens** (`NavigationStack`): Onboarding → ProjectPicker → RoomPicker (level, room, phase `framing|electrical|plumbing|hvac|insulation|drywall|finish|other`, notes, expected marker IDs) → CaptureView (`ARView` in `UIViewRepresentable`; HUD as in the design brief; buttons REC / Still / Mark landmark / Stop) → SessionReview (stats, trajectory sketch, "Open in Files" via `shareddocuments://`, delete) → Markers → Settings (thresholds, JPEG quality, 30/60 fps) → TestPlan (renders the bundled per-build checklist).
 - **ARSessionController**: `ARWorldTrackingConfiguration` with `frameSemantics = [.sceneDepth]` (raw + confidence, best for offline fusion), `sceneReconstruction = .meshWithClassification`, `environmentTexturing = .none`, `worldAlignment = .gravity`, a 30 fps 1920×1440 video format (thermal), `detectionImages` built at launch from the bundled marker PNGs (`physicalWidth` 0.20 m, validated), `maximumNumberOfTrackedImages = 4`; capability guards with a clear message on unsupported devices.
-- **SessionRecorder** (`session(_:didUpdate:)`): `KeyframePolicy.shouldKeep` (CadastreCore; Δt ≥ 100 ms and moved > 0.10 m or rotated > 5°, tracking `.normal`). On keep: copy depth (256×192 Float32) and confidence (UInt8) synchronously (~250 KB), retain the `capturedImage` pixel buffer (never the `ARFrame`), enqueue a job.
+- **SessionRecorder** (`session(_:didUpdate:)`): `KeyframePolicy.shouldKeep` (VividHomeCore; Δt ≥ 100 ms and moved > 0.10 m or rotated > 5°, tracking `.normal`). On keep: copy depth (256×192 Float32) and confidence (UInt8) synchronously (~250 KB), retain the `capturedImage` pixel buffer (never the `ARFrame`), enqueue a job.
 - **FrameWriter**: serial utility queue + semaphore(2); a third in-flight job drops the frame and increments `dropped` (backpressure never blocks ARKit). **JPEGEncoder**: one Metal-backed `CIContext`, `CIImage(cvPixelBuffer:)` → `jpegRepresentation` at quality 0.85 (~10 ms/frame; Metal handles YCbCr→RGB). **JSONLWriter** appends via `FileHandle`, fsync every 50 lines.
 - **Stills**: `captureHighResolutionFrame` → `stills/NNN.jpg` + `stills.jsonl`. **MarkerLogger**: `ARImageAnchor` add/update → `markers.jsonl`. **LandmarkLogger**: tap → `arView.raycast(allowing: .estimatedPlane, alignment: .any)` → `landmarks.jsonl` (label such as "corner NW", "door D3 threshold", world point) — the correspondences for plan alignment. **MeshExporter** at stop: `ARMeshAnchor`s → world-space `mesh.obj` + `mesh_classes.u8` (one byte per face).
-- **HealthPolicy** (CadastreCore): refuse start < 2 GB free; warn at 5 min; auto-stop at 10 min or < 500 MB; `thermalState .serious` doubles keyframe thresholds, `.critical` stops; idle timer disabled; manifest written at start and finalized at stop; unfinished sessions repaired on next launch.
+- **HealthPolicy** (VividHomeCore): refuse start < 2 GB free; warn at 5 min; auto-stop at 10 min or < 500 MB; `thermalState .serious` doubles keyframe thresholds, `.critical` stops; idle timer disabled; manifest written at start and finalized at stop; unfinished sessions repaired on next launch.
 - **Storage/transfer**: `Documents/sessions/<project>/<session>/`, visible in Files. To the PC: Files → SMB share on the PC, or USB via the Apple Devices app on Windows. LAN upload is a day-13 stretch.
 
 ## Session format (`docs/session-format.md`)
@@ -140,27 +140,27 @@ Conventions: ARKit world y-up, gravity-aligned, metres, origin at session start;
 
 ## CI and TestFlight (facts verified 2026-09-11)
 
-- `core-test.yml` — `ubuntu-latest`, `container: swift:6.1`: `swift test` for CadastreCore, `swift-format lint --strict`, `uv run pytest` for the pipeline. Runs on every push; this is the fast signal.
+- `core-test.yml` — `ubuntu-latest`, `container: swift:6.1`: `swift test` for VividHomeCore, `swift-format lint --strict`, `uv run pytest` for the pipeline. Runs on every push; this is the fast signal.
 - `ios-check.yml` — PR/manual on `macos-26`: XcodeGen, `xcodebuild build` for `generic/platform=iOS Simulator` with `CODE_SIGNING_ALLOWED=NO`.
 - `ios-testflight.yml` — push to the dev branch filtered on `ios/**` + `workflow_dispatch`; `macos-26` (GA 2026-02-26; image 20260907 has Xcode 26.6 default), `timeout-minutes: 30`, cancel-in-progress: `xcode-select` Xcode 26.6 → write `$RUNNER_TEMP/AuthKey.p8` → `xcodebuild archive` **unsigned** (`CODE_SIGNING_ALLOWED=NO`, `DEVELOPMENT_TEAM`, `CURRENT_PROJECT_VERSION=${{ github.run_number }}`) → `xcodebuild -exportArchive -exportOptionsPlist ios/ExportOptions.plist -allowProvisioningUpdates -authenticationKeyPath/-authenticationKeyID/-authenticationKeyIssuerID` (cloud-managed Apple Distribution certificate, no keychain/p12). `ExportOptions.plist`: `method app-store-connect`, `destination upload`, `signingStyle automatic`, `teamID`, `testFlightInternalTestingOnly true`, `manageAppVersionAndBuildNumber false`, `uploadSymbols true`.
 - Cloud signing needs an **Admin-role** API key (otherwise "Cloud signing permission error"). Fallback ladder if upload or signing misbehaves: (1) `destination export` + `apple-actions/upload-testflight-build`; (2) archive with API-key cloud signing; (3) fastlane `match` with git storage on a `certs` branch of this repo + `upload_to_testflight(api_key:)` (adds `MATCH_PASSWORD`).
 - Secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_P8` (full .p8 text), `APPLE_TEAM_ID`. Minutes: standard runners are free on public repos (private would be ~200 real macOS min/month on Free).
-- Owner steps, all on the web (`docs/owner-setup.md`): enroll in the Apple Developer Program (individual, $99; Apple says ~24 h, 2026 reports range to days, so **day 0**) → Identifiers: App ID `com.cadastrerecord.app` → App Store Connect → Integrations → API key, role Admin, download .p8 once → My Apps → New App "Cadastre" → TestFlight internal group with automatic distribution → install TestFlight on the phone → add the four GitHub secrets. Claude reads job logs via the GitHub API and fixes CI without owner involvement.
+- Owner steps, all on the web (`docs/owner-setup.md`): enroll in the Apple Developer Program (individual, $99; Apple says ~24 h, 2026 reports range to days, so **day 0**) → Identifiers: App ID `com.vividhomerecord.app` → App Store Connect → Integrations → API key, role Admin, download .p8 once → My Apps → New App "VividHome" → TestFlight internal group with automatic distribution → install TestFlight on the phone → add the four GitHub secrets. Claude reads job logs via the GitHub API and fixes CI without owner involvement.
 - Every build ships `TestPlan.md` (rendered in-app and in the TestFlight notes) as the owner's test script.
 
-## Pipeline v0 (`pipeline/`, Python 3.12, uv, CLI `cadastre`)
+## Pipeline v0 (`pipeline/`, Python 3.12, uv, CLI `vividhome`)
 
-- `cadastre ingest <dir|zip>` copy into the project store + `validate` (schema, JSONL parse, files exist and sizes, monotonic timestamps, orthonormal rotations, depth stats, marker/landmark counts) — the owner runs this after every capture and pastes the output.
-- `cadastre apriltag <session>`: OpenCV `aruco` `DICT_APRILTAG_36h11` detection on keyframes + stills, `solvePnP` with `K` (note OpenCV's corner order), per-tag pose aggregated in the session frame → `derived/markers_detected.jsonl`.
-- `cadastre plan add <pdf|image> --level L1` (pypdfium2 raster at 150–200 dpi; photos get optional 4-corner perspective correction) and `cadastre plan calibrate` (local page: click two points, type the dimension, set north and level height → `plans/<level>.json`).
-- `cadastre align <session> --level L1`: local page to pair tapped landmarks with plan corners → Umeyama SE(2) without scale → `derived/align.json`.
-- `cadastre inspect`: static HTML per level (plan raster, trajectories, markers, landmarks, thumbnails on hover, quality report) served with `python -m http.server`.
-- `cadastre markers`: marker PDF generator (below). Tests: `synth.py` builds a synthetic session (known trajectory, warped AprilTags via `cv2.warpPerspective`, depth) for deterministic pytest coverage of validate/apriltag/align.
+- `vividhome ingest <dir|zip>` copy into the project store + `validate` (schema, JSONL parse, files exist and sizes, monotonic timestamps, orthonormal rotations, depth stats, marker/landmark counts) — the owner runs this after every capture and pastes the output.
+- `vividhome apriltag <session>`: OpenCV `aruco` `DICT_APRILTAG_36h11` detection on keyframes + stills, `solvePnP` with `K` (note OpenCV's corner order), per-tag pose aggregated in the session frame → `derived/markers_detected.jsonl`.
+- `vividhome plan add <pdf|image> --level L1` (pypdfium2 raster at 150–200 dpi; photos get optional 4-corner perspective correction) and `vividhome plan calibrate` (local page: click two points, type the dimension, set north and level height → `plans/<level>.json`).
+- `vividhome align <session> --level L1`: local page to pair tapped landmarks with plan corners → Umeyama SE(2) without scale → `derived/align.json`.
+- `vividhome inspect`: static HTML per level (plan raster, trajectories, markers, landmarks, thumbnails on hover, quality report) served with `python -m http.server`.
+- `vividhome markers`: marker PDF generator (below). Tests: `synth.py` builds a synthetic session (known trajectory, warped AprilTags via `cv2.warpPerspective`, depth) for deterministic pytest coverage of validate/apriltag/align.
 
 ## Fiducials and capture protocol
 
-- Marker sheet (Letter/A4): 20 cm square = 12.8 cm AprilTag 36h11 (1.6 cm cells + quiet zone) + a 2 cm high-detail ring seeded by ID (satisfies ARKit's image-detail check) + label "CD-017"; the same rendering is bundled as PNG for on-device detection. Print at 100%, matte lamination, verify size with a tape.
-- Placement (`docs/markers.md`): ≥2 per room (subfloor by the door, top plate or jamb visible from the room), shared markers at stair landings, IDs entered in RoomPicker, never move a placed marker; record each marker's position relative to an invariant feature ("CD-012: centred on door D3 threshold, 100 mm from left jamb") so it can be re-hung.
+- Marker sheet (Letter/A4): 20 cm square = 12.8 cm AprilTag 36h11 (1.6 cm cells + quiet zone) + a 2 cm high-detail ring seeded by ID (satisfies ARKit's image-detail check) + label "VH-017"; the same rendering is bundled as PNG for on-device detection. Print at 100%, matte lamination, verify size with a tape.
+- Placement (`docs/markers.md`): ≥2 per room (subfloor by the door, top plate or jamb visible from the room), shared markers at stair landings, IDs entered in RoomPicker, never move a placed marker; record each marker's position relative to an invariant feature ("VH-012: centred on door D3 threshold, 100 mm from left jamb") so it can be re-hung.
 - Capture (`docs/capture-protocol.md`): one session per room per pass, carrying every phase exposed (ADR-0022); start at the doorway; slow chest-height sweeps; each wall square-on floor-to-ceiling with a tape measure in frame; stills of every box, pipe penetration, gas line, header, blocking, duct and of each marker square-on from ~1 m; tap landmarks at room corners and door thresholds; finish where you started.
 - **Fallback if the app slips**: same protocol with a free ARKit raw-recorder (NeRFCapture, free, updated May 2026; or Stray Scanner / Record3D ~$5 export unlock) plus the markers; `ingest` gains a converter and the format doc is unchanged.
 
@@ -180,9 +180,9 @@ Later: plan understanding (rooms, door/window tags, electrical symbols → expec
 | Day | Claude builds | Owner does | Milestone |
 |---|---|---|---|
 | 0 | — | Enroll in Apple Developer Program; 2FA on Apple Account; buy/print supplies later | |
-| 1 | Repo scaffold, docs skeleton (design docs, ADR set, schedule, UI brief, AI roadmap), `project.yml`, CadastreCore, workflows, "Hello ARKit" screen with LiDAR check + build label; `core-test` green | | |
-| 2–3 | First `ios-testflight` run; walk the fallback ladder if needed; CadastreCore `Transform`/`KeyframePolicy`/`FrameRecord`/`SessionManifest` + tests; `session-format.md` | Create App ID, app record, Admin API key, TestFlight group; add secrets; install build #1 | **TestFlight build #1** |
-| 4 | Recorder, writer, JPEG, depth/conf, HUD | 1-min capture at home → run `cadastre validate` | Build #2 |
+| 1 | Repo scaffold, docs skeleton (design docs, ADR set, schedule, UI brief, AI roadmap), `project.yml`, VividHomeCore, workflows, "Hello ARKit" screen with LiDAR check + build label; `core-test` green | | |
+| 2–3 | First `ios-testflight` run; walk the fallback ladder if needed; VividHomeCore `Transform`/`KeyframePolicy`/`FrameRecord`/`SessionManifest` + tests; `session-format.md` | Create App ID, app record, Admin API key, TestFlight group; add secrets; install build #1 | **TestFlight build #1** |
+| 4 | Recorder, writer, JPEG, depth/conf, HUD | 1-min capture at home → run `vividhome validate` | Build #2 |
 | 5 | `markers.py`, `markers.md`, `synth.py`, `validate.py`, pytest | Print + laminate markers; copy a sample session into `samples/` | |
 | 6 | Stills, MarkerLogger, LandmarkLogger, MeshExporter | | Build #3 |
 | 7 | HealthPolicy, interruption handling, picker persistence, SessionReview + Open in Files | 5-min room with markers + landmarks | Build #4 |
@@ -203,7 +203,7 @@ Session pose graph across markers (scipy/GTSAM) → Open3D TSDF meshes → per-r
 | Risk | Mitigation |
 |---|---|
 | Enrollment or CI signing delays the first TestFlight build | Day-0 enrollment; build #1 is the day-2/3 milestone so problems surface early; Admin key; no embedded frameworks; documented fallback ladder; unsigned simulator build keeps code iteration unblocked. |
-| Claude cannot run the app; ARKit bugs only show on device | Thin ARKit layer following Apple's documented patterns; all logic in CadastreCore tested on Linux every push; per-build test plan; owner tests at home first; `validate` catches format issues immediately; per-session `log.txt` + TestFlight crash reports. |
+| Claude cannot run the app; ARKit bugs only show on device | Thin ARKit layer following Apple's documented patterns; all logic in VividHomeCore tested on Linux every push; per-build test plan; owner tests at home first; `validate` catches format issues immediately; per-session `log.txt` + TestFlight crash reports. |
 | TestFlight processing stalls | `testFlightInternalTestingOnly`, unique run-number builds, never block on one build. |
 | Framing starts before the app is ready | Fallback recorder + markers + protocol ready day 1; `ingest` converter if used. |
 | Pose drift over long sessions | One room per session, 10-min hard stop, loop back to start, ≥2 markers per session, offline pose graph in weeks 3+. |
@@ -217,6 +217,6 @@ Session pose graph across markers (scipy/GTSAM) → Open3D TSDF meshes → per-r
 
 - **CI:** `core-test.yml` (Swift tests on Linux + swift-format + pytest with synthetic sessions) and `ios-check.yml` green on every push to `claude/construction-3d-mapping-app-nzm3bb`; `ios-testflight.yml` produces a processed TestFlight build.
 - **Device (owner, per TestFlight test plan):** install → onboarding passes LiDAR/permission checks → create project/level/room → 2-min session at home with 3 markers, 3 stills, 4 tapped corners → review shows trajectory, frame count, markers, landmarks → session visible in Files → copied to the PC.
-- **Pipeline (PC):** `cadastre ingest` + `validate` pass on the real session; `apriltag` finds all 3 markers with < 3 cm spread across observations; `plan add` + `calibrate` on one PDF page and one photographed paper plan; `align` from the tapped landmarks; `inspect` shows the trajectory on the plan with thumbnails.
+- **Pipeline (PC):** `vividhome ingest` + `validate` pass on the real session; `apriltag` finds all 3 markers with < 3 cm spread across observations; `plan add` + `calibrate` on one PDF page and one photographed paper plan; `align` from the tapped landmarks; `inspect` shows the trajectory on the plan with thumbnails.
 - **Docs:** design docs, 16 ADRs, schedule, UI brief and AI roadmap exist, are linked from the README, and match what was built.
-- **Exit criterion for the 2 weeks:** the owner can capture a room per phase with Cadastre and the markers following the protocol, get the data onto the PC, and see it on the plan.
+- **Exit criterion for the 2 weeks:** the owner can capture a room per phase with VividHome and the markers following the protocol, get the data onto the PC, and see it on the plan.

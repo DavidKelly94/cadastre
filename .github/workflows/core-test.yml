@@ -8,7 +8,7 @@ jobs:
     container: swift:6.1
     steps:
       - uses: actions/checkout@v4
-      - run: swift test --package-path ios/CadastreCore
+      - run: swift test --package-path ios/VividHomeCore
   python:
     runs-on: ubuntu-latest
     steps:
@@ -19,7 +19,7 @@ jobs:
       - run: uv run --project pipeline pytest pipeline -q
 
   # The only job that puts the two implementations in contact: Swift writes a
-  # session with CadastreCore, Python validates it with the pipeline. Every other
+  # session with VividHomeCore, Python validates it with the pipeline. Every other
   # test checks one side against its own idea of the other, so this is what would
   # catch the two halves of docs/session-format.md drifting apart.
   contract:
@@ -28,15 +28,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - name: Write a session with CadastreCore
+      - name: Write a session with VividHomeCore
         run: |
-          swift run --package-path ios/CadastreCore cadastre-fixture "$PWD/fixture-session"
+          swift run --package-path ios/VividHomeCore vividhome-fixture "$PWD/fixture-session"
       - name: Validate it with the pipeline
         # Warnings fail this job as well as errors. On a synthetic session every
         # rule should pass outright, so a warning here means something drifted.
         run: |
           uv sync --project pipeline
-          uv run --project pipeline cadastre validate "$PWD/fixture-session" --skip-images \
+          uv run --project pipeline vividhome validate "$PWD/fixture-session" --skip-images \
             | tee validate.txt
           if grep -q "^WARN" validate.txt; then
             echo "::error::the fixture session should validate with no warnings"

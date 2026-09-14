@@ -2,6 +2,8 @@
 
 ## Status
 
+Superseded by [ADR-0024](0024-name-vividhome.md), 2026-09-14: the product is now named VividHome with the identifier `ai.vividhome.app`.
+
 Accepted, 2026-09-14. Supersedes [ADR-0020](0020-bundle-id-cadastre-build.md).
 
 The name decision carries forward unchanged: the product is **Cadastre**, and ADR-0019 remains the place to read the four rounds of research behind it. Only the identifier changes.
@@ -24,7 +26,7 @@ Bundle identifier **`com.cadastrerecord.app`**, prefix `com.cadastrerecord`.
 
 It is rooted in a coined string rather than a domain. Nobody else will claim it, no purchase is required, and nothing a registrar does can invalidate it. It echoes the App Store name already chosen, `Cadastre: Building Record`. `cadastrerecord.com` showed no DNS record on 2026-09-14, so the matching domain is available if a website is ever wanted — but the identifier does not wait on it and never will.
 
-Everything else in ADR-0020 and ADR-0019 stands: product name Cadastre, CLI and Python package `cadastre`, Swift package `CadastreCore`, marker labels `CD-000` to `CD-059`, store `cadastre-data`, repository `DavidKelly94/cadastre`.
+Everything else in ADR-0020 and ADR-0019 stands: product name Cadastre, CLI and Python package `cadastre`, Swift package `CadastreCore`, marker labels `VH-000` to `VH-059`, store `cadastre-data`, repository `DavidKelly94/cadastre`.
 
 ## Consequences
 

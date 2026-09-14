@@ -1,18 +1,28 @@
-# Cadastre design brief
+# VividHome design brief
 
 Handoff for Claude Design. This document is self-contained: it carries every fact needed to design the app without access to the rest of the repository. Behaviour follows the approved project plan of 2026-09-11; where the plan is silent, this brief makes a proposal and says so.
 
 ## 1. Product
 
-Cadastre (bundle ID `com.cadastrerecord.app`, repository `DavidKelly94/cadastre`) is an iPhone app that records a building while it is under construction, so the structure and services hidden by finished surfaces stay findable afterwards: studs, wires, pipes, gas lines, ducts. On an iPhone 15 Pro or newer (LiDAR required, iOS 17 minimum) it uses ARKit to record posed colour frames, LiDAR depth, high-resolution stills, tapped landmarks and printed-marker sightings into an open session folder, one session per room per construction phase. A pipeline on the owner's PC aligns sessions to the architectural plan and later builds a 3D viewer. No accounts, no cloud; sessions are plain folders visible in the Files app.
+VividHome (bundle ID `com.vividhomerecord.app`, repository `DavidKelly94/vividhome`) is an iPhone app that records a building while it is under construction, so the structure and services hidden by finished surfaces stay findable afterwards: studs, wires, pipes, gas lines, ducts. On an iPhone 15 Pro or newer (LiDAR required, iOS 17 minimum) it uses ARKit to record posed colour frames, LiDAR depth, high-resolution stills, tapped landmarks and printed-marker sightings into an open session folder, one session per room per construction phase. A pipeline on the owner's PC aligns sessions to the architectural plan and later builds a 3D viewer. No accounts, no cloud; sessions are plain folders visible in the Files app.
 
 The product is broader than that first release. It is a queryable record of a building spanning construction and ownership: inspecting work as it happens and comparing phases matter as much as the later search behind a finished surface, the captured photos and panoramas are an answer surface rather than only texture for a model, and the long-term direction is coordination with builders and clients, with markup as a major feature. Design the shell so those fit, but do not design them yet; the screens below are the ones being built.
 
-A note on the name, because it shapes the visuals. A *cadastre* is the authoritative register of what exists on a parcel of land: who holds it, where the boundaries run, what stands on it. The product borrows that idea and applies it to a building rather than to land. Pronounced "kuh-DASS-ter". Because the word is unfamiliar to most people, the wordmark should always appear with its line on first touch, something in the spirit of "the permanent register of your building", and the product is never abbreviated to "CAD", which already means something else in this industry.
+A note on the name, because it shapes the visuals. A *vividhome* is the authoritative register of what exists on a parcel of land: who holds it, where the boundaries run, what stands on it. The product borrows that idea and applies it to a building rather than to land. Pronounced "kuh-DASS-ter". Because the word is unfamiliar to most people, the wordmark should always appear with its line on first touch, something in the spirit of "the permanent register of your building", and the product is never abbreviated to "CAD", which already means something else in this industry.
 
 Users and setting. The first user is the owner, standing in a house under construction: dust, bright sun through unglazed openings, dim basements, compressor and saw noise, debris underfoot. The phone is held up at chest height, usually one-handed, sometimes in a work glove; the other hand may hold a tape measure. Attention is split between screen and floor. Later users are other homeowners and small builders doing the same job with less patience for setup.
 
 ## 2. Visual theme (proposal)
+
+> **⚠ The motif below is orphaned and must be replaced.** It was derived from the
+> meaning of the word *cadastre* — the register of what exists on a parcel — so rooms
+> drawn as parcels, the ruled-grid icon and the survey benchmark all rested on a name
+> the product no longer has ([ADR-0024](../adr/0024-name-vividhome.md)). The argument
+> that "the brand and the product's main screen agree" no longer holds. Everything
+> else here stands: the tokens, type scale, spacing and contrast ratios were verified
+> numerically and are unaffected. Only the motif and the icon direction in §10.8 need
+> rethinking, and any design canvas seeded from the old brief needs re-seeding.
+
 
 The brand has no established visual identity, so this section is a starting point the designer may change. Keep the contrast requirements in sections 7 and 8.
 
@@ -59,7 +69,7 @@ Projects
     Levels (L1, L2, basement, garage; height in m)
       Rooms (name, expected marker IDs, notes)
         Sessions (one per room per capture pass)
-Markers (CD-000 to CD-059)
+Markers (VH-000 to VH-059)
 Settings
 Test plan
 ```
@@ -84,7 +94,7 @@ Success: a supported phone reaches the Project list in under 60 s; an unsupporte
 
 Purpose: pick or create a project.
 Primary action: New project.
-Content: one card per project: name, rooms captured out of total, last session date, storage used, a small cadastre of completed phase courses. Empty state: an outline cadastre with one block, "No projects yet", New project, a link to the protocol.
+Content: one card per project: name, rooms captured out of total, last session date, storage used, a small vividhome of completed phase courses. Empty state: an outline vividhome with one block, "No projects yet", New project, a link to the protocol.
 States: empty, populated.
 Success: one tap opens the current project; the empty state explains what a project is.
 
@@ -173,9 +183,9 @@ Success: a flagged session is obvious within 2 s; the folder is reachable in Fil
 
 Purpose: which markers exist, where each hangs, and whether it is being seen.
 Primary action: Add placement note (with photo).
-Content: CD-000 to CD-059 with status (unused, placed, covered, lost), level, room and surface, the placement note in the fixed form "centred on door D3 threshold, 100 mm from left jamb", photo, seen in N sessions, last seen. Print instructions (100% scale, matte lamination, verify 20.0 cm with a tape). A marker preview with a warning that on-screen size is not true size.
+Content: VH-000 to VH-059 with status (unused, placed, covered, lost), level, room and surface, the placement note in the fixed form "centred on door D3 threshold, 100 mm from left jamb", photo, seen in N sessions, last seen. Print instructions (100% scale, matte lamination, verify 20.0 cm with a tape). A marker preview with a warning that on-screen size is not true size.
 States: none placed, placed, expected but never seen (warn).
-Success: the owner can find where CD-017 should be while standing in the house.
+Success: the owner can find where VH-017 should be while standing in the house.
 
 ### Settings
 
@@ -206,7 +216,7 @@ Built later in the pipeline as plain HTML pages served locally, no framework. Th
 
 First run
 
-1. Install from TestFlight, open Cadastre.
+1. Install from TestFlight, open VividHome.
 2. Onboarding: LiDAR check passes, allow camera, read the three cards.
 3. New project: name. Add level L1 with its height. Add the first room.
 4. Land on Project overview with an empty coverage grid.
@@ -226,12 +236,12 @@ Review and transfer a session
 1. Read the flags. Red: re-shoot while still in the room. Amber: add a note.
 2. Add notes (what changed, what to look for later).
 3. Later: Open in Files, copy the session folder to the PC (SMB share, or the Apple Devices app on Windows).
-4. On the PC run `cadastre ingest` then `cadastre validate`.
+4. On the PC run `vividhome ingest` then `vividhome validate`.
 5. Mark the session transferred in Session review.
 
 Place and register markers
 
-1. On the PC run `cadastre markers`, print at 100%, laminate matte, measure 20.0 cm.
+1. On the PC run `vividhome markers`, print at 100%, laminate matte, measure 20.0 cm.
 2. Hang two or more per room following `docs/markers.md`.
 3. Markers screen: add a placement note and photo per ID.
 4. Room detail: enter the expected IDs.
@@ -276,7 +286,7 @@ suits a design that is still moving.
    the rest state which tokens change.
 4. App icon artboard, 1024 by 1024, light and dark tinted variants.
 5. Web layouts for the four surfaces in §5, 1440 pt wide.
-6. `cadastre-tokens.json` generated into the repository from the agreed palette,
+6. `vividhome-tokens.json` generated into the repository from the agreed palette,
    with a short usage note. A token file is code rather than a design artifact,
    so it belongs in the repo and in review, not in an export folder.
 

@@ -10,22 +10,29 @@ You need an iPhone 15 Pro or newer, your Apple Account with a payment method, ad
 2. Enroll as an **individual** (not an organization) at https://developer.apple.com/programs/enroll/ or in the Apple Developer app on the phone (Account tab, Enroll). Cost is $99 per year.
 3. Pay and wait for the welcome email. Apple says about 24 hours; reports in 2026 range up to several days. Steps 2 to 5 are blocked until it arrives, which is why this is day 0.
 
-## 2. Register the App ID
+## 2. Register the domain, then the App ID
 
-Nothing to buy first. The bundle identifier is `com.vividhomerecord.app`, which is rooted in a coined
-string rather than a domain ([ADR-0023](adr/0023-bundle-id-needs-no-domain.md)). Apple never
-verifies domain ownership for a bundle identifier — reverse-DNS is a collision-avoidance convention,
-not a claim of control — so there is no purchase on the critical path and nothing that can be lost to
-a lapsed registration.
+**Buy `vividhome.ai` first.** The bundle identifier is `ai.vividhome.app`, the reverse-DNS form of
+that domain ([ADR-0024](adr/0024-name-vividhome.md)). Apple never verifies domain ownership, so
+registration succeeds either way — but the identifier can never be changed after the next section,
+and it should not be left pointing at a domain someone else holds. `.ai` carries a two-year minimum.
 
-Sign in at https://developer.apple.com/account, open Certificates, Identifiers & Profiles, then
-Identifiers. Click the plus button, choose App IDs, then App. Description `VividHome`, Bundle ID
-**Explicit**, `com.vividhomerecord.app`. Tick no capabilities. Register. **This identifier is
-permanent** — it cannot be changed after the next section, so check the spelling before clicking.
+Then sign in at https://developer.apple.com/account, open Certificates, Identifiers & Profiles, then
+Identifiers. Click the plus button, choose App IDs, then App.
+
+- **Description** `VividHome`. This is a label for your own reference in the portal — it is never
+  shown to users and is not the App Store name. Apple rejects punctuation here, so keep it to
+  letters, numbers and spaces: no colon, hyphen, ampersand or apostrophe.
+- **Bundle ID** **Explicit**, `ai.vividhome.app`.
+- **Capabilities:** tick none. The app needs no entitlements — the camera is a usage-description
+  string in `Info.plist`, not a capability, and there is no entitlements file. Capabilities can be
+  added later if Associated Domains or sharing ever arrive; the identifier cannot.
+
+Register. **This identifier is permanent** — check the spelling before clicking.
 
 ## 3. Create the app in App Store Connect
 
-At https://appstoreconnect.apple.com open My Apps, click the plus button, New App. Platform iOS, Name **`VividHome: Building Record`**, Bundle ID `com.vividhomerecord.app`, SKU anything (for example `vividhome-ios`).
+At https://appstoreconnect.apple.com open My Apps, click the plus button, New App. Platform iOS, Name **`VividHome: Building Record`**, Bundle ID `ai.vividhome.app`, SKU anything (for example `vividhome-ios`).
 
 **Do not type just `VividHome`.** App Store names must be unique across the whole store, and `VividHome` is already taken by a French vividhome and parcel viewer (app id 1507993968). Names are capped at 30 characters; `VividHome: Building Record` is 25 and puts the word *building* beside the wordmark, which is the counterweight to the land reading of the name. The display name can be changed up until first release; the bundle ID cannot be changed at all once this record exists.
 

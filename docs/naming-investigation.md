@@ -9,7 +9,7 @@ wordmark be "VividHome" or "VividHome AI"?**
 
 - **Decided and shipped:** the product is **VividHome**. The repository is `DavidKelly94/vividhome`,
   every identifier carries the name (CLI `vividhome`, Swift package `VividHomeCore`, markers `VH-000`
-  to `VH-059`, store `vividhome-data`), and the bundle identifier is `com.vividhomerecord.app` ([ADR-0023](adr/0023-bundle-id-needs-no-domain.md)).
+  to `VH-059`, store `vividhome-data`), and the bundle identifier is `ai.vividhome.app` ([ADR-0024](adr/0024-name-vividhome.md)).
 - **ADR-0019 explicitly rejects "VividHome AI" as the wordmark**, while permitting it as a
   descriptor. That distinction is the whole of the open question.
 - **Reopened by the owner**, who now thinks "VividHome AI" makes more sense. That instinct deserves
@@ -71,7 +71,7 @@ and needs the work below.
   `docs/owner-setup.md`. The identifiers do **not** change: `vividhome`, `VividHomeCore`, `VH-NNN`
   and `vividhome-data` stay, because a hyphenated or suffixed slug is worse in every one of those
   positions.
-- **The bundle identifier does not change.** `com.vividhomerecord.app` is decoupled from the marketing
+- **The bundle identifier does not change.** `ai.vividhome.app` is decoupled from the marketing
   name — a wordmark can gain a suffix without the identifier following — and it is permanent once an
   App Store Connect record exists. Leave it.
 - **The design brief's wordmark lockup and icon.** A two-word wordmark sets differently from a

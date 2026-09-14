@@ -76,7 +76,7 @@ Use only `Foundation`. No `simd`, no `ARKit`, no `UIKit`. Linux Foundation diffe
 ```yaml
 name: VividHome
 options:
-  bundleIdPrefix: com.vividhomerecord
+  bundleIdPrefix: ai.vividhome
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
@@ -94,7 +94,7 @@ targets:
         product: VividHomeCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.vividhomerecord.app
+        PRODUCT_BUNDLE_IDENTIFIER: ai.vividhome.app
         PRODUCT_NAME: VividHome
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"

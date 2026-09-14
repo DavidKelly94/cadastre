@@ -8,7 +8,7 @@ VividHome is a toolchain for a homeowner (first) and, later, a product:
 - a **Python pipeline** on the owner's PC that validates sessions, finds the markers, aligns every session to the floor plans, and (later) builds meshes, Gaussian splats and AI labels;
 - a **web viewer** (later) to find studs, pipes, gas lines, ducts and wires behind finished walls, years after they were covered.
 
-Product name: **VividHome** (the authoritative register of what exists on a parcel, borrowed and applied to a building). Bundle ID `com.vividhomerecord.app`.
+Product name: **VividHome** ([ADR-0024](docs/adr/0024-name-vividhome.md)). Bundle ID `ai.vividhome.app`.
 
 ## Status
 

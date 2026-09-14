@@ -27,6 +27,11 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
+        # Without this the archive exports fine and App Store Connect rejects the
+        # upload: error 90713 (no CFBundleIconName) plus 90022 (no 120x120 icon).
+        # Xcode synthesises both from the asset catalog, but only if it is told
+        # which icon set to use.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: VividHome/Info.plist
       properties:

@@ -43,7 +43,25 @@ The display name can be changed up until first release; the bundle ID cannot be 
 ## 4. App Store Connect API key (Admin) and Team ID
 
 1. In App Store Connect open Users and Access, the Integrations tab, then App Store Connect API. If it shows a Request Access button, click it and accept the terms.
-2. Under Team Keys click Generate API Key. Name `github-actions-vividhome`, Access **Admin**. Admin is required: the build signs in the cloud, and any lower role fails with "Cloud signing permission error".
+2. Under Team Keys click Generate API Key. Name `github-actions-vividhome`, Access **Admin**,
+   scope **All Apps** — full access, not a limited or app-scoped key.
+
+   Admin is required by the way the build signs. `ios-testflight.yml` exports with
+   `-allowProvisioningUpdates` and `signingStyle: automatic`, so the runner mints and renews
+   the signing certificate and provisioning profile itself — there is no Mac and no keychain
+   holding them. Certificates and profiles are **team-level** resources and belong to no single
+   app, so a key limited to selected apps can upload a build but cannot create a certificate.
+   It fails at export with "Cloud signing permission error", after the archive has already
+   spent twenty minutes succeeding. App Manager fails identically; Admin is the only role that
+   can manage certificates over the API.
+
+   An Admin key is broad — it can manage users and submit for review — so note what contains
+   it. It is a Team Key, not tied to your login, so revoking it never locks you out. This
+   workflow triggers only on `push` to the development branch and `workflow_dispatch`; there is
+   no `pull_request` trigger, so a fork's pull request cannot reach the secrets even though the
+   repository is public. **Keep it that way.** The workflow shreds the `.p8` from the runner
+   with `if: always()`, so a failed export leaves nothing behind. If it ever leaks: revoke,
+   generate another Admin key, update the three `ASC_` secrets, change nothing else.
 3. Download the `.p8` file. Apple allows this **once**; keep it somewhere safe. Note the **Key ID** (10 characters) on that row and the **Issuer ID** (a long UUID) at the top of the page.
 4. Find your **Team ID** at https://developer.apple.com/account under Membership details (10 characters).
 

@@ -19,7 +19,7 @@ plans and, later, builds meshes, splats and AI labels. A viewer then puts all of
 it on the plan, phase by phase.
 
 **Read `docs/plan.md` first**, then `docs/implementation-guide.md`. The product is
-named VividHome ([ADR-0020](docs/adr/0020-bundle-id-cadastre-build.md)).
+named VividHome ([ADR-0024](docs/adr/0024-name-vividhome.md)).
 
 ## Repository layout
 

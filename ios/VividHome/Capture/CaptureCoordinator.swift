@@ -16,7 +16,7 @@ import VividHomeCore
 /// annotating the type would force hops on the per-frame path. Everything here
 /// is nonetheless touched from the main thread only, except the still
 /// completion, which explicitly hops back.
-final class CaptureCoordinator: ObservableObject {
+final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
 
   enum Phase: Equatable {
     case setup
@@ -61,6 +61,7 @@ final class CaptureCoordinator: ObservableObject {
   private var landmarksWriter: JSONLWriter?
   private weak var arView: ARSCNView?
   private var placedLandmarks: [SCNNode] = []
+  private var markerNodes: [UUID: SCNNode] = [:]
 
   private var level = LevelRef(slug: "l1", name: "Level 1", index: 1)
   private var room = SlugRef(slug: "room", name: "Room")
@@ -148,9 +149,11 @@ final class CaptureCoordinator: ObservableObject {
       landmarkCount = 0
       placedLandmarks.forEach { $0.removeFromParentNode() }
       placedLandmarks = []
+      markerNodes.values.forEach { $0.removeFromParentNode() }
+      markerNodes = [:]
       contextLabel = room.name + " · " + phases.map(\.shortName).joined(separator: " + ")
       controller.setRecorder(recorder)
-      controller.setAnchorObserver(markerLogger)
+      controller.setAnchorObserver(self)
       phase = .recording
     } catch let failure as SessionRecorder.StartFailure {
       phase = .failed(Self.describe(failure))
@@ -243,6 +246,66 @@ final class CaptureCoordinator: ObservableObject {
     freeBytes = Int64(values?.volumeAvailableCapacity ?? 0)
   }
 
+  // MARK: - Anchors
+
+  /// Log the observation, then draw it.
+  ///
+  /// The coordinator sits in front of `MarkerLogger` rather than beside it so a
+  /// sighting reaches the file and the screen from one place. ARKit delivers
+  /// these on the main queue — `ARSessionController` leaves `delegateQueue`
+  /// nil — so touching SceneKit here is safe.
+  func session(didObserve anchors: [ARAnchor], time: Double) {
+    markerLogger?.session(didObserve: anchors, time: time)
+    guard let arView else { return }
+
+    for case let image as ARImageAnchor in anchors {
+      guard let name = image.referenceImage.name else { continue }
+      let node: SCNNode
+      if let existing = markerNodes[image.identifier] {
+        node = existing
+      } else {
+        node = Self.makeMarkerNode(
+          name: name, width: CGFloat(image.referenceImage.physicalSize.width))
+        markerNodes[image.identifier] = node
+        arView.scene.rootNode.addChildNode(node)
+      }
+      node.simdTransform = image.transform
+      // A marker out of view stops being tracked; hiding rather than removing
+      // keeps its identity, so walking back does not create a second node.
+      node.isHidden = !image.isTracked
+    }
+  }
+
+  private static func makeMarkerNode(name: String, width: CGFloat) -> SCNNode {
+    let node = SCNNode()
+
+    let plane = SCNPlane(width: width, height: width)
+    plane.firstMaterial?.diffuse.contents = UIColor(
+      red: 0.26, green: 0.82, blue: 0.49, alpha: 0.28)
+    plane.firstMaterial?.lightingModel = .constant
+    plane.firstMaterial?.isDoubleSided = true
+    let face = SCNNode(geometry: plane)
+    // An image anchor's plane lies in its local X-Z, with +Y the normal; an
+    // SCNPlane is built in X-Y, so it needs turning to sit on the marker
+    // instead of standing upright through it.
+    face.eulerAngles.x = -.pi / 2
+    node.addChildNode(face)
+
+    let text = SCNText(string: name, extrusionDepth: 0)
+    text.font = .systemFont(ofSize: 2, weight: .bold)
+    text.flatness = 0.2
+    text.firstMaterial?.diffuse.contents = UIColor(
+      red: 0.26, green: 0.82, blue: 0.49, alpha: 1)
+    text.firstMaterial?.lightingModel = .constant
+    let label = SCNNode(geometry: text)
+    label.scale = SCNVector3(0.015, 0.015, 0.015)
+    label.position = SCNVector3(0, Float(width) * 0.6, 0)
+    label.constraints = [SCNBillboardConstraint()]
+    node.addChildNode(label)
+
+    return node
+  }
+
   // MARK: - Stop
 
   /// Stop, in an order that matters.
@@ -261,6 +324,8 @@ final class CaptureCoordinator: ObservableObject {
 
     let anchors = controller.session.currentFrame?.anchors.compactMap { $0 as? ARMeshAnchor } ?? []
     let seen = markerLogger?.seen.sorted() ?? []
+    markerNodes.values.forEach { $0.removeFromParentNode() }
+    markerNodes = [:]
 
     try? markersWriter?.close()
     try? landmarksWriter?.close()

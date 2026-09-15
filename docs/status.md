@@ -98,7 +98,7 @@ wrong:
 `markers.jsonl` is empty because no markers are printed yet, which is expected
 and is why the session cannot be chained to another phase.
 
-## Landmarks are visible now
+## Landmarks and markers are visible now
 
 The first capture exposed a real gap rather than a bug: a tapped landmark wrote
 a line to a file and did nothing else. There was no way to tell a mark from a
@@ -106,8 +106,15 @@ missed tap, no way to see which corners were already done, and no reason to
 trust the raycast had landed where it was aimed. They are now drawn in the AR
 view, coloured by kind, with a billboarded label.
 
-They persist for the life of the session, which is as far as ARKit's world frame
-goes. **They do not carry into the next session**, and no amount of app work
+A detected marker is drawn too — a translucent square on the marker's own plane
+at its real 20 cm size, with its `VH-NNN` label — so a sighting is visible where
+it happens rather than only as a chip in the status strip. The square sitting
+square on the printed marker is also the quickest check that detection is
+working and that the printed size is right: if it floats or is the wrong size,
+the print was scaled.
+
+Landmarks persist for the life of the session, which is as far as ARKit's world
+frame goes. **They do not carry into the next session**, and no amount of app work
 changes that: the origin of each session's frame is wherever the capture
 started. Tying two visits together is what printed markers are for (ADR-0006),
 and placing both on a shared plan is ADR-0007 plus ADR-0025. Neither is built.

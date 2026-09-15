@@ -210,41 +210,46 @@ Everything above describes one session. A **floor plan** is not session data: it
 ```
 Documents/sessions/<project-slug>/
   plans/
-    <level>.png            normalised raster written by the app; RGB, long edge <= 4096 px
+    <level>.png            plan raster; RGB, long edge <= 4096 px
     <level>.source.pdf     OPTIONAL, the imported file kept verbatim (.pdf, .jpg or .heic)
-    <level>.json           plan metadata and room placements
+    <level>.json           plan metadata, calibration and room placements
   <session-id>/            one folder per session, as in section 2
 ```
 
-`<level>` is the same slug used in a session id. `<level>.json`:
+`<level>` is the same slug used in a session id. The same `plans/` shape exists in the pipeline's own store, because `ingest` copies the directory across unchanged.
+
+`<level>.json` — the first six fields are what `vividhome plan add` and `plan calibrate` have always written; `source` and `rooms` are the additions the app needs:
 
 ```json
 {
-  "format_version": 3,
   "level": "main",
-  "raster": { "file": "main.png", "w": 3300, "h": 2550 },
+  "image": "main.png",
+  "metres_per_pixel": null,
+  "origin_px": null,
+  "rotation_deg": 0.0,
+  "floor_height_m": 0.0,
   "source": { "file": "main.source.pdf", "kind": "pdf", "page": 2 },
-  "calibrated": false,
   "rooms": [
     { "room": "kitchen", "x": 1840, "y": 990, "placed_at": "2026-11-03T14:02:11Z" }
   ]
 }
 ```
 
-- `rooms[].x`, `rooms[].y` are **pixel coordinates in the raster**, origin top-left, x right, y down. Not metres, not plan units: the app has no scale, which is the point of `calibrated`.
+- **Calibration is not a flag.** A level is calibrated when `metres_per_pixel` and `origin_px` are both non-null, and not otherwise; there is no separate boolean to disagree with them. `plan add` writes the stub with both null, which is also everything the app ever writes, because the app solves nothing.
+- `rooms[].x`, `rooms[].y` are **pixel coordinates in `image`**, origin top-left, x right, y down. Not metres and not plan units: an uncalibrated raster has no metric meaning, which is the point.
 - `rooms[].room` is the `<room>` slug used in session ids, and is how a placement finds its captures.
-- `calibrated` is `false` in everything the app writes. `vividhome plan calibrate` is what adds `scale_m_per_px` and an origin and sets it `true`; until then the raster has no metric meaning.
-- `source` is omitted when the original was not retained.
+- `source` is omitted when the original was not retained. `kind` is `pdf`, `jpeg` or `heic`; `page` appears only for `pdf`.
+- Readers ignore unknown fields (section 12), so a plan file written by an older `plan add` — with no `source` and no `rooms` — is valid.
 
 **A room placement is not a correspondence.** It is a fingertip on a drawing, recorded so the app can shade a room by what has been captured. It has no accuracy claim and it is never an input to alignment: `vividhome align` uses `landmarks.jsonl` and marker poses, and nothing else. This matters because a placement and a correspondence have the same shape — a label and a 2D point — so nothing but this rule stops one being fed in where the other belongs, and the result would be a plausible-looking wrong answer rather than an error. The same caution the project applies to inferred facts (rule 9 of `AGENTS.md`) applies here: it is a human's rough claim, stored with its source, not a measurement.
 
-Validation, run by `vividhome validate --project` rather than per session:
+Validation, run by `vividhome validate --project <project-dir>` rather than per session:
 
-1. `<level>.json` parses and `format_version == 3`.
-2. `raster.file` exists, decodes, and its size matches `raster.w`/`raster.h`.
-3. Every `rooms[].x` is within `[0, raster.w]` and every `y` within `[0, raster.h]`.
-4. `rooms[].room` slugs are unique within a level, and each matches `^[a-z0-9-]{1,24}$`.
-5. A room slug with no session, or a session whose room has no placement, is a **warning**: both are normal mid-capture.
-6. If `calibrated` is `true`, `scale_m_per_px` is present and positive.
+1. Every `plans/<level>.json` parses, and `level` matches its filename.
+2. `image` exists beside it and decodes.
+3. Every `rooms[].x` is within `[0, width]` and every `y` within `[0, height]` of that image, read from the image itself rather than from a recorded size that could drift from it.
+4. `rooms[].room` slugs are unique within a level and each matches `^[a-z0-9-]{1,24}$`.
+5. If `metres_per_pixel` is present it is positive, and `origin_px` is present too — a half-calibrated plan is an error, not a warning, because `house_to_plan` would raise on it much later.
+6. A room slug with no session, or a session whose room has no placement, is a **warning**: both are normal mid-capture.
 
 A project with no `plans/` directory is valid. Plans are optional, and everything in sections 1 to 12 works without one.

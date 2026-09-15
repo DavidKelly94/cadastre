@@ -38,6 +38,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     var room: String
     var phases: [CapturePhase]
     var markersSeen: [String]
+    var landmarkLabels: [String]
     var mesh: MeshExporter.Summary?
     var stoppedBecause: String?
   }
@@ -48,7 +49,11 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   @Published private(set) var phase: Phase = .setup
   /// Markers seen this session, in sighting order, for the HUD strip.
   @Published private(set) var markersSeen: [String] = []
-  @Published private(set) var landmarkCount = 0
+  /// Placed landmarks, in the order they were placed. The source of truth
+  /// until `stop` writes them; nothing is on disk before then.
+  @Published private(set) var landmarks: [PlacedLandmark] = []
+  /// The landmark the next tap on a surface will move, if any.
+  @Published var selectedLandmark: UUID?
   @Published private(set) var showMesh = false
   @Published private(set) var freeBytes: Int64 = 0
   /// "Kitchen · Electrical + Plumbing", for the HUD strip.
@@ -60,7 +65,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   private var markersWriter: JSONLWriter?
   private var landmarksWriter: JSONLWriter?
   private weak var arView: ARSCNView?
-  private var placedLandmarks: [SCNNode] = []
+  private var landmarkNodes: [UUID: SCNNode] = [:]
   private var markerNodes: [UUID: SCNNode] = [:]
 
   private var level = LevelRef(slug: "l1", name: "Level 1", index: 1)
@@ -146,9 +151,10 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       stillCapture = StillCapture(session: controller.session, writer: writer)
 
       markersSeen = []
-      landmarkCount = 0
-      placedLandmarks.forEach { $0.removeFromParentNode() }
-      placedLandmarks = []
+      landmarks = []
+      selectedLandmark = nil
+      landmarkNodes.values.forEach { $0.removeFromParentNode() }
+      landmarkNodes = [:]
       markerNodes.values.forEach { $0.removeFromParentNode() }
       markerNodes = [:]
       contextLabel = room.name + " · " + phases.map(\.shortName).joined(separator: " + ")
@@ -184,41 +190,139 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     }
   }
 
-  func markLandmark(at point: CGPoint, label: String, kind: LandmarkKind) -> Bool {
-    guard phase == .recording, let landmarkLogger, let arView else { return false }
-    let time = controller.session.currentFrame?.timestamp ?? 0
-    do {
-      let position = try landmarkLogger.record(
-        tapAt: point, in: arView, label: label, kind: kind, time: time)
-      landmarkCount += 1
-      place(landmark: position, label: label, kind: kind, in: arView)
-      return true
-    } catch {
-      return false
+  /// What a tap on the camera view means.
+  ///
+  /// One gesture, three meanings, resolved in a fixed order so the same tap
+  /// never does two different things depending on timing: hitting an existing
+  /// landmark selects it, a tap while something is selected moves that one, and
+  /// anything else places a new one. Selection is checked first because a
+  /// landmark you can see is a landmark you meant to touch.
+  enum TapOutcome: Equatable {
+    case selected(String)
+    case moved(String)
+    case placed(String)
+    case noSurface
+    case ignored
+  }
+
+  @discardableResult
+  func handleTap(at point: CGPoint, kind: LandmarkKind) -> TapOutcome {
+    guard phase == .recording, let arView else { return .ignored }
+
+    if let hit = landmarkID(at: point, in: arView) {
+      selectedLandmark = (selectedLandmark == hit) ? nil : hit
+      refreshSelectionHighlight()
+      guard let landmark = landmarks.first(where: { $0.id == hit }) else { return .ignored }
+      return .selected(landmark.label)
+    }
+
+    guard let logger = landmarkLogger, let position = try? logger.resolve(tapAt: point, in: arView)
+    else {
+      return .noSurface
+    }
+
+    if let selected = selectedLandmark, let index = landmarks.firstIndex(where: { $0.id == selected })
+    {
+      landmarks[index].position = position
+      landmarkNodes[selected]?.position = SCNVector3(
+        Float(position.x), Float(position.y), Float(position.z))
+      let label = landmarks[index].label
+      selectedLandmark = nil
+      refreshSelectionHighlight()
+      return .moved(label)
+    }
+
+    let label = nextLabel(for: kind)
+    let landmark = PlacedLandmark(
+      label: label,
+      kind: kind,
+      position: position,
+      time: controller.session.currentFrame?.timestamp ?? 0,
+      keyframeIndex: recorder.currentKeyframeIndex)
+    landmarks.append(landmark)
+    draw(landmark, in: arView)
+    return .placed(label)
+  }
+
+  func deleteSelectedLandmark() {
+    guard let selected = selectedLandmark else { return }
+    landmarkNodes[selected]?.removeFromParentNode()
+    landmarkNodes[selected] = nil
+    landmarks.removeAll { $0.id == selected }
+    selectedLandmark = nil
+  }
+
+  func renameSelectedLandmark(to label: String) {
+    let trimmed = label.trimmingCharacters(in: .whitespaces)
+    guard let selected = selectedLandmark, !trimmed.isEmpty,
+      let index = landmarks.firstIndex(where: { $0.id == selected })
+    else { return }
+    landmarks[index].label = trimmed
+    if let node = landmarkNodes[selected],
+      let text = node.childNodes.first?.geometry as? SCNText
+    {
+      text.string = trimmed
+    }
+  }
+
+  /// A label that means something on a drawing weeks later.
+  ///
+  /// The room name is in it because that is the only context the person pairing
+  /// this with a plan will have: "corner-3" is unmatchable, "kitchen corner 3"
+  /// is not. Numbering is per kind so deleting one does not renumber the rest.
+  private func nextLabel(for kind: LandmarkKind) -> String {
+    let used = landmarks.filter { $0.kind == kind }.count + 1
+    return "\(room.slug) \(kind.rawValue) \(used)"
+  }
+
+  private func landmarkID(at point: CGPoint, in view: ARSCNView) -> UUID? {
+    // Generous hit radius: the dot is 3.5 cm and the finger is not.
+    let options: [SCNHitTestOption: Any] = [.searchMode: SCNHitTestSearchMode.all.rawValue]
+    let hits = view.hitTest(point, options: options)
+    for hit in hits {
+      var node: SCNNode? = hit.node
+      while let current = node {
+        if let match = landmarkNodes.first(where: { $0.value === current }) { return match.key }
+        node = current.parent
+      }
+    }
+    return nil
+  }
+
+  private func refreshSelectionHighlight() {
+    for (id, node) in landmarkNodes {
+      let chosen = id == selectedLandmark
+      let scale: Float = chosen ? 1.8 : 1.0
+      node.scale = SCNVector3(scale, scale, scale)
+      (node.geometry as? SCNSphere)?.firstMaterial?.diffuse.contents =
+        chosen
+        ? UIColor.white
+        : Self.colour(for: landmarks.first(where: { $0.id == id })?.kind ?? .other)
     }
   }
 
   /// Draw a landmark where it was placed.
   ///
-  /// Without this a tap produced a line in a file and nothing else, so there was
-  /// no way to tell a mark from a missed tap, no way to see which corners were
-  /// already done, and no reason to believe the raycast had landed where you
-  /// meant. The node lives in the session's world frame, so walking away and
-  /// coming back leaves it on the same corner — ARKit holds that frame for the
-  /// life of the session. It does **not** survive into the next session, which
-  /// is what printed markers are for (ADR-0006).
-  private func place(landmark: Vector3, label: String, kind: LandmarkKind, in view: ARSCNView) {
+  /// Without this a tap produced a value in memory and nothing else, so there
+  /// was no way to tell a mark from a missed tap, no way to see which corners
+  /// were already done, and no reason to believe the raycast had landed where
+  /// you meant. The node lives in the session's world frame, so walking away
+  /// and coming back leaves it on the same corner — ARKit holds that frame for
+  /// the life of the session. It does **not** survive into the next session,
+  /// which is what the plan is for (ADR-0026).
+  private func draw(_ landmark: PlacedLandmark, in view: ARSCNView) {
     let dot = SCNSphere(radius: 0.035)
-    dot.firstMaterial?.diffuse.contents = Self.colour(for: kind)
+    dot.firstMaterial?.diffuse.contents = Self.colour(for: landmark.kind)
     // Unlit, so a mark in an unlit basement reads the same as one in sunlight.
     dot.firstMaterial?.lightingModel = .constant
     let node = SCNNode(geometry: dot)
-    node.position = SCNVector3(Float(landmark.x), Float(landmark.y), Float(landmark.z))
+    node.position = SCNVector3(
+      Float(landmark.position.x), Float(landmark.position.y), Float(landmark.position.z))
 
-    let text = SCNText(string: label, extrusionDepth: 0)
+    let text = SCNText(string: landmark.label, extrusionDepth: 0)
     text.font = .systemFont(ofSize: 2)
     text.flatness = 0.2
-    text.firstMaterial?.diffuse.contents = Self.colour(for: kind)
+    text.firstMaterial?.diffuse.contents = Self.colour(for: landmark.kind)
     text.firstMaterial?.lightingModel = .constant
     let textNode = SCNNode(geometry: text)
     textNode.scale = SCNVector3(0.012, 0.012, 0.012)
@@ -228,7 +332,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     node.addChildNode(textNode)
 
     view.scene.rootNode.addChildNode(node)
-    placedLandmarks.append(node)
+    landmarkNodes[landmark.id] = node
   }
 
   private static func colour(for kind: LandmarkKind) -> UIColor {
@@ -239,11 +343,6 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     case .floor: return UIColor(red: 0.64, green: 0.71, blue: 0.77, alpha: 1)
     case .other: return UIColor(red: 0.91, green: 0.36, blue: 0.13, alpha: 1)
     }
-  }
-
-  func refreshFreeSpace() {
-    let values = try? documents.resourceValues(forKeys: [.volumeAvailableCapacityKey])
-    freeBytes = Int64(values?.volumeAvailableCapacity ?? 0)
   }
 
   // MARK: - Anchors
@@ -327,6 +426,18 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     markerNodes.values.forEach { $0.removeFromParentNode() }
     markerNodes = [:]
 
+    // The only moment landmarks reach disk. The statistics follow the same
+    // path: the recorder is told once per landmark that survived editing, so a
+    // placed-then-deleted landmark never reaches the manifest and the count
+    // there always matches the number of lines in the file.
+    do {
+      try landmarkLogger?.write(landmarks)
+      for _ in landmarks { recorder.recordLandmark() }
+    } catch {
+      phase = .failed("Could not write the landmarks: \(error.localizedDescription)")
+      return
+    }
+
     try? markersWriter?.close()
     try? landmarksWriter?.close()
     markersWriter = nil
@@ -355,6 +466,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
           room: room.name,
           phases: phases,
           markersSeen: seen,
+          landmarkLabels: landmarks.map(\.label),
           mesh: mesh,
           stoppedBecause: reason))
     } catch {
@@ -362,6 +474,9 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     }
 
     controller.pause()
+    selectedLandmark = nil
+    landmarkNodes.values.forEach { $0.removeFromParentNode() }
+    landmarkNodes = [:]
     stillCapture = nil
     markerLogger = nil
     landmarkLogger = nil

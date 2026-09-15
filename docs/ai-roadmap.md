@@ -64,6 +64,28 @@ The owner trials the first four items during electrical and plumbing rough-in in
 
 **Risk and fallback.** Room assignment fails without alignment; fall back to the manifest room, exact because sessions are per room. Tag noise: search over descriptions and confirmed labels only until accuracy is measured.
 
+### 5. Predicted landmarks, so capture stops being tap-heavy
+
+**Why it moved up.** [ADR-0026](adr/0026-markers-are-optional-the-plan-is-the-frame.md) made tapped landmarks the only thing that places a capture on the plan. That puts the whole alignment on a manual, repetitive act performed one-handed in a noisy room — the worst place to ask for precision, and the thing most likely to be skipped. Anything that turns "tap every corner" into "confirm these" improves accuracy and adoption at the same time.
+
+**What it does.** Two halves that meet in the middle. On the plan: read the drawing and propose named points — "kitchen NW corner", "bedroom 2 door threshold" — so the owner never types a label and the pipeline gets labels that are matchable months later. In the room: when a room is selected, propose where its corners are so the owner drags a few candidates into place instead of tapping each from nothing.
+
+**Inputs.** `plans/<level>.png` and `<level>.json`; `mesh.obj` with `mesh_classes.u8` (wall faces are already captured and classified); optionally ARKit vertical planes, which are currently switched off.
+
+**Candidate approach, plan side.** Mostly classical and all on-device. `VNRecognizeTextRequest` reads room names off an architect's sheet; `VNDetectContoursRequest` gives room polygons whose vertices *are* the corners; the nearest text to a polygon names it, and compass sense on the sheet turns a vertex into "NW". A vector PDF short-circuits most of this — pdfplumber already gives text with positions (see Plan understanding below). No model is required for the common case, which is the point: a plan is a drawing made of lines and labels, not a photograph to be interpreted.
+
+**Candidate approach, room side.** Fit planes to `wall`-classified mesh faces and intersect adjacent pairs; each intersection that also meets the floor plane is a corner candidate with a confidence from the inlier count. This costs nothing extra to capture because the mesh is already written. Turning on `planeDetection = [.vertical]` would give the same thing live rather than offline, at a frame-time cost that `docs/design/ios-app-design.md` deliberately avoided — measure before spending it.
+
+**Not RoomPlan.** It is the obvious suggestion and this project already rejected it twice, on measurements: it fits *idealised* planar walls, and a test saw a 6.45 m wall reported as 6.821 m ([ADR-0001](adr/0001-native-swift-arkit.md), `feasibility.md`). A 37 cm error is an order of magnitude worse than what alignment needs, so its corners cannot be correspondences. Its *topology* — how many walls a room has and roughly where they meet — may still be sound, and if this item is ever attempted it is worth re-testing on framing rather than assumed; but nothing should depend on its geometry.
+
+**Everything proposed is a candidate.** Rule 9 of `AGENTS.md`, and here it is also the interaction: a predicted corner is drawn unconfirmed, and dragging it into place *is* the confirmation. A candidate nobody confirms never reaches `landmarks.jsonl`. This is why the editable-landmark work is the prerequisite — without cheap correction, a wrong prediction is worse than no prediction.
+
+**Rough-in trial.** One room with an architect's PDF and one photographed paper plan. Metrics: the fraction of room names OCR'd correctly, the fraction of proposed corners the owner accepts with a drag under 20 cm, and taps per room against the manual baseline.
+
+**Effort.** M (plan side S if the PDF is vector, M if photographed; room side M).
+
+**Risk and fallback.** Repetitive rooms and a plan that does not match as-built both produce confident wrong proposals, and a proposal that looks authoritative is more dangerous than an empty screen — an owner who drags a corner "into place" against a wrong prediction has anchored on it. Draw candidates in a distinctly unconfirmed style, never pre-confirm, and keep the count low. Fallback is the MVP path: tap every landmark by hand.
+
 ## Later candidates
 
 **Plan understanding.** Extract rooms, door and window tags and electrical symbols into expected-element checklists per room, using pdfplumber text from vector PDFs and the legend sheet as context. Lists only, since VLMs score 33 to 38% on ArchPlanVQA plan geometry: nothing is placed spatially and every item is confirmable. Feeds item 3 and the review below.

@@ -22,6 +22,8 @@ struct CaptureHUDView: View {
 
   @State private var landmarkKind: LandmarkKind = .corner
   @State private var flash: String?
+  @State private var renaming = false
+  @State private var draftLabel = ""
 
   private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -36,6 +38,7 @@ struct CaptureHUDView: View {
         Spacer()
         if let flash { flashBanner(flash) }
         if case .warn(let message) = recorder.verdict { banner(message, tone: Tokens.warn) }
+        if selected != nil { selectionBar }
         controls
       }
     }
@@ -43,6 +46,16 @@ struct CaptureHUDView: View {
     .onChange(of: recorder.verdict) { _, verdict in
       // The recorder decides to stop; the screen only carries the reason out.
       if case .stop(let reason) = verdict { coordinator.stop(reason: reason) }
+    }
+    .alert("Rename landmark", isPresented: $renaming) {
+      TextField("Label", text: $draftLabel)
+      Button("Cancel", role: .cancel) {}
+      Button("Save") { coordinator.renameSelectedLandmark(to: draftLabel) }
+    } message: {
+      Text("Use something you will recognise on the plan: \"kitchen NW corner\".")
+    }
+    .onChange(of: renaming) { _, showing in
+      if showing { draftLabel = selected?.label ?? "" }
     }
   }
 
@@ -61,7 +74,7 @@ struct CaptureHUDView: View {
         stat("DROP", "\(recorder.stats.dropped)", tone: recorder.stats.dropped > 0 ? Tokens.warn : nil)
         stat("STILL", "\(recorder.stats.stills)")
         stat("MRK", "\(recorder.stats.markerObservations)")
-        stat("LM", "\(coordinator.landmarkCount)")
+        stat("LM", "\(coordinator.landmarks.count)")
         Spacer()
         stat("FREE", freeText, tone: coordinator.freeBytes < 2_000_000_000 ? Tokens.warn : nil)
         stat("THERM", thermalWord, tone: thermalColour)
@@ -97,6 +110,34 @@ struct CaptureHUDView: View {
     }
     .padding(.horizontal, 16).padding(.vertical, 6)
     .background(Tokens.scrim)
+  }
+
+  // MARK: - Selection
+
+  private var selected: PlacedLandmark? {
+    coordinator.landmarks.first { $0.id == coordinator.selectedLandmark }
+  }
+
+  /// Shown only while a landmark is selected, so the controls below it keep the
+  /// same positions at all other times — a button that moves under a thumb
+  /// mid-sweep is worse than one that is occasionally absent.
+  private var selectionBar: some View {
+    HStack(spacing: 12) {
+      Circle().fill(Color.white).frame(width: 10, height: 10)
+      Text(selected?.label ?? "")
+        .font(.footnote.weight(.semibold)).foregroundStyle(Tokens.ink)
+        .lineLimit(1)
+      Spacer()
+      Button("Rename") { renaming = true }
+        .font(.footnote).foregroundStyle(Tokens.accentCool)
+      Button("Delete") { coordinator.deleteSelectedLandmark() }
+        .font(.footnote.weight(.semibold)).foregroundStyle(Tokens.error)
+      Button("Done") { coordinator.selectedLandmark = nil }
+        .font(.footnote).foregroundStyle(Tokens.inkSecondary)
+    }
+    .padding(.horizontal, 16).padding(.vertical, 10)
+    .background(Tokens.raised)
+    .overlay(alignment: .top) { Rectangle().fill(Tokens.hairline).frame(height: 1) }
   }
 
   // MARK: - Bottom
@@ -140,7 +181,10 @@ struct CaptureHUDView: View {
         }
         .foregroundStyle(Tokens.ink)
       }
-      Text("Tap the view to mark a \(landmarkKind.rawValue)")
+      Text(
+        coordinator.selectedLandmark == nil
+          ? "Tap the view to mark a \(landmarkKind.rawValue) · tap a mark to edit it"
+          : "Tap where it should be")
         .font(.caption2).foregroundStyle(Tokens.inkSecondary)
     }
     .padding(.horizontal, 20)
@@ -165,9 +209,18 @@ struct CaptureHUDView: View {
   // MARK: - Interaction
 
   private func handleTap(_ point: CGPoint) {
-    let label = "\(landmarkKind.rawValue)-\(coordinator.landmarkCount + 1)"
-    let ok = coordinator.markLandmark(at: point, label: label, kind: landmarkKind)
-    show(ok ? "Marked \(label)" : "No surface there — aim at a wall or floor")
+    switch coordinator.handleTap(at: point, kind: landmarkKind) {
+    case .placed(let label):
+      show("Marked \(label)")
+    case .selected(let label):
+      show("\(label) selected — tap where it should be")
+    case .moved(let label):
+      show("Moved \(label)")
+    case .noSurface:
+      show("No surface there — aim at a wall or floor")
+    case .ignored:
+      break
+    }
   }
 
   private func show(_ text: String) {

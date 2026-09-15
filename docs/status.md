@@ -90,11 +90,15 @@ What this changes in the code, beyond the docs:
 - **Landmarks are load-bearing.** Session review now treats zero landmarks as a
   hard failure and fewer than three as an error, where markers-absent used to
   carry that weight and is now neutral.
-- **Still to do, and the real work:** the capture HUD accepts landmarks casually
-  — tap whenever, label `corner-1`. If they are the alignment input, the app has
-  to guide them (corners, then openings, per room) and refuse to finish a room
-  with too few. Labels also have to be identifiable on a drawing weeks later,
-  which `corner-3` is not.
+- **Landmarks are editable and labelled usefully.** Tap a mark to select it,
+  tap a surface to move it, rename or delete it. Labels carry the room slug
+  (`kitchen corner 2`) rather than `corner-3`, because the only context a person
+  pairing them with a plan has is the label itself. Nothing is written until the
+  session stops, which is what makes correction free.
+- **Still to do:** the HUD prompts for nothing. It should work a room's corners
+  and openings as a checklist and refuse to finish with too few, rather than
+  leaving it to the owner to remember. `docs/ai-roadmap.md` item 5 is the
+  version of that where the app proposes candidates to drag instead.
 - **Unmeasured:** the accuracy cost. Markers gave about 3 cm at 2 m. Plan plus
   landmarks is plausibly 5-15 cm and nobody has measured it. First thing to do
   once alignment runs; nothing should quote a number before then.

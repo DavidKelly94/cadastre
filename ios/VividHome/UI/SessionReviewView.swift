@@ -48,6 +48,21 @@ struct SessionReviewView: View {
           }
         }
 
+        Section {
+          if summary.landmarkLabels.isEmpty {
+            Text("None.").font(.footnote).foregroundStyle(.secondary)
+          } else {
+            ForEach(summary.landmarkLabels, id: \.self) { label in
+              Text(label).font(.footnote.monospaced())
+            }
+          }
+        } header: {
+          Text("Landmarks placed")
+        } footer: {
+          Text("These labels are what you pair with points on the floor plan. "
+            + "If one would not tell you which corner it is, rename it before the next capture.")
+        }
+
         Section("Markers seen") {
           if summary.markersSeen.isEmpty {
             Text("None, which is normal. Markers are optional — this capture is placed "

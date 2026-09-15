@@ -63,10 +63,17 @@ HUD, Session review, Markers, Settings, Test plan. Three of them now exist in a 
 and **Session review**. The app can record a real session to disk.
 
 Design decisions for these are settled in `docs/ui/design-brief.md` §10.
-`docs/ui/design-canvas-brief.md` is the self-contained handoff for Claude
-Design. **Both it and the design brief's §2 motif are orphaned by the rename**:
-the parcel/plat imagery came from the meaning of "cadastre" and needs
-replacing. The tokens, type and contrast work are unaffected.
+`docs/ui/design-canvas-brief.md` is the self-contained handoff for the design
+canvas, and **it is current again**: the orphaned parcel/plat motif is replaced
+by the section cut — a wall face with a piece cut away showing framing and a
+service run — which describes what the product does rather than what it is
+called. It also now carries ADR-0026 (landmarks load-bearing, markers optional),
+editable landmarks, and the two plan screens from ADR-0025. `design-brief.md`
+§2 still holds the old motif and is the historical record.
+
+The canvas the owner produced under the old name is superseded: it carries a
+CADASTRE wordmark and CD-NNN marker ids, and its Session review caption says
+plan alignment happens on the PC with no plan surface anywhere in ten screens.
 
 The rename also left false prose in six documents, since corrected: the sweep
 replaced the old name inside sentences that were *about* that word rather than

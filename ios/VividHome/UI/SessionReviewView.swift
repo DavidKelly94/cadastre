@@ -82,17 +82,22 @@ struct SessionReviewView: View {
             flag("Tracking was limited for a quarter of the session. Consider recapturing.", bad: true)
           }
           // Landmarks are the alignment input now that markers are optional
-          // (ADR-0026). Under three and `align` either refuses or fits with no
-          // residual worth reading, and nothing can rescue the session later.
-          if summary.stats.landmarks == 0 {
+          // (ADR-0026), and what matters is how they are arranged rather than
+          // how many there are (ADR-0027).
+          switch summary.alignment.verdict {
+          case .impossible:
             flag(
-              "No landmarks. This capture cannot be placed on the plan, and nothing "
-                + "downstream can fix that.", bad: true)
-          } else if summary.stats.landmarks < 3 {
-            flag(
-              "Only \(summary.stats.landmarks) landmark\(summary.stats.landmarks == 1 ? "" : "s"). "
-                + "Alignment needs two and cannot be checked under three — tap the room corners.",
+              "This capture cannot be placed on the plan: alignment needs two "
+                + "landmarks and there \(summary.alignment.count == 1 ? "is one" : "are none"). "
+                + "Nothing downstream can fix that.", bad: true)
+          case .weak:
+            flag(summary.alignment.advice ?? "The landmarks are too close together to align from.",
               bad: true)
+          case .good:
+            flag(
+              "\(summary.alignment.count) landmarks, "
+                + "\(String(format: "%.1f", summary.alignment.spread)) m apart at the widest. "
+                + "Enough to check the fit against the plan.", bad: false)
           }
         } header: {
           Text("Checks")

@@ -108,15 +108,24 @@ What this changes in the code, beyond the docs:
 - **Landmarks are load-bearing.** Session review now treats zero landmarks as a
   hard failure and fewer than three as an error, where markers-absent used to
   carry that weight and is now neutral.
+- **The capture measures alignment quality, not a count**
+  ([ADR-0027](adr/0027-alignment-quality-not-a-landmark-count.md)). `AlignmentQuality`
+  in the core package scores spread and non-collinearity, with 14 tests on Linux
+  CI including the claim the ADR rests on: two well-spread points beat three in
+  a corner, which the old count rule got backwards. The HUD shows `FIT` and
+  names what would help next; review judges the arrangement.
+  **It measures geometry, never correctness** — a well-conditioned set of points
+  that are all in the wrong place scores full marks, and the reading must never
+  be read as saying the owner tapped what they meant.
 - **Landmarks are editable and labelled usefully.** Tap a mark to select it,
   tap a surface to move it, rename or delete it. Labels carry the room slug
   (`kitchen corner 2`) rather than `corner-3`, because the only context a person
   pairing them with a plan has is the label itself. Nothing is written until the
   session stops, which is what makes correction free.
-- **Still to do:** the HUD prompts for nothing. It should work a room's corners
-  and openings as a checklist and refuse to finish with too few, rather than
-  leaving it to the owner to remember. `docs/ai-roadmap.md` item 5 is the
-  version of that where the app proposes candidates to drag instead.
+- **Still to do:** the HUD advises but does not yet refuse — a capture with an
+  impossible fit can still be stopped and saved. `docs/ai-roadmap.md` item 5 is
+  the next step, where the app proposes candidates from the wall mesh to drag
+  rather than asking for taps at all.
 - **Unmeasured:** the accuracy cost. Markers gave about 3 cm at 2 m. Plan plus
   landmarks is plausibly 5-15 cm and nobody has measured it. First thing to do
   once alignment runs; nothing should quote a number before then.

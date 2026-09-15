@@ -39,6 +39,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     var phases: [CapturePhase]
     var markersSeen: [String]
     var landmarkLabels: [String]
+    var alignment: AlignmentQuality.Report
     var mesh: MeshExporter.Summary?
     var stoppedBecause: String?
   }
@@ -54,6 +55,10 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   @Published private(set) var landmarks: [PlacedLandmark] = []
   /// The landmark the next tap on a surface will move, if any.
   @Published var selectedLandmark: UUID?
+  /// How well the landmarks placed so far would determine the plan fit
+  /// ([ADR-0027]). Geometry, not a count, and not a claim that the owner tapped
+  /// what they meant.
+  @Published private(set) var alignment = AlignmentQuality.evaluate([])
   @Published private(set) var showMesh = false
   @Published private(set) var freeBytes: Int64 = 0
   /// "Kitchen · Electrical + Plumbing", for the HUD strip.
@@ -149,6 +154,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       markersSeen = []
       landmarks = []
       selectedLandmark = nil
+      rescoreAlignment()
       landmarkNodes.values.forEach { $0.removeFromParentNode() }
       landmarkNodes = [:]
       markerNodes.values.forEach { $0.removeFromParentNode() }
@@ -225,6 +231,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     if let selected = selectedLandmark, let index = landmarks.firstIndex(where: { $0.id == selected })
     {
       landmarks[index].position = position
+      rescoreAlignment()
       landmarkNodes[selected]?.position = SCNVector3(
         Float(position.x), Float(position.y), Float(position.z))
       let label = landmarks[index].label
@@ -242,6 +249,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       keyframeIndex: recorder.currentKeyframeIndex)
     landmarks.append(landmark)
     draw(landmark, in: arView)
+    rescoreAlignment()
     return .placed(label)
   }
 
@@ -251,6 +259,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     landmarkNodes[selected] = nil
     landmarks.removeAll { $0.id == selected }
     selectedLandmark = nil
+    rescoreAlignment()
   }
 
   func renameSelectedLandmark(to label: String) {
@@ -271,6 +280,10 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   /// The room name is in it because that is the only context the person pairing
   /// this with a plan will have: "corner-3" is unmatchable, "kitchen corner 3"
   /// is not. Numbering is per kind so deleting one does not renumber the rest.
+  private func rescoreAlignment() {
+    alignment = AlignmentQuality.evaluate(landmarks.map(\.position))
+  }
+
   private func nextLabel(for kind: LandmarkKind) -> String {
     let used = landmarks.filter { $0.kind == kind }.count + 1
     return "\(room.slug) \(kind.rawValue) \(used)"
@@ -468,6 +481,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
           phases: phases,
           markersSeen: seen,
           landmarkLabels: landmarks.map(\.label),
+          alignment: alignment,
           mesh: mesh,
           stoppedBecause: reason))
     } catch {

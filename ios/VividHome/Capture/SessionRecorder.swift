@@ -359,10 +359,25 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
     return Int.max
   }
 
+  /// The model identifier the kernel reports, such as "iPhone16,1".
+  ///
+  /// Not `UIDevice.current.model`, which is the string "iPhone" on every iPhone
+  /// ever made. See `HardwareIdentifier` for why the distinction is worth a
+  /// `uname` call: the decoding is there, tested on Linux, because reading the
+  /// whole fixed-width buffer instead of stopping at the terminator is a
+  /// mistake that looks correct in a log.
+  static func hardwareIdentifier() -> String {
+    var system = utsname()
+    uname(&system)
+    // Copied inside the closure: the buffer does not outlive it.
+    let bytes = withUnsafeBytes(of: system.machine) { Array($0) }
+    return HardwareIdentifier.decode(bytes) ?? UIDevice.current.model
+  }
+
   static func device() -> DeviceInfo {
     let bundle = Bundle.main
     return DeviceInfo(
-      model: UIDevice.current.model,
+      model: hardwareIdentifier(),
       iosVersion: UIDevice.current.systemVersion,
       appVersion: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
         ?? "unknown",

@@ -175,6 +175,38 @@ picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
 
+## The manifest recorded "iPhone" as the device, 2026-09-15
+
+Checking which build had produced a capture showed what else the manifest was
+saying:
+
+```
+app_build app_version ios_version model
+--------- ----------- ----------- -----
+37        0.1.0       26.6.2      iPhone
+```
+
+`session-format.md` §4 gives `"model": "iPhone16,1"`. The app was writing
+`UIDevice.current.model`, which is the string "iPhone" on every iPhone ever
+made, so every session so far records nothing about the hardware.
+
+It matters for this record specifically rather than as tidiness: LiDAR sensor
+generation varies by model and depth quality with it, and a reader years from
+now has no other way to know what produced the depth they are looking at. Raw
+sessions are immutable, so every session written this way is permanently missing
+it — the same shape of loss as the absolute-timestamp sessions.
+
+Now read from `uname`. The decoding of its fixed-width `machine` buffer lives in
+`HardwareIdentifier` in the core package with six tests, because that is the
+part that can be quietly wrong: read the full width instead of stopping at the
+terminator and the identifier carries trailing NULs, which prints as
+"iPhone16,1" in a log and compares unequal to it.
+
+**Nothing would have caught this.** `validate.py` does not inspect `device` at
+all, so no rule was broken; it surfaced only because a command run to check the
+build number happened to print the whole object. Sessions 33 through 37 keep the
+generic string and cannot be corrected.
+
 ## Ingest filed sessions under the wrong project, 2026-09-15
 
 Build 37's capture ingested clean — rule 2 silent, the timestamp fix confirmed on

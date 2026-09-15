@@ -38,7 +38,15 @@ def _add_ingest(sub: argparse._SubParsersAction) -> None:
 
 def _add_validate(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("validate", help="check a session against docs/session-format.md")
-    p.add_argument("session", help="session directory or id within the store")
+    p.add_argument(
+        "session",
+        help="session directory or id within the store; with --project, a project directory",
+    )
+    p.add_argument(
+        "--project",
+        action="store_true",
+        help="check the project-level files (section 13) instead of one session",
+    )
     p.add_argument("--json", action="store_true", help="also write derived/validate.json")
     p.add_argument(
         "--skip-images",
@@ -205,6 +213,13 @@ def resolve_session(store: str, value: str) -> Path:
 def _run_validate(args: argparse.Namespace) -> int:
     from .session import Session, SessionError
     from .validate import validate_session, write_report
+
+    if args.project:
+        from .project import validate_project
+
+        report = validate_project(args.session)
+        print(report.render())
+        return report.exit_code
 
     try:
         session = Session.load(resolve_session(args.store, args.session))

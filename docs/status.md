@@ -176,8 +176,10 @@ the contract for it. Nothing implements it yet:
 
 - iOS: no plan import, no plan view, no placement UI. Two screens that do not
   exist, on top of the ten that already do not.
-- Pipeline: `vividhome validate --project` does not exist, `ingest` does not copy
-  a `plans/` directory, and `plan add` still assumes it creates one.
+- Pipeline: **`vividhome validate --project` is built** (`vividhome/project.py`,
+  16 tests), covering section 13's six rules. `ingest` still does not copy a
+  `plans/` directory from a phone, so for now a plan reaches the store through
+  `plan add` on the PC.
 
 The schedule risk is real and is named in ADR-0025's consequences: this is scope
 added during a 14-day sprint, deliberately. Nothing in sections 1 to 12 of the

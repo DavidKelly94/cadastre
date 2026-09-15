@@ -1,5 +1,7 @@
 import ARKit
+import SceneKit
 import SwiftUI
+import UIKit
 import VividHomeCore
 
 /// Assembles the capture layer into something a screen can drive.
@@ -58,6 +60,7 @@ final class CaptureCoordinator: ObservableObject {
   private var markersWriter: JSONLWriter?
   private var landmarksWriter: JSONLWriter?
   private weak var arView: ARSCNView?
+  private var placedLandmarks: [SCNNode] = []
 
   private var level = LevelRef(slug: "l1", name: "Level 1", index: 1)
   private var room = SlugRef(slug: "room", name: "Room")
@@ -143,6 +146,8 @@ final class CaptureCoordinator: ObservableObject {
 
       markersSeen = []
       landmarkCount = 0
+      placedLandmarks.forEach { $0.removeFromParentNode() }
+      placedLandmarks = []
       contextLabel = room.name + " · " + phases.map(\.shortName).joined(separator: " + ")
       controller.setRecorder(recorder)
       controller.setAnchorObserver(markerLogger)
@@ -180,12 +185,56 @@ final class CaptureCoordinator: ObservableObject {
     guard phase == .recording, let landmarkLogger, let arView else { return false }
     let time = controller.session.currentFrame?.timestamp ?? 0
     do {
-      _ = try landmarkLogger.record(
+      let position = try landmarkLogger.record(
         tapAt: point, in: arView, label: label, kind: kind, time: time)
       landmarkCount += 1
+      place(landmark: position, label: label, kind: kind, in: arView)
       return true
     } catch {
       return false
+    }
+  }
+
+  /// Draw a landmark where it was placed.
+  ///
+  /// Without this a tap produced a line in a file and nothing else, so there was
+  /// no way to tell a mark from a missed tap, no way to see which corners were
+  /// already done, and no reason to believe the raycast had landed where you
+  /// meant. The node lives in the session's world frame, so walking away and
+  /// coming back leaves it on the same corner — ARKit holds that frame for the
+  /// life of the session. It does **not** survive into the next session, which
+  /// is what printed markers are for (ADR-0006).
+  private func place(landmark: Vector3, label: String, kind: LandmarkKind, in view: ARSCNView) {
+    let dot = SCNSphere(radius: 0.035)
+    dot.firstMaterial?.diffuse.contents = Self.colour(for: kind)
+    // Unlit, so a mark in an unlit basement reads the same as one in sunlight.
+    dot.firstMaterial?.lightingModel = .constant
+    let node = SCNNode(geometry: dot)
+    node.position = SCNVector3(Float(landmark.x), Float(landmark.y), Float(landmark.z))
+
+    let text = SCNText(string: label, extrusionDepth: 0)
+    text.font = .systemFont(ofSize: 2)
+    text.flatness = 0.2
+    text.firstMaterial?.diffuse.contents = Self.colour(for: kind)
+    text.firstMaterial?.lightingModel = .constant
+    let textNode = SCNNode(geometry: text)
+    textNode.scale = SCNVector3(0.012, 0.012, 0.012)
+    textNode.position = SCNVector3(0, 0.06, 0)
+    // Billboard, so the label is readable from wherever you walk back to.
+    textNode.constraints = [SCNBillboardConstraint()]
+    node.addChildNode(textNode)
+
+    view.scene.rootNode.addChildNode(node)
+    placedLandmarks.append(node)
+  }
+
+  private static func colour(for kind: LandmarkKind) -> UIColor {
+    switch kind {
+    case .corner: return UIColor(red: 0.35, green: 0.64, blue: 0.91, alpha: 1)
+    case .door: return UIColor(red: 0.26, green: 0.82, blue: 0.49, alpha: 1)
+    case .window: return UIColor(red: 1.0, green: 0.76, blue: 0.30, alpha: 1)
+    case .floor: return UIColor(red: 0.64, green: 0.71, blue: 0.77, alpha: 1)
+    case .other: return UIColor(red: 0.91, green: 0.36, blue: 0.13, alpha: 1)
     }
   }
 

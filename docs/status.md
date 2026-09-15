@@ -76,6 +76,42 @@ app id 1507993968, the `.com`/`.io` French products). `docs/naming-investigation
 was rewritten as a closed record because every factual claim in it had inverted.
 Identifiers were never affected — only prose. Sweep by symbol, not by word.
 
+## First real capture, 2026-09-15
+
+Build 23 recorded a finished room and the output was checked against the format
+by hand. It passes, including the one convention most likely to be silently
+wrong:
+
+- 241 keyframes over 82.5 s, `i` contiguous, `t` non-decreasing.
+- **Rotations orthonormal to 4e-7** against rule 4's 1e-3, `det(R)` exactly
+  +1. That is the column-major flatten in `ARKitBridge.transform` confirmed on
+  real ARKit poses: a transpose here would still have produced orthonormal
+  rotations and a plausible file, and would have mirrored the whole trajectory.
+- Camera path 20.68 m over a 4.6 x 1.0 x 4.0 m volume — a real walk, not a
+  phone sitting still.
+- Tracking `normal` on every frame; `fx` drifts 1323.6 to 1375.4 with autofocus,
+  which is why the format stores `K` per frame rather than once.
+- Mesh: 321,683 vertices, 580,001 faces, max OBJ face index exactly 321,683 —
+  1-based with no off-by-one. `mesh_classes.u8` is exactly one byte per face and
+  its histogram matches `mesh.json` exactly.
+
+`markers.jsonl` is empty because no markers are printed yet, which is expected
+and is why the session cannot be chained to another phase.
+
+## Landmarks are visible now
+
+The first capture exposed a real gap rather than a bug: a tapped landmark wrote
+a line to a file and did nothing else. There was no way to tell a mark from a
+missed tap, no way to see which corners were already done, and no reason to
+trust the raycast had landed where it was aimed. They are now drawn in the AR
+view, coloured by kind, with a billboarded label.
+
+They persist for the life of the session, which is as far as ARKit's world frame
+goes. **They do not carry into the next session**, and no amount of app work
+changes that: the origin of each session's frame is wherever the capture
+started. Tying two visits together is what printed markers are for (ADR-0006),
+and placing both on a shared plan is ADR-0007 plus ADR-0025. Neither is built.
+
 ## The capture layer has a caller
 
 Until 2026-09-15 the capture layer was 1,314 lines with **no caller**: nothing

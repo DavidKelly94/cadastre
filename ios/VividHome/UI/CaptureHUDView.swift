@@ -61,6 +61,7 @@ struct CaptureHUDView: View {
         stat("DROP", "\(recorder.stats.dropped)", tone: recorder.stats.dropped > 0 ? Tokens.warn : nil)
         stat("STILL", "\(recorder.stats.stills)")
         stat("MRK", "\(recorder.stats.markerObservations)")
+        stat("LM", "\(coordinator.landmarkCount)")
         Spacer()
         stat("FREE", freeText, tone: coordinator.freeBytes < 2_000_000_000 ? Tokens.warn : nil)
         stat("THERM", thermalWord, tone: thermalColour)

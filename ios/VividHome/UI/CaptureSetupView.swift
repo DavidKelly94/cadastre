@@ -32,12 +32,29 @@ struct CaptureSetupView: View {
     (plans.plans[levelSlug]?.rooms.map(\.room) ?? []).sorted()
   }
 
+  /// The Picker's selection, resolved so it always names a tag the Picker
+  /// offers. Without this, arriving with `roomName` still empty — which is the
+  /// first run, and every run after a room is placed from the plan screen —
+  /// leaves the Picker with no matching tag: a blank row, no text field, and
+  /// Start disabled. A binding settles it in both directions rather than an
+  /// `onAppear` that does not fire again when a sheet is dismissed.
+  private var roomSelection: Binding<String> {
+    Binding(
+      get: {
+        if self.roomName == Self.newRoomTag || self.placedRooms.contains(self.roomName) {
+          return self.roomName
+        }
+        return self.placedRooms.first ?? Self.newRoomTag
+      },
+      set: { self.roomName = $0 })
+  }
+
   /// What the capture is actually for, whichever way it was chosen.
   private var effectiveRoom: String {
-    if placedRooms.isEmpty || roomName == Self.newRoomTag {
+    if placedRooms.isEmpty || roomSelection.wrappedValue == Self.newRoomTag {
       return typedRoom.trimmingCharacters(in: .whitespaces)
     }
-    return roomName
+    return roomSelection.wrappedValue
   }
 
   private var roomIsPlaced: Bool {
@@ -63,7 +80,7 @@ struct CaptureSetupView: View {
           // a room nothing else knows about. Once a room is on the plan it is
           // picked, never typed again.
           if !placedRooms.isEmpty {
-            Picker("Room", selection: $roomName) {
+            Picker("Room", selection: roomSelection) {
               ForEach(placedRooms, id: \.self) { room in
                 Text(room).tag(room)
               }
@@ -71,7 +88,7 @@ struct CaptureSetupView: View {
             }
           }
 
-          if placedRooms.isEmpty || roomName == Self.newRoomTag {
+          if placedRooms.isEmpty || roomSelection.wrappedValue == Self.newRoomTag {
             TextField("Room name", text: $typedRoom)
               .textInputAutocapitalization(.words)
           }

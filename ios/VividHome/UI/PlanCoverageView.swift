@@ -35,11 +35,6 @@ struct PlanCoverageView: View {
 
   private var plan: PlanFile? { store.plans[level] }
 
-  /// Rooms this level knows about that are not on the plan yet.
-  ///
-  /// A room exists because it has a session or because it is being set up —
-  /// there is no other source of room names. Section 13 rule 6 warns about
-  /// exactly this set; here it is the work list.
   /// Room labels read off the drawing that are not placed yet. Candidates, not
   /// data: nothing here has reached the file (rule 9).
   private var suggestions: [PlanLabelReader.Candidate] {
@@ -47,6 +42,11 @@ struct PlanCoverageView: View {
     return (store.candidates[level] ?? []).filter { !placed.contains($0.slug) }
   }
 
+  /// Rooms this level knows about that are not on the plan yet.
+  ///
+  /// A room exists because it has a session or because it is being set up —
+  /// there is no other source of room names. Section 13 rule 6 warns about
+  /// exactly this set; here it is the work list.
   private var unplaced: [String] {
     let placed = Set(plan?.rooms.map(\.room) ?? [])
     var known = Set(coverage.keys)

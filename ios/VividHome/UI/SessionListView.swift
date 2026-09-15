@@ -126,6 +126,21 @@ struct SessionListView: View {
     let mb = Double(value) / 1_000_000
     return mb >= 1000 ? String(format: "%.2f GB", mb / 1000) : String(format: "%.0f MB", mb)
   }
+
+  /// The manifest stores ISO 8601 with offset because that is the contract; a
+  /// person reading a list of their own captures wants the local date. If it
+  /// does not parse, show the string as written rather than nothing — an
+  /// unparseable timestamp is worth seeing.
+  static func started(_ iso: String) -> String {
+    let parser = ISO8601DateFormatter()
+    parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let date = parser.date(from: iso) ?? {
+      parser.formatOptions = [.withInternetDateTime]
+      return parser.date(from: iso)
+    }()
+    guard let date else { return iso }
+    return date.formatted(date: .abbreviated, time: .shortened)
+  }
 }
 
 /// One past capture: what it holds, and the way off the phone.
@@ -139,8 +154,9 @@ struct SessionDetailView: View {
           detail("Room", manifest.room.name)
           detail("Level", manifest.level.name)
           detail("Trades", manifest.phases.map(\.displayName).joined(separator: ", "))
-          detail("Started", manifest.startedAt)
-          detail("Duration", String(format: "%d:%02d", Int(manifest.duration) / 60, Int(manifest.duration) % 60))
+          detail("Started", Self.started(manifest.capture.startedAt))
+          detail("Duration", String(format: "%d:%02d",
+            Int(manifest.capture.duration) / 60, Int(manifest.capture.duration) % 60))
         }
         Section("Recorded") {
           detail("Keyframes", "\(manifest.stats.keyframes)")

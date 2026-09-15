@@ -94,7 +94,7 @@ Every build carries its own test plan: open Settings in the app, then Test plan 
 
 Sessions live in the Files app: On My iPhone, VividHome, `sessions`, a project folder, then one folder per session named like `20260926-101500_L1_kitchen_framing_a1b2c3`. A 5-minute room is about 800 MB.
 
-Over Wi-Fi (SMB): on the PC, right-click a folder such as `D:\vividhome-inbox`, Properties, Sharing, Share, add your Windows user, and note the PC's IP address (`ipconfig`). On the phone, in Files tap the three dots, Connect to Server, enter `smb://<pc-ip>`, sign in as a registered user; the share appears under Shared. Long-press the session folder, Copy, open the share, Paste. Use the 5 GHz network.
+Over Wi-Fi (SMB): on the PC, right-click a folder such as `C:\Users\<you>\vividhome-inbox`, Properties, Sharing, Share, add your Windows user, and note the PC's IP address (`ipconfig`). On the phone, in Files tap the three dots, Connect to Server, enter `smb://<pc-ip>`, sign in as a registered user; the share appears under Shared. Long-press the session folder, Copy, open the share, Paste. Use the 5 GHz network.
 
 Over USB: install Apple Devices from the Microsoft Store, plug the phone in, tap Trust on the phone, select the iPhone, open Files, expand VividHome and drag session folders to the PC.
 
@@ -103,12 +103,12 @@ Delete a session from the phone only after `vividhome validate` (step 9) has pas
 ## 9. The PC pipeline
 
 1. Install uv: in PowerShell run `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`. Install Git for Windows if `git` is missing.
-2. `git clone https://github.com/DavidKelly94/cadastre`, then `cd cadastre\pipeline` and `uv sync` (installs Python 3.12 and every dependency).
+2. `git clone https://github.com/DavidKelly94/cadastre`, then `cd cadastre\pipeline` and `uv sync`. That installs a Python and every dependency from the lockfile; nothing needs to be installed first. `pyproject.toml` asks for **3.12 or newer** and uv takes the newest it has, so the version it reports may be higher than 3.12 and that is expected.
 3. `uv run vividhome --help` lists the commands.
-4. After every capture: `uv run vividhome ingest D:\vividhome-inbox\<session>` copies it into the project store, then `uv run vividhome validate <session>` checks the files. Paste the full output to the implementer, even when it passes.
+4. After every capture: `uv run vividhome --store <your-store> ingest <the .zip or folder>` unzips it into the project store **and validates it** — one command does both. `--store` goes before the command. Paste the full output to the implementer, even when it passes.
 5. As they land: `uv run vividhome apriltag`, `plan add`, `plan calibrate`, `align` and `inspect` (serves a page at http://localhost:8000). Run `git pull` and `uv sync` first to pick up new commands.
 
-Keep the project store outside the git checkout (for example `D:\vividhome\projects`) and back it up to an external drive after each visit.
+Keep the project store outside the git checkout and back it up after each visit. `--store` takes any path you can write to — `C:\Users\<you>\vividhome-data` is fine, and a second drive is not assumed. A drive letter that does not exist is refused with a message saying so.
 
 ## 10. Printing markers (optional)
 

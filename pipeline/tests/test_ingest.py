@@ -179,3 +179,26 @@ def test_the_ingested_session_is_findable_by_id(tmp_path: Path, session: Path):
     store = tmp_path / "data"
     result = ingest(store, session, "our-house")
     assert resolve_session(str(store), result.session_id) == result.destination
+
+
+def test_unusable_store_gives_a_readable_error(tmp_path):
+    """A store path that cannot be created fails with a message, not a traceback.
+
+    The real case was `--store D:\\vividhome-data` on a machine with no D: drive:
+    pathlib's recursive mkdir raised a bare FileNotFoundError naming the drive
+    root, five frames deep. The owner runs this command.
+    """
+    # A file where a directory must go is the portable way to make mkdir fail.
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_text("", encoding="utf-8")
+    # The source has to exist, or the earlier check fires first and this proves
+    # nothing about the store.
+    source = tmp_path / "session.zip"
+    source.write_text("", encoding="utf-8")
+
+    with pytest.raises(IngestError) as caught:
+        ingest(blocker, source, "default")
+
+    message = str(caught.value)
+    assert "as the project store" in message
+    assert "Check the drive exists" in message

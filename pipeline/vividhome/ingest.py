@@ -95,6 +95,21 @@ def ingest(
         raise IngestError(f"{source}: no such file or directory")
 
     destination_root = Path(store) / "sessions" / project
+
+    # Create the store up front, so an unusable path fails here with something
+    # readable instead of five frames down inside pathlib's recursive mkdir.
+    # The case that produced this: a --store on a drive letter that does not
+    # exist, which raised a bare FileNotFoundError naming 'D:\\' after four
+    # nested tracebacks. The owner is the person who runs this command, and a
+    # traceback is the worst thing to hand them.
+    try:
+        destination_root.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise IngestError(
+            f"cannot use {Path(store)} as the project store ({error.strerror or error}). "
+            f"Check the drive exists and you can write to it."
+        ) from error
+
     staging: Path | None = None
 
     try:

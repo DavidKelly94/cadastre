@@ -13,24 +13,67 @@ struct CaptureSetupView: View {
   @Binding var roomName: String
   let onAddPlan: () -> Void
   let onShowCoverage: () -> Void
+  let onShowSessions: () -> Void
 
+  @State private var typedRoom = ""
   @State private var notes = ""
   /// Defaults to the last set used, which on a site is nearly always the right
   /// answer: trades finish a floor before they move on.
   @AppStorage("lastPhases") private var lastPhases = ""
   @State private var phases: Set<CapturePhase> = []
 
+  /// Sentinel for "not one of the placed rooms". Not a slug, so it can never
+  /// collide with a real room name.
+  private static let newRoomTag = "\u{0000}new"
+
+  /// The rooms already on this level's plan, which are the ones a capture
+  /// should normally be for.
+  private var placedRooms: [String] {
+    (plans.plans[levelSlug]?.rooms.map(\.room) ?? []).sorted()
+  }
+
+  /// What the capture is actually for, whichever way it was chosen.
+  private var effectiveRoom: String {
+    if placedRooms.isEmpty || roomName == Self.newRoomTag {
+      return typedRoom.trimmingCharacters(in: .whitespaces)
+    }
+    return roomName
+  }
+
   private var canStart: Bool {
-    !roomName.trimmingCharacters(in: .whitespaces).isEmpty && !phases.isEmpty
+    !effectiveRoom.isEmpty && !phases.isEmpty
   }
 
   var body: some View {
     NavigationStack {
       Form {
-        Section("Where") {
+        Section {
           TextField("Level", text: $levelName)
-          TextField("Room", text: $roomName)
-            .textInputAutocapitalization(.words)
+
+          // The room slug is the join key between a session and its placement
+          // on the plan, so retyping it is not a convenience question: "Bedroom"
+          // and "bedroom 2" slugify differently, and the capture then belongs to
+          // a room nothing else knows about. Once a room is on the plan it is
+          // picked, never typed again.
+          if !placedRooms.isEmpty {
+            Picker("Room", selection: $roomName) {
+              ForEach(placedRooms, id: \.self) { room in
+                Text(room).tag(room)
+              }
+              Text("Another room…").tag(Self.newRoomTag)
+            }
+          }
+
+          if placedRooms.isEmpty || roomName == Self.newRoomTag {
+            TextField("Room name", text: $typedRoom)
+              .textInputAutocapitalization(.words)
+          }
+        } header: {
+          Text("Where")
+        } footer: {
+          if !placedRooms.isEmpty {
+            Text("Rooms come from the plan, so a capture lands on the room it is actually in.")
+          }
         }
 
         Section {
@@ -90,6 +133,14 @@ struct CaptureSetupView: View {
           Button("Start capture") { start() }
             .disabled(!canStart)
         }
+
+        Section {
+          Button(action: onShowSessions) {
+            Label("Past captures", systemImage: "square.stack.3d.up")
+          }
+        } footer: {
+          Text("Share a capture to the PC any time, not only in the moment after recording it.")
+        }
       }
       .navigationTitle("New capture")
       .onAppear(perform: restorePhases)
@@ -99,7 +150,7 @@ struct CaptureSetupView: View {
   private var levelSlug: String { SessionID.slug(levelName) ?? "l1" }
 
   private func placementSummary(_ plan: PlanFile) -> String {
-    let slug = SessionID.slug(roomName)
+    let slug = SessionID.slug(effectiveRoom)
     if let slug, plan.placement(of: slug) != nil { return "this room placed" }
     return "\(plan.rooms.count) placed"
   }
@@ -109,7 +160,10 @@ struct CaptureSetupView: View {
   }
 
   private func start() {
-    let trimmedRoom = roomName.trimmingCharacters(in: .whitespaces)
+    let trimmedRoom = effectiveRoom
+    // Hand the chosen room back up, so the plan screens and the session agree
+    // on one name.
+    roomName = trimmedRoom
     let trimmedLevel = levelName.trimmingCharacters(in: .whitespaces)
     let ordered = CapturePhase.allCases.filter { phases.contains($0) }
     lastPhases = ordered.map(\.rawValue).joined(separator: ",")

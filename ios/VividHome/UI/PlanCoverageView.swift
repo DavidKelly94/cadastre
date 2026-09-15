@@ -28,6 +28,8 @@ struct PlanCoverageView: View {
   @State private var dragPoint: CGPoint = .zero
   /// The room the next tap on the plan will place.
   @State private var arming: String?
+  @State private var naming = false
+  @State private var draftRoom = ""
 
   private static let space = "plan"
 
@@ -59,6 +61,18 @@ struct PlanCoverageView: View {
       .navigationTitle(plan?.level.capitalized ?? "Level")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) } }
+      .alert("Name the room", isPresented: $naming) {
+        TextField("Kitchen", text: $draftRoom)
+        Button("Cancel", role: .cancel) {}
+        Button("Add") {
+          // Slugged here so the name the capture uses and the name on the plan
+          // are the same string, which is the whole point of picking rather
+          // than typing later.
+          if let slug = SessionID.slug(draftRoom) { arming = slug }
+        }
+      } message: {
+        Text("It will be the room you pick when capturing, so use the name you would say out loud.")
+      }
     }
   }
 
@@ -96,7 +110,7 @@ struct PlanCoverageView: View {
       }
       .background(Color(.secondarySystemBackground))
 
-      if !unplaced.isEmpty { tray }
+      tray
       footer
     }
   }
@@ -145,15 +159,29 @@ struct PlanCoverageView: View {
         })
   }
 
-  /// The rooms still to place. Present only while there are any, so the plan
-  /// gets the whole screen once the level is done.
+  /// The rooms still to place, and the way to name a new one.
   private var tray: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(arming == nil ? "Not on the plan yet" : "Tap where \(arming ?? "") is")
+      Text(
+        arming != nil
+          ? "Tap where \(arming ?? "") is"
+          : (unplaced.isEmpty ? "Every room is placed" : "Not on the plan yet"))
         .font(.caption.weight(.semibold))
         .foregroundStyle(arming == nil ? Color.secondary : Color.accentColor)
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 8) {
+          Button {
+            draftRoom = ""
+            naming = true
+          } label: {
+            Label("Room", systemImage: "plus")
+              .font(.footnote.weight(.semibold))
+              .padding(.horizontal, 12).padding(.vertical, 8)
+              .background(Color(.tertiarySystemFill), in: Capsule())
+              .foregroundStyle(Color.accentColor)
+          }
+          .buttonStyle(.plain)
+
           ForEach(unplaced, id: \.self) { room in
             Button {
               arming = (arming == room) ? nil : room

@@ -133,6 +133,28 @@ What this changes in the code, beyond the docs:
 MVP scope is a building under construction where a plan exists. Finished homes
 without plans are deferred.
 
+## Two UX findings from the first real use
+
+Both from the owner running the app the way it will actually be used, and both
+worse than they look.
+
+**A capture could only be shared in the moment after it was stopped.** Session
+review held the only share affordance, and Done returned to setup with no way
+back. That is the wrong shape for the work — several rooms in one visit, then
+everything to the PC afterwards — and it made review's checks something to read
+immediately or lose. `SessionListView` lists every capture on the phone, with
+its numbers, a share sheet and a delete. `SessionStore` in the core package
+already had `sessions`, `manifest`, `countedStats` and `delete`; like the capture
+layer before it, nothing had ever called them.
+
+**The room was typed even when it was already placed on the plan.** Not a
+convenience question: the room slug is the join key between a session and its
+placement, so "Bedroom" and "bedroom 2" slugify differently and the capture then
+belongs to a room nothing else knows about. Once a room is on the plan it is
+picked from a list; typing is the exception, for a room that is genuinely new.
+The plan screen can name one, which is also the right moment since you are
+looking at the drawing.
+
 ## The app wrote absolute timestamps, 2026-09-15
 
 The first session the owner put through `vividhome ingest` was **rejected**, and

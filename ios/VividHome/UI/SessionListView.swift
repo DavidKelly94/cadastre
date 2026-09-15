@@ -154,7 +154,7 @@ struct SessionDetailView: View {
           detail("Room", manifest.room.name)
           detail("Level", manifest.level.name)
           detail("Trades", manifest.phases.map(\.displayName).joined(separator: ", "))
-          detail("Started", Self.started(manifest.capture.startedAt))
+          detail("Started", SessionListView.started(manifest.capture.startedAt))
           detail("Duration", String(format: "%d:%02d",
             Int(manifest.capture.duration) / 60, Int(manifest.capture.duration) % 60))
         }

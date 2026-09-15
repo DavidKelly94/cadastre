@@ -22,13 +22,19 @@ final class StillCapture {
   private let session: ARSession
   private let writer: FrameWriter
   private let minimumInterval: TimeInterval
+  /// Turns an `ARFrame.timestamp` into the format's `t`. Passed in rather than
+  /// computed here because a still and a keyframe must share one zero, and the
+  /// recorder owns it.
+  private let sessionTime: (Double) -> Double
 
   init(
     session: ARSession, writer: FrameWriter,
+    sessionTime: @escaping (Double) -> Double,
     minimumInterval: TimeInterval = AppConfig.minimumStillInterval
   ) {
     self.session = session
     self.writer = writer
+    self.sessionTime = sessionTime
     self.minimumInterval = minimumInterval
   }
 
@@ -65,7 +71,7 @@ final class StillCapture {
       let record = StillRecord(
         stillIndex: stillIndex,
         index: keyframeIndex,
-        time: frame.timestamp,
+        time: self.sessionTime(frame.timestamp),
         poseWorldFromCamera: ARKitBridge.transform(frame.camera.transform),
         // The still's own intrinsics, not the keyframe's: this image is several
         // times wider, so K differs and the format stores it per still.

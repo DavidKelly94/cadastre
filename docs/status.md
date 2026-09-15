@@ -27,10 +27,10 @@ as "works". The screens do not exist.
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade |
-| `ingest` | done | Zip-slip and path-traversal guarded |
+| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project |
 | `serve` | done | Local server for the browser pages |
 
-14 modules, **232 tests passing**, ruff clean.
+14 modules, **254 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -132,6 +132,142 @@ What this changes in the code, beyond the docs:
 
 MVP scope is a building under construction where a plan exists. Finished homes
 without plans are deferred.
+
+## Plans label their own rooms, so the app reads them
+
+`PlanLabelReader` runs Vision's text recognition over an imported plan and
+offers the room names it finds, positioned where the label sits. Tapping one
+places it there; dragging corrects it. Typing a room is still supported — a
+hallway may not be labelled on the drawing at all — but a typed room is nudged
+onto the plan, because a room with no placement produces a capture that cannot
+reach the record (ADR-0026).
+
+**Candidates are never written to `plans/<level>.json`.** They live in memory
+and are recomputed on import. That is what keeps rule 9 true — an inference is
+not a fact until a human accepts it — without adding a `confirmed` flag to the
+contract that could disagree with the placements beside it. Accepting is the
+drag, so confirming and correcting are one gesture rather than an approval step.
+
+Unverified: how well it reads a phone photo of a drawing taped to a stud wall,
+which is the case that matters and the one no amount of local reasoning settles.
+The stop list is deliberately short — "store" and "office" are rooms — so expect
+some title-block text to come through and need ignoring.
+
+## Two UX findings from the first real use
+
+Both from the owner running the app the way it will actually be used, and both
+worse than they look.
+
+**A capture could only be shared in the moment after it was stopped.** Session
+review held the only share affordance, and Done returned to setup with no way
+back. That is the wrong shape for the work — several rooms in one visit, then
+everything to the PC afterwards — and it made review's checks something to read
+immediately or lose. `SessionListView` lists every capture on the phone, with
+its numbers, a share sheet and a delete. `SessionStore` in the core package
+already had `sessions`, `manifest`, `countedStats` and `delete`; like the capture
+layer before it, nothing had ever called them.
+
+**The room was typed even when it was already placed on the plan.** Not a
+convenience question: the room slug is the join key between a session and its
+placement, so "Bedroom" and "bedroom 2" slugify differently and the capture then
+belongs to a room nothing else knows about. Once a room is on the plan it is
+picked from a list; typing is the exception, for a room that is genuinely new.
+The plan screen can name one, which is also the right moment since you are
+looking at the drawing.
+
+## The manifest recorded "iPhone" as the device, 2026-09-15
+
+Checking which build had produced a capture showed what else the manifest was
+saying:
+
+```
+app_build app_version ios_version model
+--------- ----------- ----------- -----
+37        0.1.0       26.6.2      iPhone
+```
+
+`session-format.md` §4 gives `"model": "iPhone16,1"`. The app was writing
+`UIDevice.current.model`, which is the string "iPhone" on every iPhone ever
+made, so every session so far records nothing about the hardware.
+
+It matters for this record specifically rather than as tidiness: LiDAR sensor
+generation varies by model and depth quality with it, and a reader years from
+now has no other way to know what produced the depth they are looking at. Raw
+sessions are immutable, so every session written this way is permanently missing
+it — the same shape of loss as the absolute-timestamp sessions.
+
+Now read from `uname`. The decoding of its fixed-width `machine` buffer lives in
+`HardwareIdentifier` in the core package with six tests, because that is the
+part that can be quietly wrong: read the full width instead of stopping at the
+terminator and the identifier carries trailing NULs, which prints as
+"iPhone16,1" in a log and compares unequal to it.
+
+**Nothing would have caught this.** `validate.py` does not inspect `device` at
+all, so no rule was broken; it surfaced only because a command run to check the
+build number happened to print the whole object. Sessions 33 through 37 keep the
+generic string and cannot be corrected.
+
+## Ingest filed sessions under the wrong project, 2026-09-15
+
+Build 37's capture ingested clean — rule 2 silent, the timestamp fix confirmed on
+real data rather than only in tests. The run showed a second bug on its way past:
+
+```
+ingested 20260915-152407_level-1_bedroom_2hhv3k
+  C:\Users\David\claude projects\sessions\default\20260915-152407_...
+```
+
+`default`, for a capture the app recorded under `our-house`. `ingest` filed every
+session under a `--project` flag that defaulted to `"default"` and never read the
+manifest, while `align` and the marker map take the project slug *from* the
+manifest (`align.project_slug`). So the capture went to one project and
+everything derived from it would have gone to another, with nothing to say so.
+
+It would not have surfaced until `plan add` and `align`, as a room whose plan
+could not be found — a confusing failure a long way from its cause.
+
+The manifest now decides, and `--project` is an override for re-filing one
+deliberately. The regression test asserts against `align.project_slug` rather
+than a repeated literal, so it keeps holding if the two ever diverge again for
+some new reason.
+
+**What this says about the earlier "no association" report.** The owner imported
+a plan and saw nothing connect. That was diagnosed as the missing placement UI
+and fixed there. This is a second, independent break in the same chain, in the
+pipeline rather than the app, and it was found by running the thing rather than
+by reading it.
+
+## The app wrote absolute timestamps, 2026-09-15
+
+The first session the owner put through `vividhome ingest` was **rejected**, and
+correctly:
+
+```
+ERROR rule 2: frame 0: t=113885.284590708 is beyond duration_s + 1
+```
+
+`t` is *seconds since session start* (`session-format.md` §3 and §5). The app was
+writing `ARFrame.timestamp` unchanged, which is time since the device booted — so
+a phone up for 31 hours wrote `t = 113885` into a session lasting forty seconds.
+Every `t` was wrong: keyframes, stills, marker sightings, tapped landmarks.
+
+Fixed by `SessionTimeline` in the core package, which holds the session's zero
+and is the only thing that converts. All four writers now share it.
+
+**Why CI could not have caught this.** The `contract` job writes a session with
+`vividhome-fixture` and validates it, but that fixture's times are relative by
+construction (`Double(index) * 0.5`). The app's `SessionRecorder` has never been
+validated by anything — it cannot run on Linux. Moving the conversion into the
+core package is what closes the gap, and is rule 3 of `AGENTS.md` doing exactly
+what it is for.
+
+The hand-check of the earlier capture missed it too: `t` was verified
+non-decreasing, never against the bound.
+
+**Sessions captured before this are not recoverable.** Raw sessions are immutable
+(rule 6), the times are wrong in every line, and no reader can guess the origin.
+Re-capture; `--keep-going` will ingest an old one for poking at, but it will not
+align.
 
 ## First real capture, 2026-09-15
 

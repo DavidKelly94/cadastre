@@ -62,6 +62,8 @@ for index in 0..<keyframes {
   let paths = FrameRecord.paths(forKeyframe: index)
   let record = FrameRecord(
     index: index,
+    // Relative by construction, which is why the contract job never caught
+    // the app writing absolute ARFrame timestamps. See SessionTimeline.
     time: Double(index) * 0.5,
     poseWorldFromCamera: pose(x: Double(index) * 0.25),
     intrinsics: intrinsics,

@@ -14,10 +14,11 @@ struct ContentView: View {
   @State private var levelName = "Level 1"
   @State private var roomName = ""
 
-  private enum Sheet: Identifiable {
+  private enum Sheet: Int, Identifiable {
     case importPlan
     case coverage
-    var id: Int { self == .importPlan ? 0 : 1 }
+    case sessions
+    var id: Int { rawValue }
   }
 
   private var buildNumber: String {
@@ -41,7 +42,8 @@ struct ContentView: View {
             levelName: $levelName,
             roomName: $roomName,
             onAddPlan: { sheet = .importPlan },
-            onShowCoverage: { sheet = .coverage })
+            onShowCoverage: { sheet = .coverage },
+            onShowSessions: { sheet = .sessions })
         case .recording:
           CaptureHUDView(
             coordinator: coordinator,
@@ -64,7 +66,9 @@ struct ContentView: View {
         PlanCoverageView(
           store: plans, level: levelSlug,
           coverage: plans.coverage(forLevel: levelSlug),
-          currentRoom: roomSlug) { sheet = nil }
+          currentRoom: roomSlug) { sheet = nil; plans.reload() }
+      case .sessions:
+        SessionListView(project: CaptureCoordinator.projectSlug) { sheet = nil }
       }
     }
   }

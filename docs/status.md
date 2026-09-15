@@ -222,8 +222,15 @@ decides that the app imports, displays and places rooms on a floor plan while
 alignment stays on the PC, and `docs/session-format.md` section 13 now carries
 the contract for it. Nothing implements it yet:
 
-- iOS: no plan import, no plan view, no placement UI. Two screens that do not
-  exist, on top of the ten that already do not.
+- iOS: **built.** `PlanFile` in the core package (12 tests on Linux CI),
+  `PlanStore` on disk, plus Plan import and Plan coverage. Import takes a PDF
+  page or a photo, keeps the original beside the raster, and downsamples to a
+  4096 px long edge. Coverage draws the level with each room where the owner put
+  it, dragged to correct.
+- Unbuilt on the app side: only one project and one level are reachable, since
+  the Projects and Levels screens do not exist. Coverage counts *sessions* per
+  room rather than distinct trades, which under-counts a room walked twice in
+  one phase — honest, and cheaper than opening every manifest.
 - Pipeline: **`vividhome validate --project` is built** (`vividhome/project.py`,
   16 tests), covering section 13's six rules. `ingest` still does not copy a
   `plans/` directory from a phone, so for now a plan reaches the store through

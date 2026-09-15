@@ -9,6 +9,15 @@ import VividHomeCore
 /// and this becomes the leaf rather than the whole app.
 struct ContentView: View {
   @StateObject private var coordinator = CaptureCoordinator()
+  @StateObject private var plans = PlanStore(project: CaptureCoordinator.projectSlug)
+  @State private var sheet: Sheet?
+  @State private var levelName = "Level 1"
+
+  private enum Sheet: Identifiable {
+    case importPlan
+    case coverage
+    var id: Int { self == .importPlan ? 0 : 1 }
+  }
 
   private var buildNumber: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
@@ -25,7 +34,12 @@ struct ContentView: View {
       } else {
         switch coordinator.phase {
         case .setup:
-          CaptureSetupView(coordinator: coordinator)
+          CaptureSetupView(
+            coordinator: coordinator,
+            plans: plans,
+            levelName: $levelName,
+            onAddPlan: { sheet = .importPlan },
+            onShowCoverage: { sheet = .coverage })
         case .recording:
           CaptureHUDView(
             coordinator: coordinator,
@@ -40,7 +54,20 @@ struct ContentView: View {
         }
       }
     }
+    .sheet(item: $sheet) { which in
+      switch which {
+      case .importPlan:
+        PlanImportView(store: plans, levelName: levelName) { sheet = nil }
+      case .coverage:
+        PlanCoverageView(
+          store: plans, level: levelSlug,
+          coverage: plans.coverage(forLevel: levelSlug)) { sheet = nil }
+      }
+    }
   }
+
+  /// The slug the store keys on, from whatever the owner typed in setup.
+  private var levelSlug: String { SessionID.slug(levelName) ?? "l1" }
 
   private var unsupported: some View {
     VStack(spacing: 16) {

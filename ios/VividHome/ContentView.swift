@@ -1,12 +1,14 @@
 import ARKit
-import VividHomeCore
 import SwiftUI
+import VividHomeCore
 
-/// First-run screen: confirms the build on the device and that this phone can do
-/// scene reconstruction, and opens a bare AR session so the camera path is proven
-/// end to end before any capture logic exists.
+/// The app's one route, for now.
+///
+/// Setup, capture, review. The designed Project, Level and Room screens sit
+/// above this and do not exist yet; when they do, they choose the level and room
+/// and this becomes the leaf rather than the whole app.
 struct ContentView: View {
-  @State private var showingARView = false
+  @StateObject private var coordinator = CaptureCoordinator()
 
   private var buildNumber: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown"
@@ -17,35 +19,58 @@ struct ContentView: View {
   }
 
   var body: some View {
-    VStack(spacing: 24) {
-      Text("VividHome build \(buildNumber)")
-        .font(.title2.weight(.semibold))
-
-      Label(
-        supportsSceneReconstruction
-          ? "Scene reconstruction supported"
-          : "Scene reconstruction unavailable",
-        systemImage: supportsSceneReconstruction ? "checkmark.circle" : "xmark.circle"
-      )
-      .foregroundStyle(supportsSceneReconstruction ? .green : .red)
-
-      Text("core \(VividHomeCore.version) · session format v\(VividHomeCore.sessionFormatVersion)")
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-
-      Button("Open AR session") {
-        showingARView = true
+    Group {
+      if !supportsSceneReconstruction {
+        unsupported
+      } else {
+        switch coordinator.phase {
+        case .setup:
+          CaptureSetupView(coordinator: coordinator)
+        case .recording:
+          CaptureHUDView(
+            coordinator: coordinator,
+            controller: coordinator.controller,
+            recorder: coordinator.recorder)
+        case .finishing(let message):
+          finishing(message)
+        case .review(let summary):
+          SessionReviewView(summary: summary) { coordinator.backToSetup() }
+        case .failed(let message):
+          failure(message)
+        }
       }
-      .buttonStyle(.borderedProminent)
-      .disabled(!supportsSceneReconstruction)
-    }
-    .padding()
-    .fullScreenCover(isPresented: $showingARView) {
-      ARSessionView()
     }
   }
-}
 
-#Preview {
-  ContentView()
+  private var unsupported: some View {
+    VStack(spacing: 16) {
+      Image(systemName: "xmark.circle").font(.largeTitle).foregroundStyle(.red)
+      Text("This iPhone has no LiDAR scanner.").font(.headline)
+      Text("VividHome needs one: an iPhone 15 Pro or newer.")
+        .font(.footnote).foregroundStyle(.secondary)
+      Text("build \(buildNumber)").font(.caption2).foregroundStyle(.secondary)
+    }
+    .multilineTextAlignment(.center)
+    .padding()
+  }
+
+  private func finishing(_ message: String) -> some View {
+    VStack(spacing: 16) {
+      ProgressView()
+      Text("Finalizing").font(.headline)
+      Text(message).font(.footnote).foregroundStyle(.secondary)
+      Text("This cannot be cancelled.").font(.caption2).foregroundStyle(.secondary)
+    }
+    .multilineTextAlignment(.center)
+    .padding()
+  }
+
+  private func failure(_ message: String) -> some View {
+    VStack(spacing: 16) {
+      Image(systemName: "exclamationmark.triangle.fill").font(.largeTitle).foregroundStyle(.orange)
+      Text(message).multilineTextAlignment(.center)
+      Button("Back") { coordinator.backToSetup() }.buttonStyle(.borderedProminent)
+    }
+    .padding()
+  }
 }

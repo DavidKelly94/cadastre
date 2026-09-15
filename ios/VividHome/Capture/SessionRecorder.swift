@@ -43,6 +43,15 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
   private(set) var layout: SessionLayout?
   private(set) var sessionID: SessionID?
 
+  /// The live frame writer, for `StillCapture`.
+  ///
+  /// A still goes through the same writer as a keyframe on purpose. Two writers
+  /// over one layout would mean two queues appending to `stills.jsonl` and two
+  /// flush counters, so a still and a keyframe landing together could interleave
+  /// mid-line. Sharing one serial queue makes that impossible rather than
+  /// unlikely. Nil whenever `state` is `.idle`.
+  var frameWriter: FrameWriter? { writer }
+
   private var manifest: Manifest?
   private var writer: FrameWriter?
   private var policy = KeyframePolicy()

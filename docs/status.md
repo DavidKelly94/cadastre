@@ -59,8 +59,8 @@ successful compile.
 ## Screens — none built
 
 Onboarding, ProjectPicker, Project overview, Level view, RoomPicker, Capture
-HUD, Session review, Markers, Settings, Test plan. The app currently shows one
-build-check screen and a bare AR view, both scaffolding from day 1.
+HUD, Session review, Markers, Settings, Test plan. Three of them now exist in a first form: **Capture setup**, **Capture HUD**
+and **Session review**. The app can record a real session to disk.
 
 Design decisions for these are settled in `docs/ui/design-brief.md` §10.
 `docs/ui/design-canvas-brief.md` is the self-contained handoff for Claude
@@ -75,6 +75,34 @@ exists on a parcel of land", "pronounced kuh-DASS-ter", the App Store clash with
 app id 1507993968, the `.com`/`.io` French products). `docs/naming-investigation.md`
 was rewritten as a closed record because every factual claim in it had inverted.
 Identifiers were never affected — only prose. Sweep by symbol, not by word.
+
+## The capture layer has a caller
+
+Until 2026-09-15 the capture layer was 1,314 lines with **no caller**: nothing
+outside `Capture/` referenced `SessionRecorder` or `ARSessionController`, and
+the app's AR view built its own bare `ARSCNView`. Every part was unit tested and
+none of them had ever run together.
+
+`CaptureCoordinator` is that caller. It owns the assembly the parts assumed but
+nobody had written: which writers exist, who closes them, and in what order a
+session stops. Two things it settles that were genuinely ambiguous before:
+
+- **Stills share the recorder's `FrameWriter`.** Two writers over one layout
+  would mean two serial queues appending to `stills.jsonl` and two flush
+  counters, so a still and a keyframe landing together could interleave
+  mid-line. `SessionRecorder` now exposes its writer for that reason.
+- **Markers and landmarks get their `JSONLWriter`s at start**, which also
+  creates the two files. `vividhome validate` requires both to exist even when
+  nothing was logged, so a session with no markers still validates rather than
+  failing on a missing file.
+
+What is built, honestly: it records, writes every file the format specifies,
+logs markers and landmarks, exports the mesh, and shows what was saved. What is
+not: no trajectory plot in Session review (it needs the plan work from
+ADR-0025), no coverage checklist, and the HUD scrim is a fixed 72% because
+nothing samples the camera feed to know when to raise it to 88%. Chrome over a
+sunlit opening is the case most likely to be unreadable, and it needs a device
+to judge.
 
 ## TestFlight
 

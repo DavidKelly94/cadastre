@@ -7,9 +7,13 @@ import VividHomeCore
 /// layer and a real session on disk.
 struct CaptureSetupView: View {
   @ObservedObject var coordinator: CaptureCoordinator
+  @ObservedObject var plans: PlanStore
+  /// Owned by ContentView, because the plan screens key on the same level.
+  @Binding var levelName: String
+  @Binding var roomName: String
+  let onAddPlan: () -> Void
+  let onShowCoverage: () -> Void
 
-  @State private var levelName = "Level 1"
-  @State private var roomName = ""
   @State private var notes = ""
   /// Defaults to the last set used, which on a site is nearly always the right
   /// answer: trades finish a floor before they move on.
@@ -53,6 +57,31 @@ struct CaptureSetupView: View {
           Text("Pick every trade you can see. They can be corrected afterwards.")
         }
 
+        Section {
+          if let plan = plans.plans[levelSlug] {
+            Button(action: onShowCoverage) {
+              HStack {
+                Label("Plan for \(levelName)", systemImage: "map")
+                Spacer()
+                Text(placementSummary(plan))
+                  .font(.footnote).foregroundStyle(.secondary)
+              }
+            }
+          } else {
+            Button(action: onAddPlan) {
+              Label("Add a plan for \(levelName)", systemImage: "map")
+            }
+          }
+        } header: {
+          Text("Plan")
+        } footer: {
+          // Said here rather than discovered later: a capture without a plan is
+          // a valid session that cannot be placed on the record (ADR-0026).
+          Text(plans.plans[levelSlug] == nil
+            ? "You can record without one, but nothing can be placed on the record until a plan exists for this level."
+            : "Tap to see which rooms are captured, and to drag this room to where it actually is.")
+        }
+
         Section("Notes") {
           TextField("Optional", text: $notes, axis: .vertical).lineLimit(1...4)
         }
@@ -65,6 +94,14 @@ struct CaptureSetupView: View {
       .navigationTitle("New capture")
       .onAppear(perform: restorePhases)
     }
+  }
+
+  private var levelSlug: String { SessionID.slug(levelName) ?? "l1" }
+
+  private func placementSummary(_ plan: PlanFile) -> String {
+    let slug = SessionID.slug(roomName)
+    if let slug, plan.placement(of: slug) != nil { return "this room placed" }
+    return "\(plan.rooms.count) placed"
   }
 
   private func restorePhases() {

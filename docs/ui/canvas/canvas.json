@@ -1,0 +1,152 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "capture"
+    },
+    {
+      "file": "HUDLimited.dc.html",
+      "x": 503,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "capture"
+    },
+    {
+      "file": "HUDSelected.dc.html",
+      "x": 1006,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "capture"
+    },
+    {
+      "file": "HUDFinalizing.dc.html",
+      "x": 1509,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "capture"
+    },
+    {
+      "file": "HUDError.dc.html",
+      "x": 2012,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "capture"
+    },
+    {
+      "file": "CaptureSetup.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "screens"
+    },
+    {
+      "file": "SessionReview.dc.html",
+      "x": 503,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "screens"
+    },
+    {
+      "file": "ProjectOverview.dc.html",
+      "x": 1006,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "screens"
+    },
+    {
+      "file": "Markers.dc.html",
+      "x": 1509,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "screens"
+    },
+    {
+      "file": "PlanImport.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "plan"
+    },
+    {
+      "file": "PlanCoverage.dc.html",
+      "x": 503,
+      "y": 0,
+      "w": 393,
+      "h": 852,
+      "page": "plan"
+    },
+    {
+      "file": "Marks.dc.html",
+      "x": 1006,
+      "y": 0,
+      "w": 880,
+      "h": 560,
+      "page": "plan"
+    }
+  ],
+  "pages": [
+    {
+      "id": "capture",
+      "name": "Capture HUD"
+    },
+    {
+      "id": "screens",
+      "name": "Screens"
+    },
+    {
+      "id": "plan",
+      "name": "Plan & marks"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "n-hud",
+      "x": 0,
+      "y": -132,
+      "w": 560,
+      "page": "capture",
+      "text": "Landmarks are the only thing that places a capture on the plan (ADR-0026), so the tap is the interaction to get right.\nOne tap means three things: hitting a mark selects it, a tap while selected moves it, anything else places a new one."
+    },
+    {
+      "id": "n-nochrome",
+      "x": 1500,
+      "y": -132,
+      "w": 430,
+      "page": "capture",
+      "text": "No fake status bar or keyboard anywhere \u2014 the real ones render on top on device. The 59 pt at the top is left empty on purpose."
+    },
+    {
+      "id": "n-motif",
+      "x": 0,
+      "y": -132,
+      "w": 520,
+      "page": "screens",
+      "text": "Motif: the section cut. A room is a wall face; capturing it cuts it open, and the opening is the coverage.\nPhase is never carried by colour \u2014 green/amber/red stay semantic."
+    },
+    {
+      "id": "n-plan",
+      "x": 0,
+      "y": -150,
+      "w": 560,
+      "page": "plan",
+      "text": "The two screens that did not exist before. Plan import is drawn as a phone photo of a drawing taped to a stud wall, because that is the real case.\nPlan coverage answers \u201cwhat have I missed\u201d spatially \u2014 a count cannot tell you the far corner of the great room was never walked."
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "capture"
+  }
+}

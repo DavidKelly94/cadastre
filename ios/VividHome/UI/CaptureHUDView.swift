@@ -70,17 +70,23 @@ struct CaptureHUDView: View {
         Text(elapsedText).font(.caption.monospacedDigit()).foregroundStyle(Tokens.ink)
       }
       HStack(spacing: 14) {
-        stat("KF", "\(recorder.stats.keyframes)")
-        stat("DROP", "\(recorder.stats.dropped)", tone: recorder.stats.dropped > 0 ? Tokens.warn : nil)
-        stat("STILL", "\(recorder.stats.stills)")
-        stat("MRK", "\(recorder.stats.markerObservations)")
-        stat("LM", "\(coordinator.landmarks.count)")
+        readout("KF", "\(recorder.stats.keyframes)")
+        readout("DROP", "\(recorder.stats.dropped)", tone: recorder.stats.dropped > 0 ? Tokens.warn : nil)
+        readout("STILL", "\(recorder.stats.stills)")
+        readout("MRK", "\(recorder.stats.markerObservations)")
+        readout("FIT", coordinator.alignment.verdict.hudWord, tone: coordinator.alignment.hudColour)
         Spacer()
-        stat("FREE", freeText, tone: coordinator.freeBytes < 2_000_000_000 ? Tokens.warn : nil)
-        stat("THERM", thermalWord, tone: thermalColour)
+        readout("FREE", freeText, tone: coordinator.freeBytes < 2_000_000_000 ? Tokens.warn : nil)
+        readout("THERM", thermalWord, tone: thermalColour)
       }
       if let reasonText {
         Text(reasonText).font(.caption2).foregroundStyle(Tokens.warn)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      if reasonText == nil, let advice = coordinator.alignment.advice {
+        // Tracking trouble outranks it: a limited-tracking frame is worth fixing
+        // before the next landmark is worth placing.
+        Text(advice).font(.caption2).foregroundStyle(Tokens.accentCool)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
     }
@@ -278,7 +284,10 @@ struct CaptureHUDView: View {
     return gb >= 10 ? String(format: "%.0f GB", gb) : String(format: "%.1f GB", gb)
   }
 
-  private func stat(_ label: String, _ value: String, tone: Color? = nil) -> some View {
+  /// Named `readout` rather than `stat`: `stat` is a struct in Darwin, so any
+  /// call-site mistake here resolves to that instead and the compiler reports
+  /// a POSIX type rather than the argument you got wrong.
+  private func readout(_ label: String, _ value: String, tone: Color? = nil) -> some View {
     HStack(spacing: 4) {
       Text(label).font(.caption2).foregroundStyle(Tokens.inkSecondary)
       Text(value).font(.caption2.monospacedDigit().weight(.semibold))
@@ -315,6 +324,28 @@ struct ARViewContainer: UIViewRepresentable {
     @objc func handle(_ recognizer: UITapGestureRecognizer) {
       guard let view = recognizer.view else { return }
       onTap(recognizer.location(in: view))
+    }
+  }
+}
+
+extension AlignmentQuality.Verdict {
+  /// Four characters, because the strip is tight and these sit beside monospaced
+  /// counts.
+  var hudWord: String {
+    switch self {
+    case .impossible: return "NONE"
+    case .weak: return "WEAK"
+    case .good: return "OK"
+    }
+  }
+}
+
+extension AlignmentQuality.Report {
+  var hudColour: Color {
+    switch verdict {
+    case .impossible: return Tokens.error
+    case .weak: return Tokens.warn
+    case .good: return Tokens.ok
     }
   }
 }

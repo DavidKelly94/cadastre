@@ -63,10 +63,28 @@ HUD, Session review, Markers, Settings, Test plan. Three of them now exist in a 
 and **Session review**. The app can record a real session to disk.
 
 Design decisions for these are settled in `docs/ui/design-brief.md` §10.
-`docs/ui/design-canvas-brief.md` is the self-contained handoff for Claude
-Design. **Both it and the design brief's §2 motif are orphaned by the rename**:
-the parcel/plat imagery came from the meaning of "cadastre" and needs
-replacing. The tokens, type and contrast work are unaffected.
+`docs/ui/design-canvas-brief.md` is the self-contained handoff for the design
+canvas, and **it is current again**: the orphaned parcel/plat motif is replaced
+by the section cut — a wall face with a piece cut away showing framing and a
+service run — which describes what the product does rather than what it is
+called. It also now carries ADR-0026 (landmarks load-bearing, markers optional),
+editable landmarks, and the two plan screens from ADR-0025. `design-brief.md`
+§2 still holds the old motif and is the historical record.
+
+The canvas is re-seeded and live, with its artboards under `docs/ui/canvas/`:
+five HUD states, four screens, the two plan screens and a marks sheet. The
+built page is not committed — it is ~2.5 MB of editor payload, and
+`docs/ui/canvas/README.md` says which direction edits may travel so a canvas
+edit and a repository edit do not silently overwrite each other.
+
+The canvas the owner produced under the old name is superseded: it carries a
+CADASTRE wordmark and CD-NNN marker ids, and its Session review caption says
+plan alignment happens on the PC with no plan surface anywhere in ten screens.
+
+Two things in the new canvas are unverified and deliberately so: whether the
+section cut still reads as a wall rather than a progress bar at the 64 px size
+used in room rows, and whether HUD chrome survives a real camera feed — the
+scrim is a fixed 72% and needs a device in a dark room with a bright window.
 
 The rename also left false prose in six documents, since corrected: the sweep
 replaced the old name inside sentences that were *about* that word rather than
@@ -90,15 +108,24 @@ What this changes in the code, beyond the docs:
 - **Landmarks are load-bearing.** Session review now treats zero landmarks as a
   hard failure and fewer than three as an error, where markers-absent used to
   carry that weight and is now neutral.
+- **The capture measures alignment quality, not a count**
+  ([ADR-0027](adr/0027-alignment-quality-not-a-landmark-count.md)). `AlignmentQuality`
+  in the core package scores spread and non-collinearity, with 14 tests on Linux
+  CI including the claim the ADR rests on: two well-spread points beat three in
+  a corner, which the old count rule got backwards. The HUD shows `FIT` and
+  names what would help next; review judges the arrangement.
+  **It measures geometry, never correctness** — a well-conditioned set of points
+  that are all in the wrong place scores full marks, and the reading must never
+  be read as saying the owner tapped what they meant.
 - **Landmarks are editable and labelled usefully.** Tap a mark to select it,
   tap a surface to move it, rename or delete it. Labels carry the room slug
   (`kitchen corner 2`) rather than `corner-3`, because the only context a person
   pairing them with a plan has is the label itself. Nothing is written until the
   session stops, which is what makes correction free.
-- **Still to do:** the HUD prompts for nothing. It should work a room's corners
-  and openings as a checklist and refuse to finish with too few, rather than
-  leaving it to the owner to remember. `docs/ai-roadmap.md` item 5 is the
-  version of that where the app proposes candidates to drag instead.
+- **Still to do:** the HUD advises but does not yet refuse — a capture with an
+  impossible fit can still be stopped and saved. `docs/ai-roadmap.md` item 5 is
+  the next step, where the app proposes candidates from the wall mesh to drag
+  rather than asking for taps at all.
 - **Unmeasured:** the accuracy cost. Markers gave about 3 cm at 2 m. Plan plus
   landmarks is plausibly 5-15 cm and nobody has measured it. First thing to do
   once alignment runs; nothing should quote a number before then.
@@ -204,8 +231,20 @@ decides that the app imports, displays and places rooms on a floor plan while
 alignment stays on the PC, and `docs/session-format.md` section 13 now carries
 the contract for it. Nothing implements it yet:
 
-- iOS: no plan import, no plan view, no placement UI. Two screens that do not
-  exist, on top of the ten that already do not.
+- iOS: **built.** `PlanFile` in the core package (12 tests on Linux CI),
+  `PlanStore` on disk, plus Plan import and Plan coverage. Import takes a PDF
+  page or a photo, keeps the original beside the raster, and downsamples to a
+  4096 px long edge. Coverage draws the level with each room where the owner put
+  it, dragged to correct.
+- Placing a room is a tap: pick a room from the tray of ones not on the plan
+  yet, then tap where it is; drag any pin to correct it. The first version
+  shipped **without** this — the only call to `place` was inside an existing
+  pin's drag handler, so a freshly imported plan showed no pins and offered no
+  way to add one. A screen whose one action was unreachable.
+- Unbuilt on the app side: only one project and one level are reachable, since
+  the Projects and Levels screens do not exist. Coverage counts *sessions* per
+  room rather than distinct trades, which under-counts a room walked twice in
+  one phase — honest, and cheaper than opening every manifest.
 - Pipeline: **`vividhome validate --project` is built** (`vividhome/project.py`,
   16 tests), covering section 13's six rules. `ingest` still does not copy a
   `plans/` directory from a phone, so for now a plan reaches the store through

@@ -122,12 +122,12 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       // Creating these also creates the two files. `vividhome validate` requires
       // both to exist even when nothing was logged, so an empty session with no
       // markers still validates.
-      let markers = try JSONLWriter(url: layout.markers)
-      let landmarks = try JSONLWriter(url: layout.landmarks)
-      markersWriter = markers
-      landmarksWriter = landmarks
+      let markersFile = try JSONLWriter(url: layout.markers)
+      let landmarksFile = try JSONLWriter(url: layout.landmarks)
+      markersWriter = markersFile
+      landmarksWriter = landmarksFile
 
-      let markerLogger = MarkerLogger(writer: markers)
+      let markerLogger = MarkerLogger(writer: markersFile)
       markerLogger.currentKeyframeIndex = { [weak self] in
         self?.recorder.currentKeyframeIndex ?? -1
       }
@@ -139,14 +139,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       }
       self.markerLogger = markerLogger
 
-      let landmarkLogger = LandmarkLogger(writer: landmarks)
-      landmarkLogger.currentKeyframeIndex = { [weak self] in
-        self?.recorder.currentKeyframeIndex ?? -1
-      }
-      landmarkLogger.onLandmark = { [weak self] in
-        self?.recorder.recordLandmark()
-      }
-      self.landmarkLogger = landmarkLogger
+      self.landmarkLogger = LandmarkLogger(writer: landmarksFile)
 
       stillCapture = StillCapture(session: controller.session, writer: writer)
 
@@ -188,6 +181,11 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       guard case .written(let bytes) = outcome else { return }
       DispatchQueue.main.async { self?.recorder.recordStillWritten(bytes: bytes) }
     }
+  }
+
+  func refreshFreeSpace() {
+    let values = try? documents.resourceValues(forKeys: [.volumeAvailableCapacityKey])
+    freeBytes = Int64(values?.volumeAvailableCapacity ?? 0)
   }
 
   /// What a tap on the camera view means.

@@ -33,6 +33,15 @@ final class PlanStore: ObservableObject {
   static let maxEdge: CGFloat = 4096
 
   @Published private(set) var plans: [String: PlanFile] = [:]
+  /// Room labels read off each level's drawing, by level.
+  ///
+  /// Deliberately **not** written to `plans/<level>.json`. A candidate is an
+  /// inference and the file is a record of what a human accepted (rule 9), and
+  /// keeping them apart means the contract needs no "confirmed" flag that could
+  /// drift from the thing it describes. They are cheap to recompute and are
+  /// gone when the app restarts, which is correct: an unaccepted suggestion is
+  /// not data.
+  @Published private(set) var candidates: [String: [PlanLabelReader.Candidate]] = [:]
 
   private let project: String
   private let fileManager = FileManager.default
@@ -116,6 +125,14 @@ final class PlanStore: ObservableObject {
     plan.source = storedSource
     plans[level] = plan
     try save(plan)
+
+    // Read the drawing's own labels. A plan names its rooms — that is what it
+    // is for — so retyping them while looking at the sheet is work the sheet
+    // already did. Scaled from the stored raster, so the points are in the same
+    // pixels a placement uses.
+    candidates[level] = PlanLabelReader.candidates(in: scaled)
+      .filter { plan.placement(of: $0.slug) == nil }
+
     return plan
   }
 
@@ -126,8 +143,10 @@ final class PlanStore: ObservableObject {
       in: (width: Int(size.width), height: Int(size.height)))
     guard ok else { return }
     plans[level] = plan
+    // An accepted candidate stops being a candidate.
+    candidates[level]?.removeAll { $0.slug == room }
     try save(plan)
-    }
+  }
 
   func unplace(room: String, on level: String) throws {
     guard var plan = plans[level] else { return }

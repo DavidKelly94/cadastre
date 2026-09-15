@@ -133,6 +133,26 @@ What this changes in the code, beyond the docs:
 MVP scope is a building under construction where a plan exists. Finished homes
 without plans are deferred.
 
+## Plans label their own rooms, so the app reads them
+
+`PlanLabelReader` runs Vision's text recognition over an imported plan and
+offers the room names it finds, positioned where the label sits. Tapping one
+places it there; dragging corrects it. Typing a room is still supported — a
+hallway may not be labelled on the drawing at all — but a typed room is nudged
+onto the plan, because a room with no placement produces a capture that cannot
+reach the record (ADR-0026).
+
+**Candidates are never written to `plans/<level>.json`.** They live in memory
+and are recomputed on import. That is what keeps rule 9 true — an inference is
+not a fact until a human accepts it — without adding a `confirmed` flag to the
+contract that could disagree with the placements beside it. Accepting is the
+drag, so confirming and correcting are one gesture rather than an approval step.
+
+Unverified: how well it reads a phone photo of a drawing taped to a stud wall,
+which is the case that matters and the one no amount of local reasoning settles.
+The stop list is deliberately short — "store" and "office" are rooms — so expect
+some title-block text to come through and need ignoring.
+
 ## Two UX findings from the first real use
 
 Both from the owner running the app the way it will actually be used, and both

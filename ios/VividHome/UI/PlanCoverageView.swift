@@ -40,6 +40,13 @@ struct PlanCoverageView: View {
   /// A room exists because it has a session or because it is being set up —
   /// there is no other source of room names. Section 13 rule 6 warns about
   /// exactly this set; here it is the work list.
+  /// Room labels read off the drawing that are not placed yet. Candidates, not
+  /// data: nothing here has reached the file (rule 9).
+  private var suggestions: [PlanLabelReader.Candidate] {
+    let placed = Set(plan?.rooms.map(\.room) ?? [])
+    return (store.candidates[level] ?? []).filter { !placed.contains($0.slug) }
+  }
+
   private var unplaced: [String] {
     let placed = Set(plan?.rooms.map(\.room) ?? [])
     var known = Set(coverage.keys)
@@ -165,7 +172,9 @@ struct PlanCoverageView: View {
       Text(
         arming != nil
           ? "Tap where \(arming ?? "") is"
-          : (unplaced.isEmpty ? "Every room is placed" : "Not on the plan yet"))
+          : (suggestions.isEmpty
+            ? (unplaced.isEmpty ? "Every room is placed" : "Not on the plan yet")
+            : "Read off the drawing — tap to place, then drag to correct"))
         .font(.caption.weight(.semibold))
         .foregroundStyle(arming == nil ? Color.secondary : Color.accentColor)
       ScrollView(.horizontal, showsIndicators: false) {
@@ -181,6 +190,28 @@ struct PlanCoverageView: View {
               .foregroundStyle(Color.accentColor)
           }
           .buttonStyle(.plain)
+
+          ForEach(suggestions) { candidate in
+            Button {
+              // Placed where the label sits, then dragged if that is not quite
+              // the room's middle. Accepting and correcting are one gesture,
+              // which is what keeps a suggestion from being a thing to approve.
+              guard let plan, let image = store.image(for: plan) else { return }
+              try? store.place(
+                room: candidate.slug, at: candidate.point, on: level, size: image.size)
+            } label: {
+              HStack(spacing: 5) {
+                Image(systemName: "text.viewfinder").font(.caption2)
+                Text(candidate.slug)
+              }
+              .font(.footnote.weight(.semibold))
+              .padding(.horizontal, 12).padding(.vertical, 8)
+              .background(Color.accentColor.opacity(0.14), in: Capsule())
+              .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+              .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+          }
 
           ForEach(unplaced, id: \.self) { room in
             Button {

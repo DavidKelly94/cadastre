@@ -40,6 +40,13 @@ struct CaptureSetupView: View {
     return roomName
   }
 
+  private var roomIsPlaced: Bool {
+    guard let slug = SessionID.slug(effectiveRoom), let plan = plans.plans[levelSlug] else {
+      return false
+    }
+    return plan.placement(of: slug) != nil
+  }
+
   private var canStart: Bool {
     !effectiveRoom.isEmpty && !phases.isEmpty
   }
@@ -113,6 +120,19 @@ struct CaptureSetupView: View {
           } else {
             Button(action: onAddPlan) {
               Label("Add a plan for \(levelName)", systemImage: "map")
+            }
+          }
+
+          // A room typed here is fine — a hallway may not be labelled on the
+          // drawing at all — but it has to end up on the plan, or the capture
+          // has nothing to be placed against (ADR-0026).
+          if plans.plans[levelSlug] != nil, !effectiveRoom.isEmpty, !roomIsPlaced {
+            Button(action: onShowCoverage) {
+              Label {
+                Text("\(effectiveRoom) is not on the plan yet")
+              } icon: {
+                Image(systemName: "mappin.slash").foregroundStyle(.orange)
+              }
             }
           }
         } header: {

@@ -71,9 +71,20 @@ called. It also now carries ADR-0026 (landmarks load-bearing, markers optional),
 editable landmarks, and the two plan screens from ADR-0025. `design-brief.md`
 §2 still holds the old motif and is the historical record.
 
+The canvas is re-seeded and live, with its artboards under `docs/ui/canvas/`:
+five HUD states, four screens, the two plan screens and a marks sheet. The
+built page is not committed — it is ~2.5 MB of editor payload, and
+`docs/ui/canvas/README.md` says which direction edits may travel so a canvas
+edit and a repository edit do not silently overwrite each other.
+
 The canvas the owner produced under the old name is superseded: it carries a
 CADASTRE wordmark and CD-NNN marker ids, and its Session review caption says
 plan alignment happens on the PC with no plan surface anywhere in ten screens.
+
+Two things in the new canvas are unverified and deliberately so: whether the
+section cut still reads as a wall rather than a progress bar at the 64 px size
+used in room rows, and whether HUD chrome survives a real camera feed — the
+scrim is a fixed 72% and needs a device in a dark room with a bright window.
 
 The rename also left false prose in six documents, since corrected: the sweep
 replaced the old name inside sentences that were *about* that word rather than

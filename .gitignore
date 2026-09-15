@@ -42,3 +42,8 @@ AuthKey*.p8
 # Editors
 .vscode/
 .idea/
+
+# The design canvas is assembled from docs/ui/canvas/ into a ~2.5 MB page that
+# is mostly the editor payload. The artboards are the source; the built page is
+# not, and is republished rather than stored.
+vividhome-capture-app.html

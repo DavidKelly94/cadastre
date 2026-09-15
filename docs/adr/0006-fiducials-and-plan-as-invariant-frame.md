@@ -2,6 +2,8 @@
 
 ## Status
 
+Superseded by [ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md), 2026-09-15: markers are no longer required, and the plan with tapped landmarks carries the frame. The artwork, the generator and both detectors below carry forward unchanged, as do the detection-range measurements.
+
 Accepted, 2026-09-11.
 
 ## Context

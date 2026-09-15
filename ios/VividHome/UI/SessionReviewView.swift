@@ -48,9 +48,25 @@ struct SessionReviewView: View {
           }
         }
 
+        Section {
+          if summary.landmarkLabels.isEmpty {
+            Text("None.").font(.footnote).foregroundStyle(.secondary)
+          } else {
+            ForEach(summary.landmarkLabels, id: \.self) { label in
+              Text(label).font(.footnote.monospaced())
+            }
+          }
+        } header: {
+          Text("Landmarks placed")
+        } footer: {
+          Text("These labels are what you pair with points on the floor plan. "
+            + "If one would not tell you which corner it is, rename it before the next capture.")
+        }
+
         Section("Markers seen") {
           if summary.markersSeen.isEmpty {
-            Text("None. Sessions without markers cannot be chained to another phase.")
+            Text("None, which is normal. Markers are optional — this capture is placed "
+              + "on the plan through its landmarks (ADR-0026).")
               .font(.footnote).foregroundStyle(.secondary)
           } else {
             Text(summary.markersSeen.joined(separator: "  ")).font(.body.monospaced())
@@ -65,11 +81,18 @@ struct SessionReviewView: View {
           if summary.stats.trackingLimited > summary.duration * 0.25, summary.duration > 0 {
             flag("Tracking was limited for a quarter of the session. Consider recapturing.", bad: true)
           }
-          if summary.markersSeen.isEmpty {
-            flag("No markers were seen, so this pass cannot be tied to another phase.", bad: false)
-          }
-          if summary.stats.landmarks < 3 {
-            flag("Fewer than three landmarks — alignment to the plan will be weak.", bad: false)
+          // Landmarks are the alignment input now that markers are optional
+          // (ADR-0026). Under three and `align` either refuses or fits with no
+          // residual worth reading, and nothing can rescue the session later.
+          if summary.stats.landmarks == 0 {
+            flag(
+              "No landmarks. This capture cannot be placed on the plan, and nothing "
+                + "downstream can fix that.", bad: true)
+          } else if summary.stats.landmarks < 3 {
+            flag(
+              "Only \(summary.stats.landmarks) landmark\(summary.stats.landmarks == 1 ? "" : "s"). "
+                + "Alignment needs two and cannot be checked under three — tap the room corners.",
+              bad: true)
           }
         } header: {
           Text("Checks")

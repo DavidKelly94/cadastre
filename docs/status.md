@@ -76,6 +76,36 @@ app id 1507993968, the `.com`/`.io` French products). `docs/naming-investigation
 was rewritten as a closed record because every factual claim in it had inverted.
 Identifiers were never affected — only prose. Sweep by symbol, not by word.
 
+## Markers are optional as of 2026-09-15
+
+[ADR-0026](adr/0026-markers-are-optional-the-plan-is-the-frame.md) supersedes
+ADR-0006's "at least two per room". The owner's objection was about adoption
+rather than accuracy: a homeowner cannot place markers during a walkthrough, and
+trades remove them. ADR-0006 had already conceded the second point and already
+named the plan as the invariant frame, so this promotes its stated fallback to
+the primary path.
+
+What this changes in the code, beyond the docs:
+
+- **Landmarks are load-bearing.** Session review now treats zero landmarks as a
+  hard failure and fewer than three as an error, where markers-absent used to
+  carry that weight and is now neutral.
+- **Landmarks are editable and labelled usefully.** Tap a mark to select it,
+  tap a surface to move it, rename or delete it. Labels carry the room slug
+  (`kitchen corner 2`) rather than `corner-3`, because the only context a person
+  pairing them with a plan has is the label itself. Nothing is written until the
+  session stops, which is what makes correction free.
+- **Still to do:** the HUD prompts for nothing. It should work a room's corners
+  and openings as a checklist and refuse to finish with too few, rather than
+  leaving it to the owner to remember. `docs/ai-roadmap.md` item 5 is the
+  version of that where the app proposes candidates to drag instead.
+- **Unmeasured:** the accuracy cost. Markers gave about 3 cm at 2 m. Plan plus
+  landmarks is plausibly 5-15 cm and nobody has measured it. First thing to do
+  once alignment runs; nothing should quote a number before then.
+
+MVP scope is a building under construction where a plan exists. Finished homes
+without plans are deferred.
+
 ## First real capture, 2026-09-15
 
 Build 23 recorded a finished room and the output was checked against the format

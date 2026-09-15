@@ -110,9 +110,13 @@ Delete a session from the phone only after `vividhome validate` (step 9) has pas
 
 Keep the project store outside the git checkout (for example `D:\vividhome\projects`) and back it up to an external drive after each visit.
 
-## 10. Printing markers
+## 10. Printing markers (optional)
 
-`uv run vividhome markers --out markers.pdf` writes one marker per page, `VH-000` to `VH-059`. Print the first 20 pages on Letter or A4 at 100% (never Fit to page). Laminate with matte pouches; glossy lamination causes glare that breaks detection. Check with a tape that the outer square measures 20.0 cm. Placement and record keeping follow `docs/markers.md`: two per room, on surfaces that survive the next phase, never moved, position written down.
+**You do not need markers** ([ADR-0026](adr/0026-markers-are-optional-the-plan-is-the-frame.md)). Captures are placed on the floor plan through the landmarks you tap during a session, so nothing here is a prerequisite for recording or for the record being usable. Skip this section unless you want the extra accuracy.
+
+They are worth it in two cases: a level whose plan you suspect does not match what was built, and a room that matters enough to want centimetres rather than a decimetre. A marker gives about 3 cm at 2 m; landmarks plus the plan are bounded by how precisely you tap and how true the drawing is.
+
+`uv run vividhome markers --out markers.pdf` writes one marker per page, `VH-000` to `VH-059`. Print at 100% (never Fit to page). Laminate with matte pouches; glossy lamination causes glare that breaks detection. Check with a tape that the outer square measures 20.0 cm. Placement follows `docs/markers.md`: on surfaces that survive the next phase, never moved, position written down. Expect trades to remove some — that is why they are no longer required.
 
 ## 11. Troubleshooting
 

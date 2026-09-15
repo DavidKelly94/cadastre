@@ -13,7 +13,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0003](0003-cloud-managed-signing.md) | Cloud-managed signing from an unsigned archive | Accepted |
 | [ADR-0004](0004-session-format-posed-rgbd-keyframes.md) | Session format is posed RGB-D keyframes in per-frame files with JSONL sidecars | Accepted |
 | [ADR-0005](0005-short-room-sessions-offline-registration.md) | One room per session, registration offline | Superseded by [ADR-0022](0022-session-is-one-pass-carrying-phases.md) |
-| [ADR-0006](0006-fiducials-and-plan-as-invariant-frame.md) | AprilTag hybrid markers, with the plan as the invariant frame | Accepted |
+| [ADR-0006](0006-fiducials-and-plan-as-invariant-frame.md) | AprilTag hybrid markers, with the plan as the invariant frame | Superseded by [ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md) |
 | [ADR-0007](0007-per-level-se2-alignment.md) | Per-level SE(2) alignment from tapped landmarks and plan corners | Accepted |
 | [ADR-0008](0008-offline-processing-on-owner-pc.md) | Offline processing on the owner's PC | Accepted |
 | [ADR-0009](0009-posed-photos-first-splats-later.md) | Posed photos and the LiDAR mesh are the truth; splats are a visual layer | Accepted |
@@ -33,6 +33,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0023](0023-bundle-id-needs-no-domain.md) | The bundle identifier is `com.cadastrerecord.app` and depends on no domain | Superseded by [ADR-0024](0024-name-vividhome.md) |
 | [ADR-0024](0024-name-vividhome.md) | The product is named VividHome, bundle ID `ai.vividhome.app` | Accepted |
 | [ADR-0025](0025-plans-are-a-project-level-asset.md) | The floor plan is a project-level asset the app carries | Accepted |
+| [ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md) | Markers are optional; the plan and tapped landmarks carry the frame | Accepted |
 
 ## Adding a new ADR
 

@@ -227,6 +227,11 @@ the contract for it. Nothing implements it yet:
   page or a photo, keeps the original beside the raster, and downsamples to a
   4096 px long edge. Coverage draws the level with each room where the owner put
   it, dragged to correct.
+- Placing a room is a tap: pick a room from the tray of ones not on the plan
+  yet, then tap where it is; drag any pin to correct it. The first version
+  shipped **without** this — the only call to `place` was inside an existing
+  pin's drag handler, so a freshly imported plan showed no pins and offered no
+  way to add one. A screen whose one action was unreachable.
 - Unbuilt on the app side: only one project and one level are reachable, since
   the Projects and Levels screens do not exist. Coverage counts *sessions* per
   room rather than distinct trades, which under-counts a room walked twice in

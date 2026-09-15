@@ -10,10 +10,10 @@ struct CaptureSetupView: View {
   @ObservedObject var plans: PlanStore
   /// Owned by ContentView, because the plan screens key on the same level.
   @Binding var levelName: String
+  @Binding var roomName: String
   let onAddPlan: () -> Void
   let onShowCoverage: () -> Void
 
-  @State private var roomName = ""
   @State private var notes = ""
   /// Defaults to the last set used, which on a site is nearly always the right
   /// answer: trades finish a floor before they move on.

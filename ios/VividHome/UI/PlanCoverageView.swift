@@ -19,14 +19,31 @@ struct PlanCoverageView: View {
   let level: String
   /// Room slug to captured-phase count, from the sessions on disk.
   let coverage: [String: (done: Int, total: Int)]
+  /// The room being set up, so it can be placed before it has been captured —
+  /// which is the normal order: you know where the kitchen is before you walk it.
+  let currentRoom: String?
   let onDone: () -> Void
 
   @State private var dragging: String?
   @State private var dragPoint: CGPoint = .zero
+  /// The room the next tap on the plan will place.
+  @State private var arming: String?
 
   private static let space = "plan"
 
   private var plan: PlanFile? { store.plans[level] }
+
+  /// Rooms this level knows about that are not on the plan yet.
+  ///
+  /// A room exists because it has a session or because it is being set up —
+  /// there is no other source of room names. Section 13 rule 6 warns about
+  /// exactly this set; here it is the work list.
+  private var unplaced: [String] {
+    let placed = Set(plan?.rooms.map(\.room) ?? [])
+    var known = Set(coverage.keys)
+    if let currentRoom { known.insert(currentRoom) }
+    return known.subtracting(placed).sorted()
+  }
 
   var body: some View {
     NavigationStack {
@@ -69,9 +86,17 @@ struct PlanCoverageView: View {
         }
         .frame(width: outer.size.width, height: outer.size.height, alignment: .topLeading)
         .coordinateSpace(name: Self.space)
+        .contentShape(Rectangle())
+        .onTapGesture { point in
+          guard let room = arming, scale > 0 else { return }
+          let stored = CGPoint(x: (point.x - originX) / scale, y: (point.y - originY) / scale)
+          try? store.place(room: room, at: stored, on: level, size: image.size)
+          arming = nil
+        }
       }
       .background(Color(.secondarySystemBackground))
 
+      if !unplaced.isEmpty { tray }
       footer
     }
   }
@@ -120,6 +145,39 @@ struct PlanCoverageView: View {
         })
   }
 
+  /// The rooms still to place. Present only while there are any, so the plan
+  /// gets the whole screen once the level is done.
+  private var tray: some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(arming == nil ? "Not on the plan yet" : "Tap where \(arming ?? "") is")
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(arming == nil ? Color.secondary : Color.accentColor)
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          ForEach(unplaced, id: \.self) { room in
+            Button {
+              arming = (arming == room) ? nil : room
+            } label: {
+              Text(room)
+                .font(.footnote.weight(.semibold))
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(
+                  arming == room ? Color.accentColor : Color(.tertiarySystemFill),
+                  in: Capsule())
+                .foregroundStyle(arming == room ? Color(.systemBackground) : Color.primary)
+            }
+            .buttonStyle(.plain)
+          }
+        }
+        .padding(.horizontal, 16)
+      }
+      .frame(height: 38)
+    }
+    .padding(.top, 12)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(.bar)
+  }
+
   private var footer: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack(spacing: 16) {
@@ -127,8 +185,9 @@ struct PlanCoverageView: View {
         legend("Some", Self.shade(0.5), Self.ring(0.5))
         legend("Barely", Self.shade(0.1), Self.ring(0.1))
       }
-      Text("Drag a room to where it actually is. A placement says which room is which — "
-        + "it is never used to align a capture.")
+      Text(unplaced.isEmpty
+        ? "Drag a room to correct it. A placement says which room is which — it is never used to align a capture."
+        : "Pick a room above, then tap where it is. Drag any pin to correct it.")
         .font(.footnote).foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)

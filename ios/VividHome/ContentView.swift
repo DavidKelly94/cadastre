@@ -12,6 +12,7 @@ struct ContentView: View {
   @StateObject private var plans = PlanStore(project: CaptureCoordinator.projectSlug)
   @State private var sheet: Sheet?
   @State private var levelName = "Level 1"
+  @State private var roomName = ""
 
   private enum Sheet: Identifiable {
     case importPlan
@@ -38,6 +39,7 @@ struct ContentView: View {
             coordinator: coordinator,
             plans: plans,
             levelName: $levelName,
+            roomName: $roomName,
             onAddPlan: { sheet = .importPlan },
             onShowCoverage: { sheet = .coverage })
         case .recording:
@@ -61,13 +63,15 @@ struct ContentView: View {
       case .coverage:
         PlanCoverageView(
           store: plans, level: levelSlug,
-          coverage: plans.coverage(forLevel: levelSlug)) { sheet = nil }
+          coverage: plans.coverage(forLevel: levelSlug),
+          currentRoom: roomSlug) { sheet = nil }
       }
     }
   }
 
   /// The slug the store keys on, from whatever the owner typed in setup.
   private var levelSlug: String { SessionID.slug(levelName) ?? "l1" }
+  private var roomSlug: String? { SessionID.slug(roomName) }
 
   private var unsupported: some View {
     VStack(spacing: 16) {

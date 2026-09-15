@@ -57,8 +57,11 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
   private var policy = KeyframePolicy()
   private var clock = TrackingClock()
   private var startedAt: Date?
-  private var firstFrameTime: Double?
-  private var lastFrameTime: Double?
+  /// The session's zero. `ARFrame.timestamp` is time since the device booted,
+  /// and the format's `t` is seconds since session start; this is the only
+  /// thing that converts between them, for every writer.
+  private var timeline = SessionTimeline()
+  private var lastSessionTime: Double = 0
   private var nextKeyframeIndex = 0
   private var nextStillIndex = 0
   /// Frame time of the last free-space check. Stat-ing the volume is cheap but
@@ -139,8 +142,8 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
       self.stats = SessionStats()
       self.elapsed = 0
       self.verdict = .ok
-      self.firstFrameTime = nil
-      self.lastFrameTime = nil
+      self.timeline = SessionTimeline()
+      self.lastSessionTime = 0
       self.nextKeyframeIndex = 0
       self.nextStillIndex = 0
       self.lastHealthCheck = -.infinity
@@ -161,13 +164,18 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
   /// would stop ARKit delivering any more.
   func session(didUpdate frame: ARFrame, thermal: ThermalState) {
     let (tracking, reason) = ARKitBridge.tracking(frame.camera.trackingState)
+    // These two take the raw timestamp on purpose: both measure intervals
+    // (`time - previous`), so the origin cancels, and converting first would be
+    // work that changes nothing. Everything that *writes* a `t` goes through
+    // the timeline below.
     clock.record(time: frame.timestamp, tracking: tracking)
 
-    if firstFrameTime == nil { firstFrameTime = frame.timestamp }
-    lastFrameTime = frame.timestamp
-    if let first = firstFrameTime {
-      elapsed = frame.timestamp - first
-    }
+    // Adopting here rather than at `start` is deliberate: the session's zero is
+    // the first frame that actually arrives, not the moment the button was
+    // pressed, so a slow ARKit start does not push every t forward.
+    let sessionTime = timeline.adopt(frame.timestamp)
+    lastSessionTime = sessionTime
+    elapsed = sessionTime
 
     guard state == .recording, let writer, let layout else { return }
 
@@ -210,7 +218,7 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
     let paths = FrameRecord.paths(forKeyframe: index)
     let record = FrameRecord(
       index: index,
-      time: frame.timestamp,
+      time: sessionTime,
       poseWorldFromCamera: pose,
       intrinsics: ARKitBridge.intrinsics(frame.camera.intrinsics),
       width: Int(resolution.width),
@@ -260,6 +268,14 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
     mutateStats { $0.recordLandmark() }
   }
 
+  /// Session time for a still, a marker sighting or a tapped landmark.
+  ///
+  /// Every `t` in a session must come from one zero, or a still lands in the
+  /// trajectory at a moment it did not happen.
+  func sessionTime(for timestamp: Double) -> Double {
+    timeline.time(for: timestamp)
+  }
+
   /// The keyframe index a still or landmark should reference, or -1 before the
   /// first keyframe lands.
   var currentKeyframeIndex: Int {
@@ -286,7 +302,7 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
     meshExport?(layout)
     try writer.finish()
 
-    let duration = (lastFrameTime ?? 0) - (firstFrameTime ?? 0)
+    let duration = lastSessionTime
     var final = stats
     final.trackingLimited = clock.limitedSeconds
 

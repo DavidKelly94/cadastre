@@ -133,6 +133,38 @@ What this changes in the code, beyond the docs:
 MVP scope is a building under construction where a plan exists. Finished homes
 without plans are deferred.
 
+## The app wrote absolute timestamps, 2026-09-15
+
+The first session the owner put through `vividhome ingest` was **rejected**, and
+correctly:
+
+```
+ERROR rule 2: frame 0: t=113885.284590708 is beyond duration_s + 1
+```
+
+`t` is *seconds since session start* (`session-format.md` §3 and §5). The app was
+writing `ARFrame.timestamp` unchanged, which is time since the device booted — so
+a phone up for 31 hours wrote `t = 113885` into a session lasting forty seconds.
+Every `t` was wrong: keyframes, stills, marker sightings, tapped landmarks.
+
+Fixed by `SessionTimeline` in the core package, which holds the session's zero
+and is the only thing that converts. All four writers now share it.
+
+**Why CI could not have caught this.** The `contract` job writes a session with
+`vividhome-fixture` and validates it, but that fixture's times are relative by
+construction (`Double(index) * 0.5`). The app's `SessionRecorder` has never been
+validated by anything — it cannot run on Linux. Moving the conversion into the
+core package is what closes the gap, and is rule 3 of `AGENTS.md` doing exactly
+what it is for.
+
+The hand-check of the earlier capture missed it too: `t` was verified
+non-decreasing, never against the bound.
+
+**Sessions captured before this are not recoverable.** Raw sessions are immutable
+(rule 6), the times are wrong in every line, and no reader can guess the origin.
+Re-capture; `--keep-going` will ingest an old one for poking at, but it will not
+align.
+
 ## First real capture, 2026-09-15
 
 Build 23 recorded a finished room and the output was checked against the format

@@ -202,3 +202,60 @@ def test_unusable_store_gives_a_readable_error(tmp_path):
     message = str(caught.value)
     assert "as the project store" in message
     assert "Check the drive exists" in message
+
+
+def test_the_manifest_decides_the_project(tmp_path: Path, session: Path):
+    """A capture is filed under the project it says it belongs to.
+
+    This is the bug the owner's second real session found. `ingest` filed every
+    session under a --project that defaulted to "default" and never looked at the
+    manifest, while `align` and the marker map read the project slug *from* the
+    manifest. So a capture the app recorded under "our-house" landed in
+    `sessions/default/` and everything derived from it went to `our-house/` —
+    two projects for one room, and nothing said so.
+    """
+    store = tmp_path / "data"
+    result = ingest(store, session)
+    assert result.destination.parent == store / "sessions" / "synthetic"
+
+
+def test_the_manifest_decides_the_project_for_a_zip(tmp_path: Path, session: Path):
+    """The zip path resolves the project too, not just the directory path.
+
+    Worth its own test because the archive has to be staged somewhere before its
+    manifest can be read, so the two paths reach the project slug differently.
+    """
+    store = tmp_path / "data"
+    archive = zip_session(session, tmp_path / "capture.zip")
+    result = ingest(store, archive)
+    assert result.destination.parent == store / "sessions" / "synthetic"
+
+
+def test_ingest_files_a_session_where_align_will_look_for_it(tmp_path: Path, session: Path):
+    """The store's shape and the session's own record of itself agree.
+
+    Asserted against align.project_slug rather than a repeated literal, so this
+    keeps holding if the two ever disagree again for some new reason.
+    """
+    from vividhome.align import project_slug
+    from vividhome.session import Session
+
+    store = tmp_path / "data"
+    result = ingest(store, session)
+    loaded = Session.load(result.destination)
+    assert result.destination.parent.name == project_slug(loaded)
+
+
+def test_an_explicit_project_still_overrides_the_manifest(tmp_path: Path, session: Path):
+    """The flag is an override, not dead weight: it is how a session gets re-filed."""
+    store = tmp_path / "data"
+    result = ingest(store, session, "somewhere-else")
+    assert result.destination.parent == store / "sessions" / "somewhere-else"
+
+
+def test_no_staging_directory_is_left_at_the_store_root(tmp_path: Path, session: Path):
+    """Staging moved to the store root when the project stopped being known up front."""
+    store = tmp_path / "data"
+    archive = zip_session(session, tmp_path / "capture.zip")
+    ingest(store, archive)
+    assert not list(store.glob(".ingest-*"))

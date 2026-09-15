@@ -27,10 +27,10 @@ as "works". The screens do not exist.
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade |
-| `ingest` | done | Zip-slip and path-traversal guarded |
+| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project |
 | `serve` | done | Local server for the browser pages |
 
-14 modules, **232 tests passing**, ruff clean.
+14 modules, **254 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -174,6 +174,36 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Ingest filed sessions under the wrong project, 2026-09-15
+
+Build 37's capture ingested clean — rule 2 silent, the timestamp fix confirmed on
+real data rather than only in tests. The run showed a second bug on its way past:
+
+```
+ingested 20260915-152407_level-1_bedroom_2hhv3k
+  C:\Users\David\claude projects\sessions\default\20260915-152407_...
+```
+
+`default`, for a capture the app recorded under `our-house`. `ingest` filed every
+session under a `--project` flag that defaulted to `"default"` and never read the
+manifest, while `align` and the marker map take the project slug *from* the
+manifest (`align.project_slug`). So the capture went to one project and
+everything derived from it would have gone to another, with nothing to say so.
+
+It would not have surfaced until `plan add` and `align`, as a room whose plan
+could not be found — a confusing failure a long way from its cause.
+
+The manifest now decides, and `--project` is an override for re-filing one
+deliberately. The regression test asserts against `align.project_slug` rather
+than a repeated literal, so it keeps holding if the two ever diverge again for
+some new reason.
+
+**What this says about the earlier "no association" report.** The owner imported
+a plan and saw nothing connect. That was diagnosed as the missing placement UI
+and fixed there. This is a second, independent break in the same chain, in the
+pipeline rather than the app, and it was found by running the thing rather than
+by reading it.
 
 ## The app wrote absolute timestamps, 2026-09-15
 

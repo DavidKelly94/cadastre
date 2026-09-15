@@ -27,7 +27,11 @@ DEFAULT_STORE = "./vividhome-data"
 def _add_ingest(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("ingest", help="copy or unzip a session into the store, then validate")
     p.add_argument("source", help="session directory or .zip produced by the app")
-    p.add_argument("--project", default="default", help="project the session belongs to")
+    p.add_argument(
+        "--project",
+        default=None,
+        help="file the session under this project instead of the one its manifest names",
+    )
     p.add_argument("--force", action="store_true", help="replace a session already in the store")
     p.add_argument(
         "--keep-going",

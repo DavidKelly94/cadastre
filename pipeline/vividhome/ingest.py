@@ -76,15 +76,34 @@ def _directory_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
+def manifest_project(session: Session) -> str | None:
+    """The project slug the capture says it belongs to, or None if it does not say.
+
+    The manifest is the contract (section 4), and the app writes the project it
+    captured under. Reading it here is what keeps the store's shape and the
+    session's own record of itself from disagreeing.
+    """
+    project = session.manifest.get("project")
+    if isinstance(project, dict) and project.get("slug"):
+        return str(project["slug"])
+    return None
+
+
 def ingest(
     store: str | Path,
     source: str | Path,
-    project: str,
+    project: str | None = None,
     *,
     force: bool = False,
     keep_going: bool = False,
 ) -> IngestResult:
     """Copy a session into ``<store>/sessions/<project>/<session-id>`` and validate it.
+
+    ``project`` overrides where the session is filed. Left as None, the session's
+    own manifest decides, which is what should normally happen: ``align`` and the
+    marker map read the project slug from the manifest, so filing a session
+    anywhere else puts the capture and everything derived from it under two
+    different projects.
 
     ``force`` replaces an existing session outright. ``keep_going`` keeps a session
     that fails validation instead of removing it, which is what the owner wants
@@ -94,7 +113,7 @@ def ingest(
     if not source.exists():
         raise IngestError(f"{source}: no such file or directory")
 
-    destination_root = Path(store) / "sessions" / project
+    store_root = Path(store)
 
     # Create the store up front, so an unusable path fails here with something
     # readable instead of five frames down inside pathlib's recursive mkdir.
@@ -103,10 +122,10 @@ def ingest(
     # nested tracebacks. The owner is the person who runs this command, and a
     # traceback is the worst thing to hand them.
     try:
-        destination_root.mkdir(parents=True, exist_ok=True)
+        store_root.mkdir(parents=True, exist_ok=True)
     except OSError as error:
         raise IngestError(
-            f"cannot use {Path(store)} as the project store ({error.strerror or error}). "
+            f"cannot use {store_root} as the project store ({error.strerror or error}). "
             f"Check the drive exists and you can write to it."
         ) from error
 
@@ -116,7 +135,10 @@ def ingest(
         if source.is_dir():
             session_root = _find_session_root(source)
         elif zipfile.is_zipfile(source):
-            staging = destination_root / f".ingest-{source.stem}"
+            # Staged at the store root rather than under the project directory,
+            # because which project that is cannot be known until the manifest
+            # inside the archive has been read.
+            staging = store_root / f".ingest-{source.stem}"
             if staging.exists():
                 shutil.rmtree(staging)
             staging.mkdir(parents=True)
@@ -127,9 +149,16 @@ def ingest(
             raise IngestError(f"{source.name}: not a directory or a zip archive")
 
         try:
-            session_id = Session.load(session_root).session_id
+            session = Session.load(session_root)
         except SessionError as error:
             raise IngestError(f"{source.name}: {error}") from error
+        session_id = session.session_id
+
+        # An explicit --project wins, then the manifest, then "default" for a
+        # session old enough not to name one.
+        resolved = project or manifest_project(session) or "default"
+        destination_root = store_root / "sessions" / resolved
+        destination_root.mkdir(parents=True, exist_ok=True)
 
         destination = destination_root / session_id
         if destination.exists():

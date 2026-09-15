@@ -34,6 +34,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0024](0024-name-vividhome.md) | The product is named VividHome, bundle ID `ai.vividhome.app` | Accepted |
 | [ADR-0025](0025-plans-are-a-project-level-asset.md) | The floor plan is a project-level asset the app carries | Accepted |
 | [ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md) | Markers are optional; the plan and tapped landmarks carry the frame | Accepted |
+| [ADR-0027](0027-alignment-quality-not-a-landmark-count.md) | The capture asks for alignment quality, not a landmark count | Accepted |
 
 ## Adding a new ADR
 

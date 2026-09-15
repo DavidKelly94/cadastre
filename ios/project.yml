@@ -36,6 +36,15 @@ targets:
       path: VividHome/Info.plist
       properties:
         CFBundleDisplayName: VividHome
+        # XcodeGen generates the Info.plist, and any key absent here gets its
+        # default — CFBundleShortVersionString "1.0" and CFBundleVersion "1",
+        # written as literals. A literal in the Info.plist beats the build
+        # setting meant to fill it, so MARKETING_VERSION, CURRENT_PROJECT_VERSION
+        # and the workflow's `CURRENT_PROJECT_VERSION=<run number>` override all
+        # reached the target and none of them reached the bundle. Build 21
+        # uploaded as "1.0 (1)"; build 22 would have been rejected as a duplicate.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiredDeviceCapabilities: [arkit, arm64]

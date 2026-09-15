@@ -86,7 +86,7 @@ Never paste the `.p8` into an issue, a chat or a commit.
 
 ## 7. Install a build and follow the test plan
 
-TestFlight notifies you when a build has been processed, usually within 15 minutes of the workflow finishing. Open TestFlight, VividHome, Install or Update. The build number is the GitHub run number and is shown on the app's first screen.
+TestFlight notifies you when a build has been processed, usually within 15 minutes of the workflow finishing. Open TestFlight, VividHome, Install or Update. The build number is the GitHub run number and is shown on the app's first screen. Build 21 is the exception and shows `1.0 (1)`: the generated Info.plist carried XcodeGen's default version keys instead of the build settings, so nothing the workflow set reached the bundle. Fixed from build 22 on.
 
 Every build carries its own test plan: open Settings in the app, then Test plan (the same text is in TestFlight under What to Test). Work through it and report the build number, each item as pass or fail, and your iPhone model and iOS version. If a session misbehaves, include its `log.txt` (step 8). Builds expire 90 days after upload; install the newest one.
 
@@ -122,6 +122,8 @@ Keep the project store outside the git checkout (for example `D:\vividhome\proje
 | Build log says "Cloud signing permission error" | The API key is not Admin. Generate a new Admin key and replace all three `ASC_` secrets. |
 | Workflow succeeded but no build in TestFlight | Apple processing delay. Wait up to an hour, then check App Store Connect, TestFlight, iOS builds for a processing or rejected state. |
 | TestFlight asks about export compliance | Should not happen: the app sets `ITSAppUsesNonExemptEncryption` to false. If it does, answer No. |
+| Email: "ITMS-90984 Apple Vision Pro support issue" | **A warning, not a rejection** — the same email says delivery succeeded. The app declares `arkit` in `UIRequiredDeviceCapabilities`, which visionOS does not support, so Apple is saying it will not run there. That is correct: VividHome needs LiDAR on an iPhone. To stop the email, open App Store Connect, Pricing and Availability, and untick availability on Apple Vision Pro. Do not remove `arkit` from the app to silence it. |
+| Email: "The uploaded build has one or more issues" | Read the first line before acting. "Although delivery was successful" means the build is fine and the items are advisory. A genuine rejection says the build was **not** accepted and the build never appears in TestFlight. |
 | Build shows Expired in TestFlight | Builds last 90 days. Install a newer build or run the workflow again. |
 | App Store Connect rejects the app name | It is taken; add or change the qualifier, for example `VividHome: Site Record`. Never change the bundle ID to work around a name clash. |
 | Phone cannot see the SMB share | Same Wi-Fi network, Windows file sharing on, use the IP address not the PC name. |

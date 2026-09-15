@@ -76,6 +76,26 @@ app id 1507993968, the `.com`/`.io` French products). `docs/naming-investigation
 was rewritten as a closed record because every factual claim in it had inverted.
 Identifiers were never affected — only prose. Sweep by symbol, not by word.
 
+## TestFlight
+
+**Build 21 uploaded and was accepted** on 2026-09-14 — the first build to reach
+TestFlight. The whole signing chain works: Admin API key, cloud signing on the
+runner, export, upload. Build 21 was rejected once first, for having no app icon
+at all (90713 and 90022); an interim icon fixed it.
+
+Two things about build 21 specifically:
+
+- **It reports itself as `1.0 (1)`.** The generated Info.plist carried XcodeGen's
+  default version keys as literals, which beat the `MARKETING_VERSION` and
+  `CURRENT_PROJECT_VERSION` build settings and the workflow's per-run override.
+  So `manifest.json` provenance and the on-screen build number were both wrong,
+  and build 22 would have been rejected as a duplicate build number. Fixed; from
+  22 on the number is the run number.
+- **ITMS-90984 is a warning, not a rejection.** `arkit` in
+  `UIRequiredDeviceCapabilities` is unsupported on visionOS, which is correct —
+  the app needs LiDAR on an iPhone. Silenced by unticking Vision Pro
+  availability in App Store Connect, not by changing the app.
+
 ## Floor plans in the app
 
 **Specified, not built, on either side.** [ADR-0025](adr/0025-plans-are-a-project-level-asset.md)

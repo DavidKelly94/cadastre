@@ -34,7 +34,7 @@ jobs:
       # green over a failing build until 2026-09-13. `-e` does not help.
       - run: |
           set -o pipefail
-          xcodebuild build -project ios/Cadastre.xcodeproj -scheme Cadastre \
+          xcodebuild build -project ios/VividHome.xcodeproj -scheme VividHome \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" \
             | tee build.log | grep -E "error:|warning: unre|BUILD"

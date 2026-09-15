@@ -1,6 +1,6 @@
-# Cadastre session format (format_version 2)
+# VividHome session format (format_version 3)
 
-A **session** is one continuous capture of one room in one pass, carrying the set of construction phases exposed while it was recorded ([ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md)). The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
+A **session** is one continuous capture of one room in one pass, carrying the set of construction phases exposed while it was recorded ([ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md)). The iPhone app writes it; the pipeline only reads it and writes derived data next to it. This document is the contract between the two, and it is the **only** one ([ADR-0021](adr/0021-session-format-is-the-only-cross-language-contract.md)): anything the app writes and the pipeline reads is specified here, including the project-level files in section 13, which are not session data. Keep it exact: every field, unit and axis convention below is what the pipeline assumes.
 
 ## 1. Location and naming
 
@@ -14,7 +14,7 @@ Session ID: `<YYYYMMDD-HHMMSS>_<level>_<room>_<id6>`
 
 Example: `20261103-141502_main_kitchen_k3x7qa`.
 
-**Phases are not in the id.** They live in `manifest.json` as `phases`, because a pass can expose several trades at once and because a phase may be corrected after the capture; an identifier that is also a directory name cannot be. `cadastre inspect` prints the phases for a session, since the folder name no longer says. See [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md).
+**Phases are not in the id.** They live in `manifest.json` as `phases`, because a pass can expose several trades at once and because a phase may be corrected after the capture; an identifier that is also a directory name cannot be. `vividhome inspect` prints the phases for a session, since the folder name no longer says. See [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md).
 
 ## 2. Directory layout
 
@@ -65,7 +65,7 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
 
 ```json
 {
-  "format_version": 2,
+  "format_version": 3,
   "session_id": "20261103-141502_main_kitchen_k3x7qa",
   "status": "complete",
   "project": { "slug": "our-house", "name": "Our House" },
@@ -73,7 +73,7 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
   "room":    { "slug": "kitchen", "name": "Kitchen" },
   "phases":  ["electrical", "plumbing"],
   "notes":   "Panel and supply lines both open in the north wall.",
-  "expected_markers": ["CD-012", "CD-013", "CD-014"],
+  "expected_markers": ["VH-012", "VH-013", "VH-014"],
   "device":  { "model": "iPhone16,1", "ios_version": "26.6", "app_version": "0.1.0", "app_build": "37" },
   "capture": {
     "started_at": "2026-11-03T14:15:02-05:00",
@@ -129,7 +129,7 @@ Same fields as a keyframe line plus `s` (still index) and `path` (`stills/000.jp
 ## 7. `panos.jsonl` (reserved, optional)
 
 Panoramas are **not produced by the MVP app**, but the slot is reserved now so
-adding them later is additive and keeps `format_version` at 2. A reader must
+adding them later is additive and keeps `format_version` at 3. A reader must
 tolerate the directory and the file being absent, and must ignore fields it does
 not recognise.
 
@@ -163,10 +163,10 @@ second calibration path. Stitching offline is the cheaper first move and is why
 Marker observation (from `ARImageAnchor` add/update events):
 
 ```json
-{"t":31.02,"i":211,"marker_id":"CD-012","T_wa":[...16...],"tracked":true,"physical_width_m":0.20}
+{"t":31.02,"i":211,"marker_id":"VH-012","T_wa":[...16...],"tracked":true,"physical_width_m":0.20}
 ```
 
-`T_wa` is the **ARKit image-anchor** transform: origin at the image centre, `+x` to the right of the printed image, `+z` toward the bottom of the printed image, `+y` the normal pointing out of the printed face. The pipeline converts it to the canonical marker frame used for AprilTag PnP (`+x` right, `+y` toward the top of the tag, `+z` out of the face): `T_wm = T_wa · R_am` with `R_am` the 4x4 whose 3x3 block has columns `(1,0,0)`, `(0,0,-1)`, `(0,1,0)`. The first real capture must confirm this with `cadastre apriltag --check-anchor-frame`; if the axes disagree, fix the pipeline's constant, never the app.
+`T_wa` is the **ARKit image-anchor** transform: origin at the image centre, `+x` to the right of the printed image, `+z` toward the bottom of the printed image, `+y` the normal pointing out of the printed face. The pipeline converts it to the canonical marker frame used for AprilTag PnP (`+x` right, `+y` toward the top of the tag, `+z` out of the face): `T_wm = T_wa · R_am` with `R_am` the 4x4 whose 3x3 block has columns `(1,0,0)`, `(0,0,-1)`, `(0,1,0)`. The first real capture must confirm this with `vividhome apriltag --check-anchor-frame`; if the axes disagree, fix the pipeline's constant, never the app.
 
 Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowing: .estimatedPlane, alignment: .any)`):
 
@@ -184,21 +184,72 @@ Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowi
 
 Per keyframe: JPEG 250–400 KB at quality 0.85, depth 196,608 B, confidence 49,152 B. With motion-gated keyframes (typically 2–4 per second while walking, at most 10 per second) a 5-minute room is 300–800 MB plus 3–5 MB per still. The app refuses to start a session with less than 2 GB free and stops at 500 MB free.
 
-## 11. Validation rules (`cadastre validate`)
+## 11. Validation rules (`vividhome validate`)
 
-1. `manifest.json` parses, `format_version == 2`, `status != "incomplete"` (a warning, not an error, for `repaired`). `phases` is a non-empty array whose entries are each one of `framing`, `electrical`, `plumbing`, `hvac`, `insulation`, `drywall`, `finish`, `other`.
+1. `manifest.json` parses, `format_version == 3`, `status != "incomplete"` (a warning, not an error, for `repaired`). `phases` is a non-empty array whose entries are each one of `framing`, `electrical`, `plumbing`, `hvac`, `insulation`, `drywall`, `finish`, `other`.
 2. Every JSONL line parses; `i` strictly increasing; `t` non-decreasing and within `[0, duration_s + 1]`.
 3. Every referenced file exists; depth files are exactly `dw*dh*4` bytes; confidence files exactly `dw*dh` bytes; JPEGs decode and have the declared size.
 4. Every `T_wc` rotation block is orthonormal (`|R Rᵀ − I| < 1e-3`, `det R ≈ +1`).
 5. `K` has `fx, fy > 0`, `cx` within `[0, w]`, `cy` within `[0, h]`.
 6. At least 80% of depth pixels valid in at least 80% of keyframes (warning otherwise).
 7. Stats in the manifest match the counted files (warning otherwise).
-8. Marker IDs match `CD-\d{3}`; landmarks have finite coordinates.
+8. Marker IDs match `VH-\d{3}`; landmarks have finite coordinates.
 
 The command prints a summary and exits non-zero on any error.
 
 ## 12. Evolution
 
-Additive fields keep `format_version` 2; the pipeline must ignore unknown fields. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading every version that was ever captured. Never rewrite raw session files; all processing output goes under `derived/`.
+Additive fields keep `format_version` 3; the pipeline must ignore unknown fields. Adding a project-level file (section 13) is additive by the same rule: it changes no session field, so it does not bump the version. Any change to units, axes, matrix order, file encodings or file names bumps `format_version`, and the pipeline must keep reading every version that was ever captured. Never rewrite raw session files; all processing output goes under `derived/`.
 
-**Version 1 was never captured.** It existed only in this document and in code that had not yet run on a device when [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md) replaced it, so there is no version 1 session anywhere and readers need not accept one. This is the only version the pipeline may ever refuse: from version 2 on, a version that has written a real session must keep being readable.
+**Versions 1 and 2 were never captured.** Each existed only in this document and in code that had not yet run on a device: version 1 when [ADR-0022](adr/0022-session-is-one-pass-carrying-phases.md) replaced it, and version 2 when [ADR-0024](adr/0024-name-vividhome.md) changed the marker prefix to `VH-`. No session exists at either version anywhere, so readers need not accept one. These are the only versions the pipeline may ever refuse: from version 3 on, a version that has written a real session must keep being readable.
+
+## 13. Project-level files
+
+Everything above describes one session. A **floor plan** is not session data: it belongs to the project, it is imported rather than captured, and it is edited after the fact. It is specified here anyway, because the app writes it and the pipeline reads it, and ADR-0021 allows exactly one document to carry that kind of contract. See [ADR-0025](adr/0025-plans-are-a-project-level-asset.md).
+
+```
+Documents/sessions/<project-slug>/
+  plans/
+    <level>.png            plan raster; RGB, long edge <= 4096 px
+    <level>.source.pdf     OPTIONAL, the imported file kept verbatim (.pdf, .jpg or .heic)
+    <level>.json           plan metadata, calibration and room placements
+  <session-id>/            one folder per session, as in section 2
+```
+
+`<level>` is the same slug used in a session id. The same `plans/` shape exists in the pipeline's own store, because `ingest` copies the directory across unchanged.
+
+`<level>.json` — the first six fields are what `vividhome plan add` and `plan calibrate` have always written; `source` and `rooms` are the additions the app needs:
+
+```json
+{
+  "level": "main",
+  "image": "main.png",
+  "metres_per_pixel": null,
+  "origin_px": null,
+  "rotation_deg": 0.0,
+  "floor_height_m": 0.0,
+  "source": { "file": "main.source.pdf", "kind": "pdf", "page": 2 },
+  "rooms": [
+    { "room": "kitchen", "x": 1840, "y": 990, "placed_at": "2026-11-03T14:02:11Z" }
+  ]
+}
+```
+
+- **Calibration is not a flag.** A level is calibrated when `metres_per_pixel` and `origin_px` are both non-null, and not otherwise; there is no separate boolean to disagree with them. `plan add` writes the stub with both null, which is also everything the app ever writes, because the app solves nothing.
+- `rooms[].x`, `rooms[].y` are **pixel coordinates in `image`**, origin top-left, x right, y down. Not metres and not plan units: an uncalibrated raster has no metric meaning, which is the point.
+- `rooms[].room` is the `<room>` slug used in session ids, and is how a placement finds its captures.
+- `source` is omitted when the original was not retained. `kind` is `pdf`, `jpeg` or `heic`; `page` appears only for `pdf`.
+- Readers ignore unknown fields (section 12), so a plan file written by an older `plan add` — with no `source` and no `rooms` — is valid.
+
+**A room placement is not a correspondence.** It is a fingertip on a drawing, recorded so the app can shade a room by what has been captured. It has no accuracy claim and it is never an input to alignment: `vividhome align` uses `landmarks.jsonl` and marker poses, and nothing else. This matters because a placement and a correspondence have the same shape — a label and a 2D point — so nothing but this rule stops one being fed in where the other belongs, and the result would be a plausible-looking wrong answer rather than an error. The same caution the project applies to inferred facts (rule 9 of `AGENTS.md`) applies here: it is a human's rough claim, stored with its source, not a measurement.
+
+Validation, run by `vividhome validate --project <project-dir>` rather than per session:
+
+1. Every `plans/<level>.json` parses, and `level` matches its filename.
+2. `image` exists beside it and decodes.
+3. Every `rooms[].x` is within `[0, width]` and every `y` within `[0, height]` of that image, read from the image itself rather than from a recorded size that could drift from it.
+4. `rooms[].room` slugs are unique within a level and each matches `^[a-z0-9-]{1,24}$`.
+5. If `metres_per_pixel` is present it is positive, and `origin_px` is present too — a half-calibrated plan is an error, not a warning, because `house_to_plan` would raise on it much later.
+6. A room slug with no session, or a session whose room has no placement, is a **warning**: both are normal mid-capture.
+
+A project with no `plans/` directory is valid. Plans are optional, and everything in sections 1 to 12 works without one.

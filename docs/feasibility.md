@@ -1,4 +1,4 @@
-# Cadastre feasibility assessment
+# VividHome feasibility assessment
 
 Written 2026-09-11 from that day's research notes and the approved plan. Figures are quoted from the cited sources; unverified items are collected in section 9.
 
@@ -36,7 +36,7 @@ The plan is not the truth: framing tolerance allows 3/8 in out of plumb over 32 
 
 **Why ARWorldMap and Cloud Anchors fail.** Both are visual-feature relocalizers: Apple warns the session can remain "in the relocalizing state indefinitely", ARCore needs the device to see the same environment, and Cloud Anchors expire after 1 to 365 days. Framing to drywall destroys essentially every feature point; relocalization degrades with appearance change even without construction [12]. Rejected (ADR 0006).
 
-**Fiducials.** The research notes give measured AprilTag accuracy for a 16.4 cm tag of 1.6 to 3.4 cm and 0.8 to 3.2 degrees at 2 m, degrading to 5.8 to 12.4 cm and up to 8 degrees at 3 m; 10 to 20 cm tags stop being detected beyond about 4 m. So markers are photographed square-on from about 1 m, every session sees at least two, and the pipeline aggregates PnP poses over many observations. Cadastre's marker is a 20 cm laminated matte sheet with a 12.8 cm AprilTag 36h11 and a high-detail ring for ARKit's image-detail check; `physicalWidth` must be exact. Markers go where the surface survives the next phase (subfloor, top plates, jambs, slab, sheathing), are never moved, and their position is recorded relative to an invariant feature for re-hanging. Phases chain through marker IDs, as in US patents 11348322 and 12223613 [13].
+**Fiducials.** The research notes give measured AprilTag accuracy for a 16.4 cm tag of 1.6 to 3.4 cm and 0.8 to 3.2 degrees at 2 m, degrading to 5.8 to 12.4 cm and up to 8 degrees at 3 m; 10 to 20 cm tags stop being detected beyond about 4 m. So markers are photographed square-on from about 1 m, every session sees at least two, and the pipeline aggregates PnP poses over many observations. VividHome's marker is a 20 cm laminated matte sheet with a 12.8 cm AprilTag 36h11 and a high-detail ring for ARKit's image-detail check; `physicalWidth` must be exact. Markers go where the surface survives the next phase (subfloor, top plates, jambs, slab, sheathing), are never moved, and their position is recorded relative to an invariant feature for re-hanging. Phases chain through marker IDs, as in US patents 11348322 and 12223613 [13].
 
 **The plan as the invariant frame.** Each phase is also aligned independently to the plan and cross-checked against geometry that never changes (rough openings, room corners, stair nosings); scan-versus-BIM work in the research notes reports 2 cm RMSE for such checks and warns that ICP fails vertically when floors change, so Z comes from the level height. The finished house, every marker covered, aligns through openings and corners alone.
 
@@ -56,7 +56,7 @@ Splats are a visual layer: Postshot is free since September 2025 [16], SOG is 15
 
 Feed-forward models are the new option: MapAnything (Apache-2.0 code, Apache weights variant) ingests known intrinsics, poses and depth and outputs metric geometry [23]; Depth Anything 3 (2025-11-14) beats VGGT by 44.3% on pose and 25.1% on geometry, and `DA3METRIC-LARGE` is Apache-2.0 [24].
 
-**Thin-structure caveat.** No study quantifies splat fidelity on wires, conduit or thin pipe; splats are photometric blobs, so a 2 px cable renders plausibly without reliable geometry, and a 256x192 depth map cannot resolve 1/2 in PEX or 12 AWG cable either. Cadastre locates those from posed stills (pixel, depth ray, house-frame point, plan), never from a mesh or splat, hence the mandatory square-on stills with a tape.
+**Thin-structure caveat.** No study quantifies splat fidelity on wires, conduit or thin pipe; splats are photometric blobs, so a 2 px cable renders plausibly without reliable geometry, and a 256x192 depth map cannot resolve 1/2 in PEX or 12 AWG cable either. VividHome locates those from posed stills (pixel, depth ray, house-frame point, plan), never from a mesh or splat, hence the mandatory square-on stills with a tape.
 
 ## 6. AI labeling reality
 
@@ -66,7 +66,7 @@ So labeling is assistive (ADR 0010): a vision LLM proposes tags as candidates, S
 
 ## 7. Floor-plan ingestion
 
-Vector PDFs are the happy path (pdfplumber exposes lines, rects, curves and edges [29]); raster parsing is weaker, with CubiCasa5K still the default dataset in 2026 [30]; and VLMs cannot be trusted for scale or dimensions [28]. So the decision (ADR 0014) is a calibrated raster per level: `cadastre plan add` rasterizes a PDF page with pypdfium2 at 150 to 200 dpi or takes a photo of a paper plan with optional perspective correction, and `cadastre plan calibrate` has the owner click two points, type the dimension between them, and set north and the level height. Two-point calibration is about ten lines of code and correct.
+Vector PDFs are the happy path (pdfplumber exposes lines, rects, curves and edges [29]); raster parsing is weaker, with CubiCasa5K still the default dataset in 2026 [30]; and VLMs cannot be trusted for scale or dimensions [28]. So the decision (ADR 0014) is a calibrated raster per level: `vividhome plan add` rasterizes a PDF page with pypdfium2 at 150 to 200 dpi or takes a photo of a paper plan with optional perspective correction, and `vividhome plan calibrate` has the owner click two points, type the dimension between them, and set north and the level height. Two-point calibration is about ten lines of code and correct.
 
 ## 8. Existing products and build versus buy
 
@@ -79,7 +79,7 @@ Vector PDFs are the happy path (pdfplumber exposes lines, rects, curves and edge
 
 **Cheapest 80% route.** Free Matterport with the iPhone's LiDAR, one scan per phase as its own space, Mattertags on the panel, valves and shutoffs, plus Fieldwire free or pin360 to pin square-on wall photos to the PDF: $0 to 120 per year, plus an optional professional pre-drywall scan ($400 to 1,000).
 
-**What Cadastre adds.** One persistent coordinate frame so every phase overlays every other phase and the plan, AR see-through later on the same alignment, and open data that outlives any vendor subscription; nothing on the market gives a homeowner that at consumer prices.
+**What VividHome adds.** One persistent coordinate frame so every phase overlays every other phase and the plan, AR see-through later on the same alignment, and open data that outlives any vendor subscription; nothing on the market gives a homeowner that at consumer prices.
 
 **Purpose-built apps.** AsBuilt ("Carfax for homes") captures before insulation, full service or DIY; in pilot, price unpublished [37]. RecordSet is a free homeowner photo-record app for "conditions behind walls" with paid hosting [38]. iGUIDE sells "See Behind The Walls" shoots at about $250 to 400 [39]; Walabot DIY 2 ($149.95) is an RF wall scanner good to about 4 in [40]. All are photo records without a metric frame. Building is therefore reasonable, with the buy route above as the day-one fallback.
 
@@ -88,7 +88,7 @@ Vector PDFs are the happy path (pdfplumber exposes lines, rects, curves and edge
 - iPhone 18 Pro LiDAR: spec sheet not checked.
 - Splat fidelity on wires, conduit and thin pipe: no quantitative study.
 - Wall-clock on a 4070 Super: the 15 to 20 min per room splat figure is interpolated.
-- AprilTag figures are for a 16.4 cm tag; Cadastre's 12.8 cm tag and ARKit `detectionImages` on AprilTag artwork need a device test.
+- AprilTag figures are for a 16.4 cm tag; VividHome's 12.8 cm tag and ARKit `detectionImages` on AprilTag artwork need a device test.
 - Figures from the research notes without a recorded URL (corridor drift, 0.044 m registration, 2 cm RMSE, AprilTag accuracy) should be re-sourced before external use.
 - Grounding DINO 1.6 Pro pricing; Spark streaming details; RealityScan's free tier for a distributed hobby app.
 - AsBuilt's price; OpenSpace, Cupix, Track3D and Buildots quotes; an OpenSpace iPhone-only mode; Matterport Starter's space count; Stray Scanner's price.

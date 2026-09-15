@@ -1,25 +1,25 @@
-name: Cadastre
+name: VividHome
 options:
-  bundleIdPrefix: build.cadastre
+  bundleIdPrefix: ai.vividhome
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 packages:
-  CadastreCore:
-    path: CadastreCore
+  VividHomeCore:
+    path: VividHomeCore
 targets:
-  Cadastre:
+  VividHome:
     type: application
     platform: iOS
-    sources: [Cadastre]
+    sources: [VividHome]
     dependencies:
-      - package: CadastreCore
-        product: CadastreCore
+      - package: VividHomeCore
+        product: VividHomeCore
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: build.cadastre.app
-        PRODUCT_NAME: Cadastre
+        PRODUCT_BUNDLE_IDENTIFIER: ai.vividhome.app
+        PRODUCT_NAME: VividHome
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
@@ -27,14 +27,28 @@ targets:
         CODE_SIGN_STYLE: Automatic
         ENABLE_USER_SCRIPT_SANDBOXING: "NO"
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
+        # Without this the archive exports fine and App Store Connect rejects the
+        # upload: error 90713 (no CFBundleIconName) plus 90022 (no 120x120 icon).
+        # Xcode synthesises both from the asset catalog, but only if it is told
+        # which icon set to use.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
-      path: Cadastre/Info.plist
+      path: VividHome/Info.plist
       properties:
-        CFBundleDisplayName: Cadastre
+        CFBundleDisplayName: VividHome
+        # XcodeGen generates the Info.plist, and any key absent here gets its
+        # default — CFBundleShortVersionString "1.0" and CFBundleVersion "1",
+        # written as literals. A literal in the Info.plist beats the build
+        # setting meant to fill it, so MARKETING_VERSION, CURRENT_PROJECT_VERSION
+        # and the workflow's `CURRENT_PROJECT_VERSION=<run number>` override all
+        # reached the target and none of them reached the bundle. Build 21
+        # uploaded as "1.0 (1)"; build 22 would have been rejected as a duplicate.
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiredDeviceCapabilities: [arkit, arm64]
-        NSCameraUsageDescription: "Cadastre records the camera and LiDAR to document your house during construction."
+        NSCameraUsageDescription: "VividHome records the camera and LiDAR to document your house during construction."
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         ITSAppUsesNonExemptEncryption: false

@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from helpers import DEPTH_H, DEPTH_W, pose_cm, write_depth, write_jpeg, write_jsonl
 
-from cadastre.session import Session
-from cadastre.validate import ERROR, WARN, validate_session, write_report
+from vividhome.session import Session
+from vividhome.validate import ERROR, WARN, validate_session, write_report
 
 
 def report_for(path: Path):
@@ -41,30 +41,32 @@ def test_a_good_session_passes(session_dir: Path):
     assert report.stills == 1
     assert report.marker_observations == 1
     assert report.landmarks == 1
-    assert report.markers_by_id == {"CD-012": 1}
+    assert report.markers_by_id == {"VH-012": 1}
     assert report.landmarks_by_label == {"corner-ne": 1}
     assert report.bytes_on_disk > 0
 
 
 def test_rule_1_rejects_a_wrong_format_version(session_dir: Path):
-    patch_manifest(session_dir, format_version=3)
+    patch_manifest(session_dir, format_version=4)
     report = report_for(session_dir)
     assert not report.ok
     assert 1 in rules(report.findings, ERROR)
 
 
-def test_rule_1_rejects_a_version_1_session(session_dir: Path):
-    """Version 1 is refused rather than migrated.
+def test_rule_1_rejects_a_superseded_version(session_dir: Path):
+    """Versions 1 and 2 are refused rather than migrated.
 
     ADR-0022 changed the session id and replaced the single ``phase`` with a
-    list. That is only safe to do without a migration because no version 1
-    session was ever captured, so refusing one outright is the honest
-    behaviour: a file claiming version 1 is a mistake, not old data.
+    list; ADR-0024 then changed the marker prefix. Both were safe without a
+    migration because neither version was ever captured on a device, so
+    refusing them outright is the honest behaviour: a file claiming version 1
+    or 2 is a mistake, not old data.
     """
-    patch_manifest(session_dir, format_version=1)
-    report = report_for(session_dir)
-    assert not report.ok
-    assert 1 in rules(report.findings, ERROR)
+    for superseded in (1, 2):
+        patch_manifest(session_dir, format_version=superseded)
+        report = report_for(session_dir)
+        assert not report.ok, f"version {superseded} should be refused"
+        assert 1 in rules(report.findings, ERROR)
 
 
 def test_rule_1_rejects_missing_or_unknown_phases(session_dir: Path):
@@ -220,10 +222,10 @@ def test_rule_7_warns_when_stats_disagree(session_dir: Path):
 
 
 def test_rule_7_warns_about_expected_markers_that_were_not_seen(session_dir: Path):
-    patch_manifest(session_dir, expected_markers=["CD-012", "CD-099"])
+    patch_manifest(session_dir, expected_markers=["VH-012", "VH-099"])
     report = report_for(session_dir)
     assert report.ok
-    assert any("CD-099" in f.message for f in report.warnings)
+    assert any("VH-099" in f.message for f in report.warnings)
 
 
 def test_rule_8_rejects_a_bad_marker_id(session_dir: Path):
@@ -232,7 +234,7 @@ def test_rule_8_rejects_a_bad_marker_id(session_dir: Path):
     rows[0]["marker_id"] = "IG-012"
     write_jsonl(path, rows)
     report = report_for(session_dir)
-    assert any("CD-NNN" in f.message for f in report.errors)
+    assert any("VH-NNN" in f.message for f in report.errors)
 
 
 def test_rule_8_rejects_non_finite_landmark_coordinates(session_dir: Path):
@@ -260,7 +262,7 @@ def test_report_renders_and_serialises(session_dir: Path):
     report = report_for(session_dir)
     text = report.render()
     assert "keyframes" in text
-    assert "CD-012" in text
+    assert "VH-012" in text
     assert text.strip().endswith("OK")
 
     data = report.to_dict()

@@ -17,7 +17,7 @@ Xcode supports cloud-managed signing: given an App Store Connect API key (`-auth
 1. `xcodebuild archive` unsigned: `CODE_SIGNING_ALLOWED=NO`, `DEVELOPMENT_TEAM` from the secret, `CURRENT_PROJECT_VERSION=${{ github.run_number }}`.
 2. `xcodebuild -exportArchive -exportOptionsPlist ios/ExportOptions.plist -allowProvisioningUpdates` with the three key arguments. The plist sets `method app-store-connect`, `destination upload`, `signingStyle automatic`, `teamID`, `testFlightInternalTestingOnly true`, `manageAppVersionAndBuildNumber false`, `uploadSymbols true`.
 
-Secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_P8` (the full `.p8` text), `APPLE_TEAM_ID`. The app links only system frameworks and the static `CadastreCore` package; embedded frameworks are excluded because they break the unsigned-archive, signed-export flow.
+Secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_P8` (the full `.p8` text), `APPLE_TEAM_ID`. The app links only system frameworks and the static `VividHomeCore` package; embedded frameworks are excluded because they break the unsigned-archive, signed-export flow.
 
 Fallback ladder if upload or signing misbehaves: (1) `destination export` plus `apple-actions/upload-testflight-build`; (2) sign during `archive` with the same API-key cloud signing; (3) fastlane `match` with git storage on a `certs` branch of this repository and `upload_to_testflight(api_key:)`, which adds a `MATCH_PASSWORD` secret (https://docs.fastlane.tools/actions/match/).
 

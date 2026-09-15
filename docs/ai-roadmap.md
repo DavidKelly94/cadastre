@@ -1,8 +1,8 @@
-# Cadastre AI roadmap
+# VividHome AI roadmap
 
 ## Principle
 
-Everything below runs on data Cadastre captures today: the session format (posed high-resolution stills, 256x192 LiDAR depth with per-pixel confidence for every keyframe, intrinsics, tapped landmarks, marker observations, per-level plan alignment and a phase tag on every session) was designed so each idea is a pipeline stage over `sessions/` and `derived/`, not a new capture requirement; none of it needs a recapture or is in the two-week MVP.
+Everything below runs on data VividHome captures today: the session format (posed high-resolution stills, 256x192 LiDAR depth with per-pixel confidence for every keyframe, intrinsics, tapped landmarks, marker observations, per-level plan alignment and a phase tag on every session) was designed so each idea is a pipeline stage over `sessions/` and `derived/`, not a new capture requirement; none of it needs a recapture or is in the two-week MVP.
 
 The owner trials the first four items during electrical and plumbing rough-in in one to two months. Implementers: read `docs/session-format.md` first, never modify raw sessions, write outputs under `derived/` with `source` and `confirmed` fields. Model sources are in `docs/feasibility.md`. Effort: S is days, M about a week, L several weeks.
 

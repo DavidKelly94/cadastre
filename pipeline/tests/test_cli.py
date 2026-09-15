@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from cadastre import __version__
-from cadastre.cli import _HANDLERS, NOT_IMPLEMENTED, build_parser, main
+from vividhome import __version__
+from vividhome.cli import _HANDLERS, NOT_IMPLEMENTED, build_parser, main
 
 #: Every subcommand the MVP promises, per docs/design/pipeline-design.md §1.
 MVP_COMMANDS = frozenset(
@@ -17,7 +17,7 @@ def test_help_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
         main(["--help"])
     assert exc.value.code == 0
-    assert "cadastre" in capsys.readouterr().out
+    assert "vividhome" in capsys.readouterr().out
 
 
 def test_version_reports_package_version(capsys: pytest.CaptureFixture[str]) -> None:
@@ -49,7 +49,7 @@ def test_a_command_without_a_handler_still_exits_cleanly(monkeypatch) -> None:
     handler. It has no callers now, so it is exercised deliberately."""
     handlers = dict(_HANDLERS)
     handlers.pop("validate")
-    monkeypatch.setattr("cadastre.cli._HANDLERS", handlers)
+    monkeypatch.setattr("vividhome.cli._HANDLERS", handlers)
     assert main(["validate", "anything"]) == NOT_IMPLEMENTED
 
 
@@ -76,7 +76,7 @@ def test_plan_add_then_calibrate(tmp_path, capsys: pytest.CaptureFixture[str]) -
 
     source = tmp_path / "plan.png"
     Image.new("RGB", (400, 300), (255, 255, 255)).save(source, "PNG")
-    store = str(tmp_path / "cadastre-data")
+    store = str(tmp_path / "vividhome-data")
 
     assert main(["--store", store, "plan", "add", str(source), "--level", "main"]) == 0
     assert "wrote" in capsys.readouterr().out
@@ -110,7 +110,7 @@ def test_plan_reports_a_bad_distance(tmp_path, capsys: pytest.CaptureFixture[str
 
     source = tmp_path / "plan.png"
     Image.new("RGB", (40, 30), (255, 255, 255)).save(source, "PNG")
-    store = str(tmp_path / "cadastre-data")
+    store = str(tmp_path / "vividhome-data")
     main(["--store", store, "plan", "add", str(source), "--level", "main"])
     capsys.readouterr()
 
@@ -135,7 +135,7 @@ def test_plan_reports_a_bad_distance(tmp_path, capsys: pytest.CaptureFixture[str
 
 
 def test_store_defaults_and_overrides() -> None:
-    assert build_parser().parse_args(["validate", "s"]).store == "./cadastre-data"
+    assert build_parser().parse_args(["validate", "s"]).store == "./vividhome-data"
     assert build_parser().parse_args(["--store", "/tmp/x", "validate", "s"]).store == "/tmp/x"
 
 
@@ -170,7 +170,7 @@ def test_validate_finds_a_session_by_id_within_the_store(
 ) -> None:
     from helpers import build_session
 
-    store = tmp_path / "cadastre-data"
+    store = tmp_path / "vividhome-data"
     session_id = "20261103-141502_main_kitchen_k3x7qa"
     build_session(store / "sessions" / "our-house" / session_id)
     assert main(["--store", str(store), "validate", session_id]) == 0
@@ -180,8 +180,8 @@ def test_validate_finds_a_session_by_id_within_the_store(
 def test_synth_writes_a_session_that_validates(
     tmp_path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from cadastre.session import Session
-    from cadastre.validate import validate_session
+    from vividhome.session import Session
+    from vividhome.validate import validate_session
 
     out = tmp_path / "synthetic"
     assert main(["synth", "--out", str(out), "--keyframes", "6"]) == 0
@@ -203,7 +203,7 @@ def test_apriltag_solves_a_synthetic_session(tmp_path, capsys: pytest.CaptureFix
 
     assert main(["apriltag", str(out), "--check-anchor-frame"]) == 0
     printed = capsys.readouterr().out
-    assert "CD-012" in printed
+    assert "VH-012" in printed
     assert "anchor frame agreement" in printed
     assert (out / "derived" / "markers_detected.json").exists()
 
@@ -212,17 +212,17 @@ def test_inspect_reports_when_nothing_is_aligned(
     tmp_path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert main(["--store", str(tmp_path / "empty"), "inspect"]) == 1
-    assert "run 'cadastre align'" in capsys.readouterr().err
+    assert "run 'vividhome align'" in capsys.readouterr().err
 
 
 def test_ingest_then_validate_by_id(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
-    from cadastre.synth import SynthSpec, build
+    from vividhome.synth import SynthSpec, build
 
     captured = build(
         tmp_path / "capture" / "20261103-141502_main_room_framing_aaaaaa",
         SynthSpec(keyframes=4, colour_w=160, colour_h=120),
     )
-    store = str(tmp_path / "cadastre-data")
+    store = str(tmp_path / "vividhome-data")
 
     assert main(["--store", store, "ingest", str(captured.root), "--project", "our-house"]) == 0
     assert "ingested" in capsys.readouterr().out
@@ -232,13 +232,13 @@ def test_ingest_then_validate_by_id(tmp_path, capsys: pytest.CaptureFixture[str]
 
 
 def test_ingest_refuses_a_duplicate(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
-    from cadastre.synth import SynthSpec, build
+    from vividhome.synth import SynthSpec, build
 
     captured = build(
         tmp_path / "capture" / "20261103-141502_main_room_framing_aaaaaa",
         SynthSpec(keyframes=4, colour_w=160, colour_h=120),
     )
-    store = str(tmp_path / "cadastre-data")
+    store = str(tmp_path / "vividhome-data")
     main(["--store", store, "ingest", str(captured.root)])
     capsys.readouterr()
 
@@ -247,8 +247,8 @@ def test_ingest_refuses_a_duplicate(tmp_path, capsys: pytest.CaptureFixture[str]
 
 
 def test_a_closed_pipe_is_not_an_error(tmp_path, monkeypatch) -> None:
-    """`cadastre ... | head` closes the pipe; that is the reader's choice."""
-    from cadastre import cli
+    """`vividhome ... | head` closes the pipe; that is the reader's choice."""
+    from vividhome import cli
 
     def explode(_args):
         raise BrokenPipeError
@@ -261,7 +261,7 @@ def test_a_closed_pipe_is_not_an_error(tmp_path, monkeypatch) -> None:
 def test_an_interrupt_exits_cleanly(
     tmp_path, monkeypatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from cadastre import cli
+    from vividhome import cli
 
     def explode(_args):
         raise KeyboardInterrupt
@@ -291,9 +291,9 @@ def test_markers_writes_the_pdf_and_the_pngs(tmp_path, capsys: pytest.CaptureFix
     assert "200 mm" in printed
     assert (tmp_path / "markers.pdf").exists()
     assert sorted(p.name for p in (tmp_path / "Markers").iterdir()) == [
-        "CD-000.png",
-        "CD-001.png",
-        "CD-002.png",
+        "VH-000.png",
+        "VH-001.png",
+        "VH-002.png",
     ]
 
 
@@ -315,7 +315,7 @@ def test_plan_calibrate_says_what_is_missing_without_web(
 
     source = tmp_path / "plan.png"
     Image.new("RGB", (40, 30), (255, 255, 255)).save(source, "PNG")
-    store = str(tmp_path / "cadastre-data")
+    store = str(tmp_path / "vividhome-data")
     main(["--store", store, "plan", "add", str(source), "--level", "main"])
     capsys.readouterr()
 

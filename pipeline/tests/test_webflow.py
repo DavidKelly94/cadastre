@@ -10,13 +10,13 @@ from pathlib import Path
 
 import pytest
 
-from cadastre.webflow import WEB_DIRNAME, collect, stage, web_dir
+from vividhome.webflow import WEB_DIRNAME, collect, stage, web_dir
 
 PAGES = ["calibrate.html", "align.html"]
 
 
 def page_source(name: str) -> str:
-    return (Path(__file__).parents[1] / "cadastre" / "web" / name).read_text(encoding="utf-8")
+    return (Path(__file__).parents[1] / "vividhome" / "web" / name).read_text(encoding="utf-8")
 
 
 # What can be checked about a hand-written page without running it
@@ -24,7 +24,7 @@ def page_source(name: str) -> str:
 
 @pytest.mark.parametrize("name", PAGES)
 def test_the_page_ships_with_the_package(name: str):
-    assert (Path(__file__).parents[1] / "cadastre" / "web" / name).exists()
+    assert (Path(__file__).parents[1] / "vividhome" / "web" / name).exists()
 
 
 @pytest.mark.parametrize("name", PAGES)
@@ -152,4 +152,4 @@ def test_the_served_page_is_reachable(tmp_path: Path):
     collect(tmp_path, task, port=8794, timeout_s=20, open_browser=False)
     thread.join(timeout=5)
 
-    assert "Cadastre — align session" in fetched.get("body", "")
+    assert "VividHome — align session" in fetched.get("body", "")

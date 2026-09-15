@@ -11,14 +11,14 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from cadastre.align import landmark_pairs, solve, update_marker_map, write_alignment
-from cadastre.apriltag import aggregate, solve_session, write_detections
-from cadastre.inspector import build_page, levels_with_alignments
-from cadastre.plan import PlanError, add_plan, calibrate, house_to_plan
-from cadastre.session import Session
-from cadastre.synth import SynthSpec, build
-from cadastre.transforms import se2_to_mat
-from cadastre.validate import validate_session, write_report
+from vividhome.align import landmark_pairs, solve, update_marker_map, write_alignment
+from vividhome.apriltag import aggregate, solve_session, write_detections
+from vividhome.inspector import build_page, levels_with_alignments
+from vividhome.plan import PlanError, add_plan, calibrate, house_to_plan
+from vividhome.session import Session
+from vividhome.synth import SynthSpec, build
+from vividhome.transforms import se2_to_mat
+from vividhome.validate import validate_session, write_report
 
 SESSION_ID = "20261103-141502_main_room_framing_aaaaaa"
 TRANSFORM = se2_to_mat(np.radians(25.0), 1.5, 0.0, -0.5)
@@ -28,7 +28,7 @@ TRANSFORM = se2_to_mat(np.radians(25.0), 1.5, 0.0, -0.5)
 def store(tmp_path_factory) -> Path:
     """A store with one aligned session on a calibrated level."""
     root = tmp_path_factory.mktemp("inspect")
-    store = root / "cadastre-data"
+    store = root / "vividhome-data"
     truth = build(store / "sessions" / "synthetic" / SESSION_ID, SynthSpec(keyframes=12))
 
     source = root / "plan.png"
@@ -92,7 +92,7 @@ def test_the_plan_is_referenced_relatively_and_resolves(store: Path):
 
 def test_landmarks_are_projected_to_the_pixels_they_were_clicked_at(store: Path):
     """The overlay must land back on the clicks the alignment was solved from."""
-    from cadastre.plan import load_calibration
+    from vividhome.plan import load_calibration
 
     calibration = load_calibration(store, "main")
     session = Session.load(store / "sessions" / "synthetic" / SESSION_ID)
@@ -116,7 +116,7 @@ def test_the_trajectory_has_one_point_per_keyframe(store: Path):
 
 
 def test_markers_are_drawn_where_the_house_map_puts_them(store: Path):
-    from cadastre.plan import load_calibration
+    from vividhome.plan import load_calibration
 
     calibration = load_calibration(store, "main")
     house_map = json.loads((store / "markers" / "synthetic.json").read_text(encoding="utf-8"))
@@ -167,7 +167,7 @@ def test_an_uncalibrated_level_is_refused(tmp_path: Path):
 
 
 def test_a_level_with_no_plan_is_refused(tmp_path: Path):
-    with pytest.raises(PlanError, match="run 'cadastre plan add'"):
+    with pytest.raises(PlanError, match="run 'vividhome plan add'"):
         build_page(tmp_path / "data", "basement")
 
 

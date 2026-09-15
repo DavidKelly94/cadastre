@@ -31,7 +31,7 @@ Positive: the record can describe concurrent trades, which is what a site produc
 
 Negative, carried knowingly:
 
-- **A folder name no longer says which trade it covers.** The owner copying sessions to the PC loses a real convenience, and `cadastre inspect` has to supply it instead.
+- **A folder name no longer says which trade it covers.** The owner copying sessions to the PC loses a real convenience, and `vividhome inspect` has to supply it instead.
 - **Sessions of one room are distinguished only by timestamp and id6.** They already were in practice — nothing stopped two electrical passes — but the phase segment used to hide that.
 - **A breaking format change, taken deliberately.** Rule 2 would have allowed an additive optional `phases` alongside the existing `phase` at version 1. That was rejected: it leaves the wrong model in the id permanently and makes every reader decide which field wins.
 

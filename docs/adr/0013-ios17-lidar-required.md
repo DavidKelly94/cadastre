@@ -6,7 +6,7 @@ Accepted, 2026-09-11.
 
 ## Context
 
-Everything in Cadastre depends on metric depth: `sceneDepth` with confidence, `ARMeshAnchor` with classification, raycast landmarks on real surfaces and the depth-scaled intrinsics in the session format. Only LiDAR iPhones provide it: every Pro and Pro Max since the iPhone 12 Pro (2020) through the 17 Pro; no non-Pro model, including the iPhone 17, 17e and Air, has LiDAR. The iPhone 18 Pro announced on 2026-09-09 almost certainly continues the line, but its specification was not verified. The owner's phone is an iPhone 15 Pro or newer.
+Everything in VividHome depends on metric depth: `sceneDepth` with confidence, `ARMeshAnchor` with classification, raycast landmarks on real surfaces and the depth-scaled intrinsics in the session format. Only LiDAR iPhones provide it: every Pro and Pro Max since the iPhone 12 Pro (2020) through the 17 Pro; no non-Pro model, including the iPhone 17, 17e and Air, has LiDAR. The iPhone 18 Pro announced on 2026-09-09 almost certainly continues the line, but its specification was not verified. The owner's phone is an iPhone 15 Pro or newer.
 
 The APIs needed are all available by iOS 16 or 17: `sceneDepth` (iOS 14), mesh classification (iOS 13.4 with LiDAR), `captureHighResolutionFrame` (iOS 16), `NavigationStack` (iOS 16). ARKit on iOS has received no headline additions since, so nothing in iOS 18 to 27 is required. Every LiDAR iPhone can run iOS 17 or newer. Xcode 26.6 on the runner builds for a 17.0 deployment target. ARKit does not run in the simulator, so `ios-check` only compiles.
 

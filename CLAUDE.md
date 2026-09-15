@@ -28,7 +28,7 @@ Claude-specific additions.
   with a real message. The PR comes when the change is reviewable as one thing. Use
   judgement about the size: eleven PRs for one pipeline is as wrong as one PR for the
   whole app.
-- **The rename is done.** The product is Cadastre; the old brand survives only in
+- **The rename is done.** The product is VividHome; the old brand survives only in
   ADR-0015, the ADR index, and `docs/plan.md`'s historical decision table, where it
   is correct. `IG-NNN` strings in tests are deliberate negative fixtures — a marker
   ID that must *not* validate. Do not "fix" those.

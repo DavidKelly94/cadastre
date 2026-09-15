@@ -1,4 +1,4 @@
-# Cadastre — design canvas brief
+# VividHome — design canvas brief
 
 **Self-contained. Paste this whole file into Claude Design.** It assumes no
 access to this repository and repeats everything needed rather than linking.
@@ -9,7 +9,7 @@ this is the handoff.
 
 ## 1. What the product is
 
-Cadastre records a building **while it is under construction**, so the studs,
+VividHome records a building **while it is under construction**, so the studs,
 wires, pipes, gas lines and ducts hidden by finished surfaces stay findable
 years later. A LiDAR iPhone walks each room once per site visit, capturing posed
 colour frames, depth, high-resolution stills, tapped room landmarks and printed
@@ -215,7 +215,7 @@ states where they exist.
 5. **Room detail / RoomPicker** — level, room, **phases as multi-select chips
    defaulting to the room's last pass**, notes, expected marker IDs, Start.
 6. **Session review** — stats, trajectory sketch, "Open in Files", delete.
-7. **Markers** — the CD-000…CD-059 list with seen counts.
+7. **Markers** — the VH-000…VH-059 list with seen counts.
 8. **Settings** — thresholds, JPEG quality, 30/60 fps, theme.
 9. **Test plan** — renders a bundled per-build checklist.
 
@@ -237,12 +237,17 @@ Three related marks, all from the same motif:
    show how much of a room is recorded. At 24 pt it can only be a small ruled
    square with some cells inked — the count beside it carries the precision. This
    is a distinct drawing from the icon, not a scaled-down copy.
-3. **Wordmark.** "Cadastre", set in the type family above. Needed only if there
-   is ever a landing page; not required for the app. If drawn, note that the
-   store name is **"Cadastre: Building Record"** — bare "Cadastre" is taken.
+3. **Wordmark.** "VividHome", set in the type family above. Needed only if there
+   is ever a landing page; not required for the app. One word, capital V and
+   capital H — never "Vivid Home", and never abbreviated to "VH" outside the
+   printed marker IDs. The store listing may need a qualifier such as
+   **"VividHome: Building Record"** if the bare name is unavailable; design the
+   lockup for the bare wordmark either way.
 
-Pronounced *kuh-DASS-ter*. Never abbreviate it to "CAD" — that is a live word in
-this industry and the collision is bad.
+"Vivid" is a claim about the **record**, not about decor: the point is that what
+the walls hide stays sharply visible years later. Keep the visual language away
+from interior styling, paint chips and swatches — that is the wrong reading the
+word invites, and it is the one risk this name carries.
 
 ## 8. What to report back with
 

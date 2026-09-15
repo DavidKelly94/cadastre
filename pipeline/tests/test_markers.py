@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import pytest
 
-from cadastre.markers import (
+from vividhome.markers import (
     MARKER_WIDTH_M,
     NOISE_RING_M,
     PNG_PIXELS,
@@ -115,8 +115,8 @@ def test_a_marker_too_small_to_be_legible_is_refused():
 
 
 def test_marker_ids_round_trip():
-    assert marker_id(17) == "CD-017"
-    assert tag_number("CD-017") == 17
+    assert marker_id(17) == "VH-017"
+    assert tag_number("VH-017") == 17
     with pytest.raises(ValueError, match="not a marker id"):
         tag_number("IG-017")
 
@@ -146,7 +146,7 @@ def test_parse_ids_rejects_nonsense():
 
 def test_write_pngs_names_files_by_marker_id(tmp_path: Path):
     written = write_pngs(tmp_path / "Markers", [0, 12])
-    assert [p.name for p in written] == ["CD-000.png", "CD-012.png"]
+    assert [p.name for p in written] == ["VH-000.png", "VH-012.png"]
     for path in written:
         image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
         assert image.shape == (PNG_PIXELS, PNG_PIXELS)

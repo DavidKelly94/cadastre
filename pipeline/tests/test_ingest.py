@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from cadastre.ingest import IngestError, ingest
-from cadastre.synth import SynthSpec, build
+from vividhome.ingest import IngestError, ingest
+from vividhome.synth import SynthSpec, build
 
 SPEC = SynthSpec(keyframes=4, colour_w=160, colour_h=120)
 
@@ -30,7 +30,7 @@ def zip_session(session: Path, target: Path, *, prefix: str = "") -> Path:
 
 
 def test_ingests_a_directory(tmp_path: Path, session: Path):
-    store = tmp_path / "cadastre-data"
+    store = tmp_path / "vividhome-data"
     result = ingest(store, session, "our-house")
 
     assert result.ok
@@ -174,7 +174,7 @@ def test_a_file_that_is_not_an_archive_is_reported(tmp_path: Path):
 
 
 def test_the_ingested_session_is_findable_by_id(tmp_path: Path, session: Path):
-    from cadastre.cli import resolve_session
+    from vividhome.cli import resolve_session
 
     store = tmp_path / "data"
     result = ingest(store, session, "our-house")

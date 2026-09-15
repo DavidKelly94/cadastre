@@ -1,0 +1,172 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>VividHome — align session</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 14px system-ui, sans-serif; display: flex; height: 100vh; }
+  #panel { width: 300px; padding: 16px; overflow-y: auto; border-right: 1px solid #8884; }
+  #panes { flex: 1; display: flex; min-width: 0; }
+  .pane { flex: 1; overflow: auto; position: relative; border-left: 1px solid #8884; }
+  .pane h2 { position: sticky; top: 0; margin: 0; padding: 6px 10px; font-size: 12px;
+             text-transform: uppercase; letter-spacing: .08em; background: Canvas; z-index: 1; }
+  h1 { font-size: 16px; margin: 0 0 4px; }
+  p.hint { opacity: .7; margin: 0 0 12px; }
+  .pair { padding: 4px 6px; border-radius: 5px; font-size: 12px; }
+  .pair.partial { background: #e6550d33; }
+  button { margin-top: 12px; padding: 8px 12px; width: 100%; font: inherit; }
+  button:disabled { opacity: .4; }
+  #status { margin-top: 12px; min-height: 3em; }
+  .err { color: #c0392b; }
+  .ok { color: #218c5a; }
+  svg { position: absolute; left: 0; }
+  img { display: block; }
+</style>
+<div id="panel">
+  <h1>Align <span id="room"></span></h1>
+  <p class="hint">Click a landmark on the right, then the same place on the plan. Two pairs
+    minimum, three or more is better.</p>
+  <div id="pairs"></div>
+  <button id="save" disabled>Solve and save</button>
+  <button id="undo" type="button">Undo last</button>
+  <div id="status"></div>
+</div>
+<div id="panes">
+  <div class="pane"><h2>Plan</h2><div style="position:relative">
+    <img id="plan" alt="plan"><svg id="planMarks"></svg></div></div>
+  <div class="pane"><h2>Session (top down)</h2><svg id="session"></svg></div>
+</div>
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const PAD = 30, SIZE = 520;
+const pairs = [];
+let task = null, pending = null, toPixels = null;
+
+const el = id => document.getElementById(id);
+const status = (t, c) => { el("status").textContent = t; el("status").className = c || ""; };
+
+fetch("task.json", {cache: "no-store"})
+  .then(r => r.json())
+  .then(data => { task = data; setup(); })
+  .catch(() => status("Could not load task.json. Is this page open through vividhome?", "err"));
+
+function setup() {
+  el("room").textContent = task.room || task.session_id;
+  el("plan").src = task.image;
+  el("plan").onload = () => {
+    el("planMarks").setAttribute("width", el("plan").naturalWidth);
+    el("planMarks").setAttribute("height", el("plan").naturalHeight);
+  };
+  drawSession();
+  render();
+}
+
+function drawSession() {
+  // A top-down plot in session metres, scaled to fit, so clicking a landmark is
+  // clicking the same thing the phone recorded.
+  const points = task.landmarks.map(l => l.xz).concat(task.trajectory || []);
+  const xs = points.map(p => p[0]), zs = points.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  const span = Math.max(maxX - minX, maxZ - minZ) || 1;
+  const scale = (SIZE - 2 * PAD) / span;
+  toPixels = ([x, z]) => [PAD + (x - minX) * scale, PAD + (z - minZ) * scale];
+
+  const svg = el("session");
+  svg.setAttribute("width", SIZE);
+  svg.setAttribute("height", SIZE);
+  svg.textContent = "";
+
+  if (task.trajectory && task.trajectory.length > 1) {
+    const path = document.createElementNS(NS, "polyline");
+    path.setAttribute("points", task.trajectory.map(p => toPixels(p).join(",")).join(" "));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "#8888");
+    path.setAttribute("stroke-width", "1.5");
+    svg.appendChild(path);
+  }
+
+  task.landmarks.forEach(landmark => {
+    const [u, v] = toPixels(landmark.xz);
+    const dot = document.createElementNS(NS, "circle");
+    dot.setAttribute("cx", u); dot.setAttribute("cy", v); dot.setAttribute("r", "7");
+    dot.setAttribute("fill", "#3182bd");
+    dot.style.cursor = "pointer";
+    dot.addEventListener("click", () => {
+      pending = landmark.label;
+      status(`Now click where ${landmark.label} is on the plan.`);
+      render();
+    });
+    svg.appendChild(dot);
+
+    const text = document.createElementNS(NS, "text");
+    text.setAttribute("x", u + 10); text.setAttribute("y", v + 4);
+    text.setAttribute("font-size", "11");
+    text.setAttribute("fill", "currentColor");
+    text.textContent = landmark.label;
+    svg.appendChild(text);
+  });
+}
+
+el("plan").addEventListener("click", event => {
+  if (!pending) { status("Click a landmark on the right first.", "err"); return; }
+  const box = event.target.getBoundingClientRect();
+  const point = [
+    (event.clientX - box.left) * (event.target.naturalWidth / box.width),
+    (event.clientY - box.top) * (event.target.naturalHeight / box.height)
+  ];
+  pairs.push({label: pending, pixel: point});
+  pending = null;
+  status("");
+  render();
+});
+
+el("undo").addEventListener("click", () => { pairs.pop(); pending = null; status(""); render(); });
+
+function render() {
+  const list = el("pairs");
+  list.textContent = "";
+  pairs.forEach(pair => {
+    const row = document.createElement("div");
+    row.className = "pair";
+    row.textContent = `${pair.label} → ${pair.pixel.map(n => n.toFixed(0)).join(", ")}`;
+    list.appendChild(row);
+  });
+  if (pending) {
+    const row = document.createElement("div");
+    row.className = "pair partial";
+    row.textContent = `${pending} → click the plan`;
+    list.appendChild(row);
+  }
+
+  const marks = el("planMarks");
+  marks.textContent = "";
+  pairs.forEach(pair => {
+    const dot = document.createElementNS(NS, "circle");
+    dot.setAttribute("cx", pair.pixel[0]); dot.setAttribute("cy", pair.pixel[1]);
+    dot.setAttribute("r", "6"); dot.setAttribute("fill", "#3182bd");
+    marks.appendChild(dot);
+    const text = document.createElementNS(NS, "text");
+    text.setAttribute("x", pair.pixel[0] + 9); text.setAttribute("y", pair.pixel[1] + 4);
+    text.setAttribute("font-size", "11"); text.setAttribute("fill", "#3182bd");
+    text.textContent = pair.label;
+    marks.appendChild(text);
+  });
+
+  el("save").disabled = pairs.length < 2;
+}
+
+el("save").addEventListener("click", () => {
+  el("save").disabled = true;
+  fetch("/save", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      path: task.result_path,
+      data: {kind: "align", session_id: task.session_id, level: task.level, pairs: pairs}
+    })
+  })
+    .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+    .then(() => status("Saved. The terminal has taken over.", "ok"))
+    .catch(error => { status("Save failed: " + error, "err"); el("save").disabled = false; });
+});
+</script>

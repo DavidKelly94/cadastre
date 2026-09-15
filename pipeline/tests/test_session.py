@@ -9,16 +9,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from cadastre.session import Session, SessionError, read_jsonl
+from vividhome.session import Session, SessionError, read_jsonl
 
 
 def test_loads_the_manifest(session_dir: Path):
     session = Session.load(session_dir)
-    assert session.format_version == 2
+    assert session.format_version == 3
     assert session.session_id == "20261103-141502_main_kitchen_k3x7qa"
     assert session.status == "complete"
     assert session.phases == ["electrical", "plumbing"]
-    assert session.expected_markers == ["CD-012"]
+    assert session.expected_markers == ["VH-012"]
     assert session.duration_s == 2.0
 
 
@@ -41,7 +41,7 @@ def test_reads_the_other_record_types(session_dir: Path):
     assert stills[0].w == 128
 
     markers = list(session.markers())
-    assert [m.marker_id for m in markers] == ["CD-012"]
+    assert [m.marker_id for m in markers] == ["VH-012"]
     assert markers[0].tracked is True
     np.testing.assert_allclose(markers[0].T_wa[:3, 3], [1.0, 1.2, -2.0])
 

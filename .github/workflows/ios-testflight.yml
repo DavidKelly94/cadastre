@@ -38,21 +38,44 @@ jobs:
           mkdir -p "$RUNNER_TEMP/keys"
           printf '%s\n' "$P8" > "$RUNNER_TEMP/keys/AuthKey.p8"
           sed "s/TEAM_ID_PLACEHOLDER/$TEAM_ID/" ios/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
+      # Both xcodebuild steps tee to a log and set pipefail, so a failure still
+      # fails the step while leaving something to read. Without the log there is
+      # nothing to debug from: the artifact below used to collect only
+      # export/*.plist, which does not exist when the export is what failed.
+      # pipefail is load-bearing here for the same reason it is in ios-check.
       - name: Archive (unsigned)
-        run: >
-          xcodebuild archive -project ios/Cadastre.xcodeproj -scheme Cadastre
-          -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
-          CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY=""
-          DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
-          CURRENT_PROJECT_VERSION=${{ github.run_number }}
+        run: |
+          set -o pipefail
+          xcodebuild archive -project ios/VividHome.xcodeproj -scheme VividHome \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/VividHome.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            | tee "$RUNNER_TEMP/archive.log" | grep -E "error:|warning: unre|ARCHIVE"
       - name: Export and upload (cloud signing)
-        run: >
-          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Cadastre.xcarchive"
-          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export"
-          -allowProvisioningUpdates
-          -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey.p8"
-          -authenticationKeyID "${{ secrets.ASC_KEY_ID }}"
-          -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}"
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/VividHome.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey.p8" \
+            -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}" \
+            | tee "$RUNNER_TEMP/export.log" | grep -E "error:|Error|EXPORT|Upload"
+      # The .p8 is written to the runner's temp directory; remove it rather than
+      # trusting the runner to be discarded, since `always()` means this step
+      # runs even when the export threw.
+      - name: Shred the API key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/keys/AuthKey.p8"
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: export-logs, path: "${{ runner.temp }}/export/*.plist" }
+        with:
+          name: testflight-logs
+          path: |
+            ${{ runner.temp }}/archive.log
+            ${{ runner.temp }}/export.log
+            ${{ runner.temp }}/export/*.plist

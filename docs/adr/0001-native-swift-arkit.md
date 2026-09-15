@@ -14,7 +14,7 @@ The owner has no Mac, so builds run on CI (ADR-0002) and the implementer can nev
 
 ## Decision
 
-Build Cadastre as a native iOS app: SwiftUI screens in a `NavigationStack`, `ARView` wrapped in `UIViewRepresentable`, a thin ARKit layer (`ARSessionController`, `SessionRecorder`, `FrameWriter`, `JPEGEncoder`, `MarkerLogger`, `LandmarkLogger`, `MeshExporter`), Swift 5 language mode to avoid strict-concurrency compile failures we cannot iterate on locally, and system frameworks only. Decision logic and serialisation live in the pure-Swift `CadastreCore` package.
+Build VividHome as a native iOS app: SwiftUI screens in a `NavigationStack`, `ARView` wrapped in `UIViewRepresentable`, a thin ARKit layer (`ARSessionController`, `SessionRecorder`, `FrameWriter`, `JPEGEncoder`, `MarkerLogger`, `LandmarkLogger`, `MeshExporter`), Swift 5 language mode to avoid strict-concurrency compile failures we cannot iterate on locally, and system frameworks only. Decision logic and serialisation live in the pure-Swift `VividHomeCore` package.
 
 ## Consequences
 
@@ -27,7 +27,7 @@ Positive:
 Negative:
 
 - iPhone only (ADR-0013).
-- ARKit behaviour is observable only on the owner's device; mitigated by the per-build test plan, `cadastre validate` and per-session `log.txt`.
+- ARKit behaviour is observable only on the owner's device; mitigated by the per-build test plan, `vividhome validate` and per-session `log.txt`.
 - Swift 5 mode gives up strict concurrency checking.
 
 ## Alternatives considered

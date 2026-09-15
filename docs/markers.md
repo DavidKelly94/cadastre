@@ -11,9 +11,9 @@ A marker is a 20.0 cm square, from the centre out:
 | AprilTag 36h11 | 12.8 cm: 8 by 8 cells of 1.6 cm, outer cell ring black | Detected by the pipeline (OpenCV) in keyframes and stills; gives ID and 6-DoF pose |
 | Quiet zone | 1.6 cm white border | Required by the AprilTag detector |
 | High-detail ring | 2 cm band, pattern seeded by the marker ID | Gives ARKit image detection enough detail; makes each reference image unique |
-| Label | `CD-017` in large type below the square | Human-readable; matches the app's marker list |
+| Label | `VH-017` in large type below the square | Human-readable; matches the app's marker list |
 
-12.8 + 2 x 1.6 + 2 x 2 = 20.0 cm. IDs run `CD-000` to `CD-059` (a house needs 20 to 40). `cadastre markers` generates the PDF, one marker per Letter or A4 page, and the PNGs; the same PNGs are bundled in the app as ARKit reference images with a physical width of 0.20 m, so the print and the app setting must agree exactly.
+12.8 + 2 x 1.6 + 2 x 2 = 20.0 cm. IDs run `VH-000` to `VH-059` (a house needs 20 to 40). `vividhome markers` generates the PDF, one marker per Letter or A4 page, and the PNGs; the same PNGs are bundled in the app as ARKit reference images with a physical width of 0.20 m, so the print and the app setting must agree exactly.
 
 ## 2. Printing
 
@@ -52,8 +52,8 @@ Typical plan: subfloor and top plate markers at framing, a jamb marker added at 
 
 Record every marker's position relative to a feature that survives all phases and exists on the plan, so it can be found again or re-hung: one fixed-form sentence with ID, reference feature, offsets in millimetres from two edges, and orientation.
 
-- `CD-012: centred on door D3 threshold, 100 mm from left jamb, flat on subfloor, label towards the room`
-- `CD-017: kitchen north wall top plate, lower edge 40 mm below plate bottom, left edge 250 mm right of window W2 rough opening, facing south`
+- `VH-012: centred on door D3 threshold, 100 mm from left jamb, flat on subfloor, label towards the room`
+- `VH-017: kitchen north wall top plate, lower edge 40 mm below plate bottom, left edge 250 mm right of window W2 rough opening, facing south`
 
 Photograph each marker with its reference feature in frame; enter the sentence and photo in the app's Markers screen and mark the position on the paper plan.
 
@@ -65,12 +65,12 @@ Re-hang protocol:
 
 1. Check the log entry and that the reference feature still exists.
 2. If it can go back within 10 mm of the recorded offsets, re-hang the same ID and log "re-hung, date"; the pipeline treats it as lower confidence.
-3. Otherwise hang a new ID nearby, log it, and mark the old ID "lost, date, replaced by CD-0xx".
+3. Otherwise hang a new ID nearby, log it, and mark the old ID "lost, date, replaced by VH-0xx".
 4. Either way, record a session that sees it together with another established marker in the room, and note this in the session.
 
 ## 7. Detection range and accuracy
 
-Tests with a 16.4 cm AprilTag report about 1.6 to 3.4 cm position and 0.8 to 3.2 degree orientation error at 2 m, and 5.8 to 12.4 cm and up to 8 degrees at 3 m; 10 to 20 cm tags stop being detected reliably beyond about 4 m. The Cadastre tag is 12.8 cm inside a 20 cm square, so treat these as optimistic: good poses come from 1 to 2 m, square-on, in even light; beyond 4 m a marker adds nothing usable and may not be detected at all.
+Tests with a 16.4 cm AprilTag report about 1.6 to 3.4 cm position and 0.8 to 3.2 degree orientation error at 2 m, and 5.8 to 12.4 cm and up to 8 degrees at 3 m; 10 to 20 cm tags stop being detected reliably beyond about 4 m. The VividHome tag is 12.8 cm inside a 20 cm square, so treat these as optimistic: good poses come from 1 to 2 m, square-on, in even light; beyond 4 m a marker adds nothing usable and may not be detected at all.
 
 ARKit's on-device detection tracks up to four markers at once and only needs to notice a marker; the accurate pose comes from the pipeline's PnP solve on keyframes and stills, which is why the protocol requires a still of each marker from about 1 m. Expect the pipeline to report under 3 cm pose spread per marker; over 5 cm means glare, a bowed print, a wrong size setting or motion blur.
 
@@ -80,7 +80,7 @@ Keep this table in the project notes and mirror it in the app's Markers screen.
 
 | ID | Level | Room | Surface | Position (fixed form) | Placed | Expected until | Status | Photo | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| CD-012 | L1 | Kitchen | Subfloor | centred on door D3 threshold, 100 mm from left jamb, flat, label towards room | 2026-10-04 | drywall | active | IMG_0412 | |
-| CD-017 | L1 | Kitchen | Top plate, N wall | lower edge 40 mm below plate bottom, 250 mm right of W2 rough opening, facing S | 2026-10-04 | insulation | active | IMG_0413 | hand-off to CD-031 before drywall |
+| VH-012 | L1 | Kitchen | Subfloor | centred on door D3 threshold, 100 mm from left jamb, flat, label towards room | 2026-10-04 | drywall | active | IMG_0412 | |
+| VH-017 | L1 | Kitchen | Top plate, N wall | lower edge 40 mm below plate bottom, 250 mm right of W2 rough opening, facing S | 2026-10-04 | insulation | active | IMG_0413 | hand-off to VH-031 before drywall |
 
 Status values: planned, active, covered, lost, re-hung, replaced.

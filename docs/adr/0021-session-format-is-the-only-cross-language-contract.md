@@ -14,7 +14,7 @@ words — "another toolchain and a bridging layer for no gain" — too thin to s
 being asked twice. The real question is where the seam between clients sits.
 
 Today the repository is 3,993 lines of Python, 1,943 of pure-Foundation Swift in
-`CadastreCore`, and **363 lines of ARKit and SwiftUI**. Only that last number is
+`VividHomeCore`, and **363 lines of ARKit and SwiftUI**. Only that last number is
 Apple-locked, and nothing links against it: `docs/session-format.md` is what the
 pipeline reads, and the `contract` CI job proves the two agree.
 
@@ -38,13 +38,13 @@ The iPhone app stays native Swift. Kotlin Multiplatform is not adopted, for reas
 worth stating properly:
 
 - It would work technically. KMP static-links (`isStatic = true`), so it would not
-  trip the ban on embedded frameworks — `CadastreCore` is static-linked for that same
+  trip the ban on embedded frameworks — `VividHomeCore` is static-linked for that same
   reason (ADR-0003, ADR-0016).
 - It costs the thing this project cannot spare: iteration. With no Mac (ADR-0002),
   iOS changes are already a CI round trip; adding Kotlin/Native's Xcode integration
   means debugging the framework embed through push-and-wait.
 - The prize is small. An Android client would share a format reader; the rest of
-  `CadastreCore` is write-side logic a viewer never runs.
+  `VividHomeCore` is write-side logic a viewer never runs.
 
 ## Consequences
 

@@ -30,7 +30,7 @@ as "works". The screens do not exist.
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project |
 | `serve` | done | Local server for the browser pages |
 
-14 modules, **254 tests passing**, ruff clean.
+14 modules, **260 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -174,6 +174,42 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## `align --pairs` could not express a single real label, 2026-09-16
+
+The first attempt to align a real capture against a plan:
+
+```
+vividhome align: expected 'label=x,y', got 'bedroom'
+```
+
+The app labels a landmark `"<room-slug> <kind> <n>"` — `bedroom corner 1` — on
+purpose: a label has to mean something to whoever pairs it with a drawing weeks
+later, and `corner-3` does not. `--pairs` split its whole argument on
+whitespace, which turns one such label into three tokens. So the scriptable
+alignment path could not accept any label the app has ever written.
+
+It separates on `;` now, keeping whitespace for labels that do not need it.
+
+Two things worth keeping from this rather than just the fix:
+
+**Neither half was wrong on its own.** The app's labelling is well reasoned and
+commented; the parser's syntax is the obvious one. They were written apart and
+never run together, which is the same shape as every other bug this week — the
+session-to-project filing, the manifest fields, the contract claiming `ingest`
+copies plans. What is missing is not care in either place but a path that
+crosses both.
+
+**`--web` was unaffected**, because it passes labels as JSON rather than
+re-parsing a flat string. The bug is in the format, not the idea.
+
+While fixing it, section 8 was found to document a landmark vocabulary the app
+does not use (`corner-nw`, `corner-ne`, ...) and to claim labels are stable
+across phases. They are not: the number is tap order within a session, so the
+same corner can be `bedroom corner 1` in framing and `bedroom corner 3` in
+rough-in. Alignment does not care — each session solves against the plan, never
+against another session's labels — but the claim was false and is now removed
+rather than quietly relied on.
 
 ## The manifest recorded "iPhone" as the device, 2026-09-15
 

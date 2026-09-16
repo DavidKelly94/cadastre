@@ -174,7 +174,12 @@ Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowi
 {"t":8.7,"i":60,"label":"corner-ne","kind":"corner","p_w":[2.31,-1.42,-0.87],"method":"raycast-estimatedPlane"}
 ```
 
-`kind` is `corner`, `door`, `window`, `floor` or `other`. Labels are free text but the app offers a fixed vocabulary so the same room gets the same labels in every phase (`corner-nw`, `corner-ne`, `corner-se`, `corner-sw`, `door-<name>`, `window-<name>`, `floor`).
+`kind` is `corner`, `door`, `window`, `floor` or `other`. Labels are free text. The app writes `"<room-slug> <kind> <n>"` — `bedroom corner 1` — numbering per kind, so a label still says what it is to whoever pairs it with a drawing weeks later; `corner-3` on its own does not.
+
+Two consequences, both of which have already bitten:
+
+- **Labels contain spaces.** Any reader splitting a list of them on whitespace will mangle them. `vividhome align --pairs` did exactly that and could not express a single real label; it separates on `;` now.
+- **They are not stable across phases.** The number comes from tap order within one session, so the same physical corner can be `bedroom corner 1` in framing and `bedroom corner 3` in rough-in. This does not affect alignment — every session is solved from its own landmarks against the plan, never against another session's labels — but nothing should be built that assumes a label identifies the same point twice.
 
 ## 9. Mesh files
 

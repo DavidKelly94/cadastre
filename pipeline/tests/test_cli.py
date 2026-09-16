@@ -340,3 +340,61 @@ def test_validate_can_skip_the_image_and_depth_checks(
     printed = capsys.readouterr().out
     assert "note: images not checked" in printed
     assert "OK" in printed
+
+
+class TestPairsParsing:
+    """`--pairs` has to express the labels the app actually writes.
+
+    The app labels a landmark "<room> <kind> <n>" — "bedroom corner 1" — on
+    purpose, so it still means something to whoever pairs it with a drawing
+    later. Splitting the whole string on whitespace made those labels
+    unexpressible: the first real attempt failed with `expected 'label=x,y', got
+    'bedroom'`. Nothing caught it because the app's labels and this parser were
+    built apart and never run together.
+    """
+
+    def test_semicolons_separate_labels_that_contain_spaces(self):
+        from vividhome.cli import _clicks
+
+        clicks = _clicks("bedroom corner 1=890,100;bedroom window 1=1072,183")
+        assert clicks == {
+            "bedroom corner 1": (890.0, 100.0),
+            "bedroom window 1": (1072.0, 183.0),
+        }
+
+    def test_whitespace_still_separates_labels_without_spaces(self):
+        from vividhome.cli import _clicks
+
+        assert _clicks("corner-nw=100,100 corner-ne=900,100") == {
+            "corner-nw": (100.0, 100.0),
+            "corner-ne": (900.0, 100.0),
+        }
+
+    def test_surrounding_space_and_trailing_separators_are_tolerated(self):
+        from vividhome.cli import _clicks
+
+        assert _clicks(" a b=1,2 ; c d=3,4 ; ") == {"a b": (1.0, 2.0), "c d": (3.0, 4.0)}
+
+    def test_a_token_with_no_equals_is_reported_with_the_token(self):
+        import pytest
+
+        from vividhome.cli import _clicks
+
+        with pytest.raises(ValueError, match="expected 'label=x,y'"):
+            _clicks("bedroom corner 1;890,100")
+
+    def test_an_empty_label_is_refused(self):
+        import pytest
+
+        from vividhome.cli import _clicks
+
+        with pytest.raises(ValueError, match="expected 'label=x,y'"):
+            _clicks("=890,100")
+
+    def test_a_string_of_only_separators_is_refused(self):
+        import pytest
+
+        from vividhome.cli import _clicks
+
+        with pytest.raises(ValueError, match="held no pairs"):
+            _clicks(" ; ; ")

@@ -127,7 +127,7 @@ def _add_align(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--level", required=True, help="level slug")
     p.add_argument(
         "--pairs",
-        help="landmark to plan-pixel pairs, 'label=x,y label=x,y' (at least two, "
+        help="landmark to plan-pixel pairs, 'label=x,y;label=x,y' (at least two, "
         "or use --use-markers)",
     )
     p.add_argument("--web", action="store_true", help="click the pairs in a browser instead")
@@ -466,6 +466,32 @@ def _run_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _clicks(raw: str) -> dict[str, tuple[float, float]]:
+    """Parse ``label=x,y`` pairs, separated by semicolons or by whitespace.
+
+    Semicolons exist because the app's labels contain spaces. It writes
+    "<room> <kind> <n>" — "bedroom corner 1" — deliberately, so the label still
+    means something to whoever pairs it with a drawing weeks later, and
+    splitting the whole string on whitespace turns that into three tokens and an
+    error about `'bedroom'`. Whitespace still works when no label needs it,
+    which is every label that predates this.
+    """
+    tokens = raw.split(";") if ";" in raw else raw.split()
+    clicks: dict[str, tuple[float, float]] = {}
+    for token in tokens:
+        token = token.strip()
+        if not token:
+            continue
+        label, separator, pixel = token.partition("=")
+        label = label.strip()
+        if not separator or not label or not pixel.strip():
+            raise ValueError(f"expected 'label=x,y', got {token!r}")
+        clicks[label] = _points(pixel.strip(), 1)[0]
+    if not clicks:
+        raise ValueError("--pairs held no pairs")
+    return clicks
+
+
 def _run_align(args: argparse.Namespace) -> int:
     from .align import (
         WARN_RMS_M,
@@ -495,13 +521,7 @@ def _run_align(args: argparse.Namespace) -> int:
                 return 1
             pairs += from_browser
         if args.pairs:
-            clicks = {}
-            for token in args.pairs.split():
-                label, _, pixel = token.partition("=")
-                if not label or not pixel:
-                    raise ValueError(f"expected 'label=x,y', got {token!r}")
-                clicks[label] = _points(pixel, 1)[0]
-            pairs += landmark_pairs(session, calibration, clicks)
+            pairs += landmark_pairs(session, calibration, _clicks(args.pairs))
         if args.use_markers:
             pairs += marker_pairs(session, args.store, project_slug(session))
         if not pairs:

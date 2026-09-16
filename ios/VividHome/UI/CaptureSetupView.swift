@@ -14,6 +14,7 @@ struct CaptureSetupView: View {
   let onAddPlan: () -> Void
   let onShowCoverage: () -> Void
   let onShowSessions: () -> Void
+  let onBackToProject: () -> Void
 
   @State private var typedRoom = ""
   @State private var notes = ""
@@ -180,6 +181,11 @@ struct CaptureSetupView: View {
         }
       }
       .navigationTitle("New capture")
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("House", systemImage: "chevron.left", action: onBackToProject)
+        }
+      }
       .onAppear(perform: restorePhases)
     }
   }

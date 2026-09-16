@@ -2,17 +2,21 @@ import ARKit
 import SwiftUI
 import VividHomeCore
 
-/// The app's one route, for now.
+/// The app's route: the house, then one room of it.
 ///
-/// Setup, capture, review. The designed Project, Level and Room screens sit
-/// above this and do not exist yet; when they do, they choose the level and room
-/// and this becomes the leaf rather than the whole app.
+/// The project screen chooses the level and the room; everything below it —
+/// setup, capture, review — is the leaf. Before it existed a level was a text
+/// field here, which is why only one level was ever reachable and a two-storey
+/// house could not be recorded as one building.
 struct ContentView: View {
   @StateObject private var coordinator = CaptureCoordinator()
   @StateObject private var plans = PlanStore(project: CaptureCoordinator.projectSlug)
   @State private var sheet: Sheet?
   @State private var levelName = "Level 1"
   @State private var roomName = ""
+  /// Nil until a room is chosen, which is what keeps the project screen the
+  /// root rather than something reachable only by backing out of capture.
+  @State private var picked: Bool = false
 
   private enum Sheet: Int, Identifiable {
     case importPlan
@@ -35,6 +39,18 @@ struct ContentView: View {
         unsupported
       } else {
         switch coordinator.phase {
+        case .setup where !picked:
+          ProjectOverviewView(
+            project: CaptureCoordinator.projectSlug,
+            plans: plans,
+            onPick: { level, room in
+              // The name only. Everything downstream derives the slug with
+              // SessionID.slug, and carrying a second copy of it here would be
+              // a second source of truth for the same string.
+              levelName = level.name
+              roomName = room
+              picked = true
+            })
         case .setup:
           CaptureSetupView(
             coordinator: coordinator,
@@ -43,7 +59,11 @@ struct ContentView: View {
             roomName: $roomName,
             onAddPlan: { sheet = .importPlan },
             onShowCoverage: { sheet = .coverage },
-            onShowSessions: { sheet = .sessions })
+            onShowSessions: { sheet = .sessions },
+            onBackToProject: {
+              picked = false
+              roomName = ""
+            })
         case .recording:
           CaptureHUDView(
             coordinator: coordinator,
@@ -52,7 +72,14 @@ struct ContentView: View {
         case .finishing(let message):
           finishing(message)
         case .review(let summary):
-          SessionReviewView(summary: summary) { coordinator.backToSetup() }
+          SessionReviewView(summary: summary) {
+            coordinator.backToSetup()
+            // Back to the house rather than to setup with the room still in it:
+            // the next room is a different room, and the common case after
+            // finishing one is picking the next.
+            picked = false
+            roomName = ""
+          }
         case .failed(let message):
           failure(message)
         }

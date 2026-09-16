@@ -35,44 +35,63 @@ public struct ProjectDigest: Equatable, Sendable {
     let mine = manifests.filter { $0.project.slug == project }
     let name = mine.first?.project.name ?? project
 
-    var byLevel: [String: (ref: LevelRef, rooms: [String: RoomDigest])] = [:]
+    // Written as plain statements rather than a map-then-sort chain: the chained
+    // version, with a ternary inside the sort closure, made the type checker
+    // give up ("unable to type-check this expression in reasonable time"). It
+    // is also easier to read.
+    var byLevel: [String: Accumulator] = [:]
     for manifest in mine {
-      let level = manifest.level
-      var entry = byLevel[level.slug] ?? (ref: level, rooms: [:])
-      var room =
-        entry.rooms[manifest.room.slug]
-        ?? RoomDigest(room: manifest.room.slug, name: manifest.room.name)
+      let levelSlug = manifest.level.slug
+      var entry = byLevel[levelSlug] ?? Accumulator(ref: manifest.level)
+      let roomSlug = manifest.room.slug
+      var room = entry.rooms[roomSlug] ?? RoomDigest(room: roomSlug, name: manifest.room.name)
       room.phases.formUnion(manifest.phases)
       room.sessions += 1
       // Latest wins, compared as ISO 8601 strings: they are fixed-width, so
       // lexical order is chronological order and no date parsing is needed.
-      if let started = room.lastCaptured {
-        room.lastCaptured = max(started, manifest.capture.startedAt)
+      let startedAt: String = manifest.capture.startedAt
+      if let known = room.lastCaptured {
+        room.lastCaptured = known > startedAt ? known : startedAt
       } else {
-        room.lastCaptured = manifest.capture.startedAt
+        room.lastCaptured = startedAt
       }
-      entry.rooms[manifest.room.slug] = room
-      byLevel[level.slug] = entry
+      entry.rooms[roomSlug] = room
+      byLevel[levelSlug] = entry
     }
 
-    let levels =
-      byLevel
-      .map { _, entry in
+    var levels: [LevelDigest] = []
+    for entry in byLevel.values {
+      var rooms: [RoomDigest] = Array(entry.rooms.values)
+      rooms.sort { (a: RoomDigest, b: RoomDigest) -> Bool in a.name < b.name }
+      levels.append(
         LevelDigest(
-          level: entry.ref.slug,
-          name: entry.ref.name,
-          index: entry.ref.index,
-          rooms: entry.rooms.values.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending })
-      }
-      // Storey order, then name, so a basement sorts under the floor above it
-      // the way a section list should read rather than alphabetically.
-      .sorted {
-        $0.index == $1.index
-          ? $0.name.localizedStandardCompare($1.name) == .orderedAscending : $0.index > $1.index
-      }
+          level: entry.ref.slug, name: entry.ref.name, index: entry.ref.index, rooms: rooms))
+    }
+    // Storey order, then name, so a basement reads under the floor above it
+    // rather than alphabetically above it.
+    //
+    // Plain `<` rather than localizedStandardCompare, which is not used
+    // anywhere else in this package and so is unproven on Linux. These tests
+    // run on Linux and the app runs on Darwin, so a comparison that can differ
+    // between them would assert one order in CI and show another on the phone —
+    // the same shape as every cross-half bug this week. The cost is that
+    // "Bedroom 10" sorts before "Bedroom 2"; the ordering is at least identical
+    // everywhere, and a natural sort can be added later with a comparison this
+    // package owns and tests.
+    levels.sort { (a: LevelDigest, b: LevelDigest) -> Bool in
+      if a.index != b.index { return a.index > b.index }
+      return a.name < b.name
+    }
 
     return ProjectDigest(project: project, name: name, levels: levels)
   }
+}
+
+/// Scratch space while grouping manifests. A named type rather than a tuple in
+/// a dictionary, which is what the type checker was choking on.
+private struct Accumulator {
+  var ref: LevelRef
+  var rooms: [String: RoomDigest] = [:]
 }
 
 public struct LevelDigest: Equatable, Sendable {

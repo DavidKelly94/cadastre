@@ -202,9 +202,13 @@ capture the owner described as rushed and sloppy.** That is the first evidence
 that the capture geometry is good enough for the product to work, and it is
 better than ADR-0026's 5 to 15 cm expectation.
 
-The fourth wall is 21% longer than its opposite, and the render shows why:
-`corner 4` sits inside the room rather than on its boundary. One mis-tap, plainly
-visible in the data.
+The fourth wall is 21% longer than its opposite, and `corner 4` sits inside the
+room's outline rather than on it. That was first read as a mis-tap. The owner
+then said the room has a jut-out near the door and that a wall he tapped may have
+been an outside one — which explains the same numbers without anyone tapping
+wrong, and `corner 4` near the door is exactly where a jog's inside corner would
+sit. Four corner points cannot distinguish a mis-tap from a real jog, so the
+reading stands corrected: the discrepancy is unexplained by the data alone.
 
 **Two things worth keeping.**
 
@@ -212,14 +216,19 @@ A bounding box is not a room. Any measure taken along the session axes is
 meaningless, because those axes have no relationship to the building. Anything
 that reports a dimension has to derive its own frame first.
 
-And the check that found the mis-tap is one ADR-0027 said could not exist. That
-ADR is right that `AlignmentQuality` measures the arrangement of the taps and
-never whether they are correct — but **opposite walls of a rectangle are equal
-whatever its aspect or rotation**, so a 4-corner room carries an internal
-consistency check that needs no plan, no markers and no ground truth. Here it
-reads 2% on one pair and 17% on the other. Worth considering for the capture HUD,
-where it could catch the mis-tap while the owner is still standing in the room;
-it is not built, and it does not apply to rooms that are not quadrilaterals.
+And the opposite-wall check is weaker than it first looked, which is worth
+recording because the first version of this entry oversold it. Opposite walls of
+a rectangle are equal whatever the aspect or rotation, so four corners do carry
+an internal consistency check needing no plan, no markers and no ground truth —
+but it only ever says *these four points are not a rectangle*, and a jog is not
+an error. Real rooms have bays, chimney breasts and closet bumps. ADR-0027's
+claim survives: nothing in the capture can tell whether the owner tapped what
+they meant to.
+
+What it could still be good for is a prompt rather than a verdict — "these taps
+do not close a rectangle; is that right?" — asked while the owner is standing in
+the room and can answer. Not built, and it says nothing about rooms with more or
+fewer than four corners.
 
 ## `align --pairs` could not express a single real label, 2026-09-16
 

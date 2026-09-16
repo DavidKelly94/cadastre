@@ -151,3 +151,51 @@ public struct TrackingClock: Sendable {
     lastWasLimited = tracking != .normal
   }
 }
+
+
+/// The session's time origin, and the only thing that converts an ARKit
+/// timestamp into the `t` the format specifies.
+///
+/// `docs/session-format.md` §3: *"`t` is seconds since session start, from
+/// `ARFrame.timestamp` (monotonic)"*. `ARFrame.timestamp` is **not** that: it is
+/// time since the device booted, so a phone up for a day and a half writes
+/// `t = 113885.28` into a session lasting forty seconds. Every `t` in a session
+/// — keyframes, stills, marker sightings, tapped landmarks — has to be measured
+/// from the same zero, which is what this holds.
+///
+/// It lives in the core package rather than in the recorder deliberately. The
+/// bug this type exists to prevent shipped once and was caught by the owner
+/// running `validate` on a real capture, not by CI: the `contract` job checks a
+/// session written by `vividhome-fixture`, whose times are relative by
+/// construction, so it structurally cannot fail this way. Logic the app needs
+/// and Linux can test belongs here (rule 3 of `AGENTS.md`).
+public struct SessionTimeline: Sendable {
+
+  /// The timestamp adopted as zero, or nil before the first frame.
+  public private(set) var origin: Double?
+
+  public init() {}
+
+  /// Take a keyframe timestamp, adopting the first one as the session's zero,
+  /// and return its session time.
+  public mutating func adopt(_ timestamp: Double) -> Double {
+    if origin == nil { origin = timestamp }
+    return time(for: timestamp)
+  }
+
+  /// Session time for anything that is not a keyframe — a still, a marker
+  /// sighting, a tapped landmark. It never adopts an origin, because the
+  /// session starts when recording starts and not when the owner first taps
+  /// something.
+  ///
+  /// Clamped at zero: a still can be captured before the first keyframe lands,
+  /// which the format allows (§6 gives it keyframe index -1), and a negative
+  /// `t` would fail validation rule 2 for an event the format considers legal.
+  public func time(for timestamp: Double) -> Double {
+    guard let origin else { return 0 }
+    return max(0, timestamp - origin)
+  }
+
+  /// Whether a frame has been seen yet.
+  public var hasBegun: Bool { origin != nil }
+}

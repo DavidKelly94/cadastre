@@ -174,7 +174,12 @@ Landmark (from a tap on the capture screen, resolved with `ARView.raycast(allowi
 {"t":8.7,"i":60,"label":"corner-ne","kind":"corner","p_w":[2.31,-1.42,-0.87],"method":"raycast-estimatedPlane"}
 ```
 
-`kind` is `corner`, `door`, `window`, `floor` or `other`. Labels are free text but the app offers a fixed vocabulary so the same room gets the same labels in every phase (`corner-nw`, `corner-ne`, `corner-se`, `corner-sw`, `door-<name>`, `window-<name>`, `floor`).
+`kind` is `corner`, `door`, `window`, `floor` or `other`. Labels are free text. The app writes `"<room-slug> <kind> <n>"` — `bedroom corner 1` — numbering per kind, so a label still says what it is to whoever pairs it with a drawing weeks later; `corner-3` on its own does not.
+
+Two consequences, both of which have already bitten:
+
+- **Labels contain spaces.** Any reader splitting a list of them on whitespace will mangle them. `vividhome align --pairs` did exactly that and could not express a single real label; it separates on `;` now.
+- **They are not stable across phases.** The number comes from tap order within one session, so the same physical corner can be `bedroom corner 1` in framing and `bedroom corner 3` in rough-in. This does not affect alignment — every session is solved from its own landmarks against the plan, never against another session's labels — but nothing should be built that assumes a label identifies the same point twice.
 
 ## 9. Mesh files
 
@@ -216,7 +221,12 @@ Documents/sessions/<project-slug>/
   <session-id>/            one folder per session, as in section 2
 ```
 
-`<level>` is the same slug used in a session id. The same `plans/` shape exists in the pipeline's own store, because `ingest` copies the directory across unchanged.
+`<level>` is the same slug used in a session id.
+
+**The pipeline's store does not mirror this layout, and `ingest` does not copy `plans/`.** On the PC a plan is imported separately with `vividhome plan add`, and lives at `<store>/plans/<level>.png` and `<level>.json` — one `plans/` directory for the whole store rather than one per project. Two consequences worth knowing rather than discovering:
+
+- The plan work done in the app and the plan on the PC are separate copies. Room placements made on the phone do not reach `align`, which is consistent with the rule below — a placement is never an alignment input — but it does mean the plan has to be imported and calibrated once on each side.
+- Because the pipeline's `plans/` is not scoped by project, two projects with the same level slug would share one plan file. Only one project exists so far, so this is latent rather than broken; the marker map next to it (`<store>/markers/<project>.json`) is project-scoped, so the store is inconsistent with itself and one of the two has to move. That is a store-layout decision and needs an ADR, not a quiet change.
 
 `<level>.json` — the first six fields are what `vividhome plan add` and `plan calibrate` have always written; `source` and `rooms` are the additions the app needs:
 

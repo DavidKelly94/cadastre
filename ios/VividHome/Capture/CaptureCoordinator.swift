@@ -149,7 +149,9 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
 
       self.landmarkLogger = LandmarkLogger(writer: landmarksFile)
 
-      stillCapture = StillCapture(session: controller.session, writer: writer)
+      stillCapture = StillCapture(
+        session: controller.session, writer: writer,
+        sessionTime: { [weak self] in self?.recorder.sessionTime(for: $0) ?? 0 })
 
       markersSeen = []
       landmarks = []
@@ -245,7 +247,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       label: label,
       kind: kind,
       position: position,
-      time: controller.session.currentFrame?.timestamp ?? 0,
+      time: recorder.sessionTime(for: controller.session.currentFrame?.timestamp ?? 0),
       keyframeIndex: recorder.currentKeyframeIndex)
     landmarks.append(landmark)
     draw(landmark, in: arView)
@@ -368,7 +370,9 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   /// these on the main queue — `ARSessionController` leaves `delegateQueue`
   /// nil — so touching SceneKit here is safe.
   func session(didObserve anchors: [ARAnchor], time: Double) {
-    markerLogger?.session(didObserve: anchors, time: time)
+    // ARSessionController hands over the raw ARKit timestamp; the file wants
+    // session time, from the same zero as every keyframe.
+    markerLogger?.session(didObserve: anchors, time: recorder.sessionTime(for: time))
     guard let arView else { return }
 
     for case let image as ARImageAnchor in anchors {

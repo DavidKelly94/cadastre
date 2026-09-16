@@ -28,10 +28,19 @@ struct PlanCoverageView: View {
   @State private var dragPoint: CGPoint = .zero
   /// The room the next tap on the plan will place.
   @State private var arming: String?
+  @State private var naming = false
+  @State private var draftRoom = ""
 
   private static let space = "plan"
 
   private var plan: PlanFile? { store.plans[level] }
+
+  /// Room labels read off the drawing that are not placed yet. Candidates, not
+  /// data: nothing here has reached the file (rule 9).
+  private var suggestions: [PlanLabelReader.Candidate] {
+    let placed = Set(plan?.rooms.map(\.room) ?? [])
+    return (store.candidates[level] ?? []).filter { !placed.contains($0.slug) }
+  }
 
   /// Rooms this level knows about that are not on the plan yet.
   ///
@@ -59,6 +68,18 @@ struct PlanCoverageView: View {
       .navigationTitle(plan?.level.capitalized ?? "Level")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) } }
+      .alert("Name the room", isPresented: $naming) {
+        TextField("Kitchen", text: $draftRoom)
+        Button("Cancel", role: .cancel) {}
+        Button("Add") {
+          // Slugged here so the name the capture uses and the name on the plan
+          // are the same string, which is the whole point of picking rather
+          // than typing later.
+          if let slug = SessionID.slug(draftRoom) { arming = slug }
+        }
+      } message: {
+        Text("It will be the room you pick when capturing, so use the name you would say out loud.")
+      }
     }
   }
 
@@ -96,7 +117,7 @@ struct PlanCoverageView: View {
       }
       .background(Color(.secondarySystemBackground))
 
-      if !unplaced.isEmpty { tray }
+      tray
       footer
     }
   }
@@ -145,15 +166,53 @@ struct PlanCoverageView: View {
         })
   }
 
-  /// The rooms still to place. Present only while there are any, so the plan
-  /// gets the whole screen once the level is done.
+  /// The rooms still to place, and the way to name a new one.
   private var tray: some View {
     VStack(alignment: .leading, spacing: 8) {
-      Text(arming == nil ? "Not on the plan yet" : "Tap where \(arming ?? "") is")
+      Text(
+        arming != nil
+          ? "Tap where \(arming ?? "") is"
+          : (suggestions.isEmpty
+            ? (unplaced.isEmpty ? "Every room is placed" : "Not on the plan yet")
+            : "Read off the drawing — tap to place, then drag to correct"))
         .font(.caption.weight(.semibold))
         .foregroundStyle(arming == nil ? Color.secondary : Color.accentColor)
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 8) {
+          Button {
+            draftRoom = ""
+            naming = true
+          } label: {
+            Label("Room", systemImage: "plus")
+              .font(.footnote.weight(.semibold))
+              .padding(.horizontal, 12).padding(.vertical, 8)
+              .background(Color(.tertiarySystemFill), in: Capsule())
+              .foregroundStyle(Color.accentColor)
+          }
+          .buttonStyle(.plain)
+
+          ForEach(suggestions) { candidate in
+            Button {
+              // Placed where the label sits, then dragged if that is not quite
+              // the room's middle. Accepting and correcting are one gesture,
+              // which is what keeps a suggestion from being a thing to approve.
+              guard let plan, let image = store.image(for: plan) else { return }
+              try? store.place(
+                room: candidate.slug, at: candidate.point, on: level, size: image.size)
+            } label: {
+              HStack(spacing: 5) {
+                Image(systemName: "text.viewfinder").font(.caption2)
+                Text(candidate.slug)
+              }
+              .font(.footnote.weight(.semibold))
+              .padding(.horizontal, 12).padding(.vertical, 8)
+              .background(Color.accentColor.opacity(0.14), in: Capsule())
+              .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+              .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+          }
+
           ForEach(unplaced, id: \.self) { room in
             Button {
               arming = (arming == room) ? nil : room

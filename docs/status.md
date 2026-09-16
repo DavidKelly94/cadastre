@@ -175,6 +175,52 @@ picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
 
+## First accuracy number, and a measure that lied about it, 2026-09-16
+
+The full path ran on a real capture: `plan add`, `calibrate`, `align`,
+`inspect`, 6 correspondences, rms 0.2 cm. That residual is circular and means
+nothing — the plan was drawn from the same taps it was then aligned against.
+
+The number that does mean something came from a tape measure. The owner said the
+room was about 11 x 11 ft. A helper script reported **20.6 x 14.6 ft**, which
+looked like a capture that was badly wrong.
+
+It was not. The script reported the axis-aligned bounding box of a room sitting
+**42 degrees** off the session axes, and ARKit's yaw is whichever way the phone
+happened to be facing at record time, so that angle is arbitrary and usually
+nonzero. Measuring the walls instead:
+
+```
+corner 1 -> corner 2   3.12 m   10.2 ft
+corner 2 -> corner 3   3.21 m   10.5 ft
+corner 3 -> corner 4   3.18 m   10.4 ft
+corner 4 -> corner 1   3.87 m   12.7 ft
+```
+
+**Three walls of an 11 ft room within 3 inches of each other, from a handheld
+capture the owner described as rushed and sloppy.** That is the first evidence
+that the capture geometry is good enough for the product to work, and it is
+better than ADR-0026's 5 to 15 cm expectation.
+
+The fourth wall is 21% longer than its opposite, and the render shows why:
+`corner 4` sits inside the room rather than on its boundary. One mis-tap, plainly
+visible in the data.
+
+**Two things worth keeping.**
+
+A bounding box is not a room. Any measure taken along the session axes is
+meaningless, because those axes have no relationship to the building. Anything
+that reports a dimension has to derive its own frame first.
+
+And the check that found the mis-tap is one ADR-0027 said could not exist. That
+ADR is right that `AlignmentQuality` measures the arrangement of the taps and
+never whether they are correct — but **opposite walls of a rectangle are equal
+whatever its aspect or rotation**, so a 4-corner room carries an internal
+consistency check that needs no plan, no markers and no ground truth. Here it
+reads 2% on one pair and 17% on the other. Worth considering for the capture HUD,
+where it could catch the mis-tap while the owner is still standing in the room;
+it is not built, and it does not apply to rooms that are not quadrilaterals.
+
 ## `align --pairs` could not express a single real label, 2026-09-16
 
 The first attempt to align a real capture against a plan:

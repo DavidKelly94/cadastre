@@ -7,14 +7,29 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-14, after the rename to VividHome (ADR-0024).
+Last updated: 2026-09-16, after the first end-to-end run on a real capture.
 
 ## The short version
 
-The pipeline is feature-complete and tested. The Swift core is complete and
-tested. The iOS capture layer is written and compiles, but **has never run** —
-there is no device build yet, so nothing below marked "compiles" should be read
-as "works". The screens do not exist.
+**The whole chain works on real data.** A room captured on an iPhone reaches the
+PC, validates, gets a plan, calibrates, aligns and renders on an inspection page
+that shows the room outline, the tapped landmarks and the walk path. That is the
+product's spine, and it is no longer hypothetical.
+
+The pipeline and the Swift core are complete and tested. The capture app runs on
+device and its screens exist: setup, capture HUD, session review, past captures,
+plan import, plan coverage.
+
+Three things to hold against that:
+
+- **Accuracy is measured once, and it is good.** Three walls of an 11 ft room
+  within about 8 cm of each other, from a rushed handheld pass, against the 5 to
+  15 cm ADR-0026 budgets. One capture is not a distribution.
+- **No alignment has yet used an independent drawing.** Every plan so far was
+  derived from the same capture it was then aligned against, which tests the
+  plumbing and not the pairing.
+- **One project and one level are reachable**, because the Projects and Levels
+  screens do not exist. A house with two floors cannot be captured as one.
 
 ## Pipeline (`pipeline/`) — complete
 

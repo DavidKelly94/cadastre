@@ -11,7 +11,7 @@ pipeline/
   pyproject.toml            [project] name = "vividhome"; [project.scripts] vividhome = "vividhome.cli:main"
   vividhome/
     __init__.py
-    cli.py                  argparse subcommands: ingest, validate, apriltag, plan, align, inspect, markers, synth
+    cli.py                  argparse subcommands: ingest, validate, apriltag, plan, align, inspect, markers, synth, corners
     session.py              Session dataclass: load manifest/JSONL, resolve paths, matrix helpers
     transforms.py           column-major ↔ numpy, ARKit↔OpenCV camera, unproject, SE(2) embed, Umeyama 2D
     validate.py             rules from session-format.md §11
@@ -20,6 +20,8 @@ pipeline/
     plan.py                 rasterize PDF/photo, perspective correction, calibration page, plan.json
     align.py                landmarks ↔ plan corners → T_hs; residual report; --use-markers
     inspector.py            static HTML per level + serve
+    mesh.py                 read mesh.obj + mesh_classes.u8 (§9); per-face geometry; a builder for fixtures
+    corners.py              corner candidates from wall planes, scored against tapped corners (§10)
     markers.py              marker PDF + PNG generator
     synth.py                synthetic sessions for tests
     web/                    static HTML/JS for calibrate, align, inspect (no build step)
@@ -113,7 +115,11 @@ Generates `inspect/<level>.html`: the plan raster as background, each aligned se
 
 `synth --out <dir>`: writes a small format-valid session: a circular trajectory of 48 keyframes in a 4x5 m room, flat depth maps with a synthetic floor and walls, blank JPEGs with two AprilTags warped into them at known poses (`cv2.warpPerspective` of the generated tag bitmaps), four corner landmarks at known positions, and a manifest. Tests use it to check `validate` (passes), `apriltag` (recovers the tag poses within 1 cm / 1°), `align` (recovers a known SE(2) within 1 mm), and `inspect` (produces HTML). The keyframe count is 48 rather than 30 because a 65° field of view sweeping a full turn leaves each marker in frame only briefly; 30 yields two or three observations per marker, too few to exercise the median aggregation in `apriltag`.
 
-## 10. Later (weeks 3+, own design docs when started)
+## 10. `corners`
+
+`corners <session> [--min-area 0.5]`: the room side of `docs/ai-roadmap.md` item 5, run offline so the idea is measured before the app pays for it. Reads `mesh.obj` and `mesh_classes.u8` (`mesh.py`), keeps wall-classified faces whose normal is near horizontal, and clusters them greedily into vertical planes — largest face seeds, faces within 10° and 15 cm join, refit by area with doubled-angle averaging so a wall straddling 0°/180° stays one wall, planes under `--min-area` dropped because furniture ARKit calls "wall" is small. Every pair of planes more than 30° apart is intersected in the x–z plane, and the intersection is a candidate only when both walls' faces run to within 30 cm of it: two lines always cross somewhere, and the reach test is what keeps the far walls of an L-shaped room from proposing a corner in the notch. Candidates sit at floor height (floor faces, else wall bottoms) and carry a heuristic confidence from wall support and reach, `source: "mesh"` and `confirmed: null`. When the session has tapped corners the report scores against them: the fraction within 20 cm (the roadmap's acceptance metric), the distance per tap, and candidates with no tap within 50 cm. Writes `derived/corner_candidates.json`; never touches `landmarks.jsonl`.
+
+## 11. Later (weeks 3+, own design docs when started)
 
 - `graph`: pose graph over sessions and markers (scipy least squares).
 - `mesh`: Open3D TSDF integration per session; GLB export for the viewer.

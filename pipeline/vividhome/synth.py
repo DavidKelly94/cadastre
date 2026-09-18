@@ -406,6 +406,7 @@ def build(out: Path | str, spec: SynthSpec | None = None) -> SyntheticSession:
     _write_jsonl(root / "stills.jsonl", still_rows)
     _write_jsonl(root / "markers.jsonl", marker_rows)
     _write_jsonl(root / "landmarks.jsonl", landmark_rows)
+    _write_mesh(spec, root)
 
     total_bytes = sum(p.stat().st_size for p in root.rglob("*") if p.is_file())
     manifest = {
@@ -470,6 +471,29 @@ def build(out: Path | str, spec: SynthSpec | None = None) -> SyntheticSession:
         marker_poses=marker_poses,
         landmarks=landmarks,
     )
+
+
+def _write_mesh(spec: SynthSpec, root: Path) -> None:
+    """The room as ARKit would mesh it, classified: four walls, a floor, a ceiling.
+
+    Plus one piece of clutter — a 0.4 x 0.3 m vertical face in the middle of the
+    room classified as wall, the way a cabinet side or a door leaf comes back
+    from ARKit — so anything reading walls off this mesh is exercised on the
+    thing that makes real meshes hard, not only on the ideal box.
+    """
+    from .mesh import CEILING, FLOOR, WALL, MeshBuilder
+
+    w, d, h = spec.width_m, spec.depth_m, spec.height_m
+    builder = MeshBuilder()
+    builder.add_quad((0.0, 0.0, 0.0), (w, 0.0, 0.0), (0.0, h, 0.0), WALL)
+    builder.add_quad((w, 0.0, 0.0), (0.0, 0.0, d), (0.0, h, 0.0), WALL)
+    builder.add_quad((w, 0.0, d), (-w, 0.0, 0.0), (0.0, h, 0.0), WALL)
+    builder.add_quad((0.0, 0.0, d), (0.0, 0.0, -d), (0.0, h, 0.0), WALL)
+    builder.add_quad((0.0, 0.0, 0.0), (w, 0.0, 0.0), (0.0, 0.0, d), FLOOR)
+    builder.add_quad((0.0, h, 0.0), (w, 0.0, 0.0), (0.0, 0.0, d), CEILING)
+    cx, cz = spec.centre
+    builder.add_quad((cx - 0.2, 0.0, cz), (0.4, 0.0, 0.0), (0.0, 0.3, 0.0), WALL, cell_m=0.2)
+    builder.write(root)
 
 
 def _write_jsonl(path: Path, rows: list[dict]) -> None:

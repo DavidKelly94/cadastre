@@ -7,8 +7,9 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-18, after the inspect page learned to open the photos and
-`ingest` learned to carry the plan across.
+Last updated: 2026-09-18, after the inspect page learned to open the photos,
+`ingest` learned to carry the plan across, and `corners` proposed its first
+corners from a mesh.
 
 ## The short version
 
@@ -46,8 +47,9 @@ Three things to hold against that:
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the session, verbatim, for levels the store lacks |
 | `serve` | done | Local server for the browser pages |
+| `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 
-14 modules, **276 tests passing**, ruff clean.
+16 modules, **292 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -191,6 +193,37 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Corners proposed from the mesh, measured before the app pays for them, 2026-09-18
+
+Roadmap item 5's room side — fit planes to the wall-classified mesh, intersect
+adjacent pairs, offer the intersections as corners to drag rather than tap — is
+the owner's stated big win, and it is app work that cannot be checked here. The
+roadmap's own advice is to measure before spending, so the measurement was built
+first: `vividhome corners <session>` runs that geometry on the PC over a
+capture's mesh and scores the result against the corners the owner tapped, as
+the fraction within 20 cm plus the candidates no tap is near.
+
+On the synthetic room it finds the four walls, ignores the 0.4 x 0.3 m "wall"
+planted in the middle of it, and puts all four corners within 2 cm of the taps.
+An L-shaped room in the tests gets its six corners and none of the ghosts two
+crossing lines would otherwise invent, which is the part that needed a rule: two
+walls propose a corner only where both actually reach it. **None of this has
+touched a real mesh.** ARKit's walls are noisier, tilted and full of holes, and
+the tolerances (10 degrees, 15 cm, half a square metre) are guesses until a real
+session says otherwise. The store already holds captures with meshes and taps;
+the number is one command away.
+
+Two rules held on purpose. Every candidate is written with `source`, a
+heuristic `confidence` and `confirmed: null`, under `derived/`, and nothing
+writes to `landmarks.jsonl` — rule 9, and the roadmap's guardrail. And the
+phone got nothing: no candidate is drawn until the offline number says the
+approach earns its screen time.
+
+Two side effects worth knowing. `synth` now writes the room's mesh, so `align`
+reads the synthetic floor from floor faces rather than guessing it from the
+lowest landmark; its tests say so. And `align.py` still carries its own small
+OBJ reader from before `mesh.py` existed; it works and was left alone.
 
 ## The plan comes across with the capture, 2026-09-18
 

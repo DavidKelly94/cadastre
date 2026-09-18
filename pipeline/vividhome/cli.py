@@ -168,6 +168,20 @@ def _add_markers(sub: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_corners(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "corners",
+        help="propose room corners from the wall mesh and score them against the tapped ones",
+    )
+    p.add_argument("session", help="session directory or id within the store")
+    p.add_argument(
+        "--min-area",
+        type=float,
+        default=0.5,
+        help="smallest wall plane to keep, in square metres (furniture is smaller)",
+    )
+
+
 def _add_synth(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("synth", help="write a synthetic, format-valid session for tests")
     p.add_argument("--out", required=True, help="destination directory")
@@ -197,6 +211,7 @@ def build_parser() -> argparse.ArgumentParser:
         _add_inspect,
         _add_markers,
         _add_synth,
+        _add_corners,
     ):
         add(sub)
     return parser
@@ -600,6 +615,22 @@ def _run_apriltag(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_corners(args: argparse.Namespace) -> int:
+    from .corners import propose_corners, write_candidates
+    from .session import Session, SessionError
+
+    try:
+        session = Session.load(resolve_session(args.store, args.session))
+        report = propose_corners(session, min_area_m2=args.min_area)
+    except (FileNotFoundError, SessionError) as error:
+        print(f"vividhome corners: {error}", file=sys.stderr)
+        return 1
+
+    print(report.render())
+    print(f"\nwrote {write_candidates(session, report)}")
+    return 0
+
+
 def _run_synth(args: argparse.Namespace) -> int:
     from .synth import SynthSpec, build
 
@@ -626,6 +657,7 @@ _HANDLERS = {
     "inspect": _run_inspect,
     "ingest": _run_ingest,
     "markers": _run_markers,
+    "corners": _run_corners,
 }
 
 

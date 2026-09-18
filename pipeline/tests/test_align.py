@@ -176,8 +176,18 @@ def test_floor_height_falls_back_to_the_mesh(tmp_path: Path):
 
 def test_floor_height_says_when_it_is_guessing(tmp_path: Path):
     result = build(tmp_path / "s", SynthSpec(keyframes=3))
-    height, source = floor_y_session(Session.load(result.root))
-    # synth tags its corners as corners, not floor, and writes no mesh.
+    session = Session.load(result.root)
+
+    # With the mesh, the floor faces decide and the source says so.
+    height, source = floor_y_session(session)
+    assert source == "mesh"
+    assert height == pytest.approx(0.0)
+
+    # Without one, synth tags its corners as corners rather than floor, so the
+    # height is a guess from the lowest landmark and the alignment must say so.
+    (result.root / "mesh.obj").unlink()
+    (result.root / "mesh_classes.u8").unlink()
+    height, source = floor_y_session(session)
     assert source == "lowest-landmark"
     assert height == pytest.approx(0.0)
 
@@ -321,5 +331,5 @@ def test_write_alignment_records_the_transform_and_the_pairs(scene):
     assert stored["T_hs"] == mat_to_cm(alignment.T_hs)
     assert len(stored["pairs"]) == len(pairs)
     assert stored["method"] == "landmarks"
-    assert stored["floor_source"] == "lowest-landmark"
+    assert stored["floor_source"] == "mesh"
     assert stored["created_at"]

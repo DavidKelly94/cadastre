@@ -7,7 +7,8 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-18, after the inspect page learned to open the photos.
+Last updated: 2026-09-18, after the inspect page learned to open the photos and
+`ingest` learned to carry the plan across.
 
 ## The short version
 
@@ -43,10 +44,10 @@ Three things to hold against that:
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
-| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project |
+| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the session, verbatim, for levels the store lacks |
 | `serve` | done | Local server for the browser pages |
 
-14 modules, **265 tests passing**, ruff clean.
+14 modules, **276 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -190,6 +191,44 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The plan comes across with the capture, 2026-09-18
+
+ADR-0025's promise was that the plan travels to the PC with the capture. Section
+13 said, correctly until now, that it did not: the copy step was never written,
+so the owner imported the same drawing twice — once in the app, to place rooms
+on it, and once with `plan add` on the PC — as two copies that knew nothing of
+each other.
+
+`ingest` now copies `plans/` when it finds one beside the session it is
+ingesting, which is the app's own layout. It copies the raster, the JSON and the
+retained original verbatim, and only for a level the store has no plan for yet,
+because the store's copy may be calibrated with alignments solved against it and
+a swapped raster would move every session drawn on it. It prints what it did per
+level, and `--force` stays a session flag. Calibration is still the PC's job,
+so the next line it prints is the `plan calibrate` command to run.
+
+Two things that were quietly wrong, found by making this true:
+
+- **`plan calibrate` would have erased the app's room placements.** The pipeline
+  modelled six fields and wrote back only those, so the first calibration of a
+  plan the app had written would have dropped `rooms` and `source` on its way
+  past — section 12's "readers ignore unknown fields" honoured by a writer that
+  threw them away. `PlanCalibration` now carries every field it does not model
+  and writes it back unchanged, with the six modelled fields kept first. A test
+  round-trips the app's fields through `calibrate` and a raster replacement.
+- **The app names the kept original `source.pdf`; section 13 says
+  `<level>.source.pdf`.** `PlanImportView` builds the `source` record before the
+  level slug exists. Two levels imported from PDFs would overwrite each other's
+  original on the phone, and `ingest` copies the file under the name the JSON
+  gives, so the store inherits the collision. An app-side fix on the iOS branch;
+  the pipeline reads nothing from the original, so nothing downstream is wrong
+  yet.
+
+Not exercised on a real project folder: the SMB and USB routes copy whatever the
+owner selects, and the `ShareLink` route shares one session, which carries no
+`plans/`. The owner has to share or copy the project folder for the plan to be
+found; `ingest` says nothing when there is nothing beside the session.
 
 ## The inspect page opens the photos, 2026-09-18
 

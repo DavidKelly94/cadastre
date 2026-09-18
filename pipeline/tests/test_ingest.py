@@ -3,13 +3,16 @@ about what it refuses to do."""
 
 from __future__ import annotations
 
+import json
 import shutil
 import zipfile
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from vividhome.ingest import IngestError, ingest
+from vividhome.plan import add_plan, calibrate, load_calibration
 from vividhome.synth import SynthSpec, build
 
 SPEC = SynthSpec(keyframes=4, colour_w=160, colour_h=120)
@@ -27,6 +30,25 @@ def zip_session(session: Path, target: Path, *, prefix: str = "") -> Path:
                 arcname = Path(prefix) / session.name / item.relative_to(session)
                 archive.write(item, arcname)
     return target
+
+
+def plan_beside(session: Path, level: str = "main", **overrides) -> Path:
+    """Write ``plans/<level>.{png,json}`` the way the app lays a project out:
+    beside the session, in the project folder (section 13)."""
+    plans = session.parent / "plans"
+    plans.mkdir(parents=True, exist_ok=True)
+    Image.new("RGB", (300, 200), (255, 255, 255)).save(plans / f"{level}.png", "PNG")
+    data = {
+        "level": level,
+        "image": f"{level}.png",
+        "metres_per_pixel": None,
+        "origin_px": None,
+        "rotation_deg": 0.0,
+        "floor_height_m": 0.0,
+    }
+    data.update(overrides)
+    (plans / f"{level}.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return plans
 
 
 def test_ingests_a_directory(tmp_path: Path, session: Path):
@@ -259,3 +281,157 @@ def test_no_staging_directory_is_left_at_the_store_root(tmp_path: Path, session:
     archive = zip_session(session, tmp_path / "capture.zip")
     ingest(store, archive)
     assert not list(store.glob(".ingest-*"))
+
+
+# The plan travels with the capture (ADR-0025, section 13)
+
+
+PLACEMENTS = [{"room": "room", "x": 120, "y": 80, "placed_at": "2026-09-18T10:00:00Z"}]
+ORIGINAL = {"file": "main.source.pdf", "kind": "pdf", "page": 1}
+
+
+def test_a_plan_beside_the_session_comes_across_verbatim(tmp_path: Path, session: Path):
+    """The app already imported the drawing and placed the rooms on it; the PC
+    should not have to be shown the same sheet a second time."""
+    plans = plan_beside(session, "main", rooms=PLACEMENTS, source=ORIGINAL)
+    (plans / "main.source.pdf").write_bytes(b"%PDF-1.4 the retained original")
+
+    store = tmp_path / "data"
+    result = ingest(store, session)
+    assert result.ok
+
+    [plan] = result.plans
+    assert plan.level == "main"
+    assert plan.imported
+    assert plan.files == ["main.png", "main.json", "main.source.pdf"]
+    assert "plan calibrate --level main" in plan.reason
+
+    copied = store / "plans"
+    assert (copied / "main.png").read_bytes() == (plans / "main.png").read_bytes()
+    assert (copied / "main.source.pdf").read_bytes() == (plans / "main.source.pdf").read_bytes()
+    assert json.loads((copied / "main.json").read_text(encoding="utf-8")) == json.loads(
+        (plans / "main.json").read_text(encoding="utf-8")
+    ), "the app's file, byte for byte in meaning: rooms and source included"
+
+    # And the pipeline reads what came across: uncalibrated, placements intact.
+    loaded = load_calibration(store, "main")
+    assert not loaded.is_calibrated
+    assert loaded.extra["rooms"] == PLACEMENTS
+
+
+def test_the_phone_side_is_left_alone_when_the_plan_comes_across(tmp_path: Path, session: Path):
+    plans = plan_beside(session, "main", rooms=PLACEMENTS)
+    before = {p.name: p.read_bytes() for p in plans.iterdir()}
+    ingest(tmp_path / "data", session)
+    assert {p.name: p.read_bytes() for p in plans.iterdir()} == before
+
+
+def test_a_plan_comes_across_from_a_zip_of_the_project_folder(tmp_path: Path, session: Path):
+    """Sharing the project folder rather than one session is the layout the app
+    keeps, so the plan is in the archive and has to be found there before the
+    staging directory is removed."""
+    plan_beside(session, "main", rooms=PLACEMENTS)
+    project = session.parent
+    archive = tmp_path / "project.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        for item in sorted(project.rglob("*")):
+            if item.is_file():
+                zf.write(item, Path(project.name) / item.relative_to(project))
+
+    store = tmp_path / "data"
+    result = ingest(store, archive)
+    assert result.ok
+    [plan] = result.plans
+    assert plan.imported
+    assert load_calibration(store, "main").extra["rooms"] == PLACEMENTS
+    assert not list(store.glob(".ingest-*"))
+
+
+def test_a_plan_the_store_already_has_is_left_alone(tmp_path: Path, session: Path):
+    """The PC's copy may be calibrated with alignments solved against it;
+    replacing its raster underneath them would move every session on it."""
+    store = tmp_path / "data"
+    source = tmp_path / "pc-plan.png"
+    Image.new("RGB", (400, 300), (250, 250, 250)).save(source, "PNG")
+    add_plan(store, source, "main")
+    calibrate(
+        store,
+        "main",
+        point_a=(10.0, 10.0),
+        point_b=(210.0, 10.0),
+        distance_m=4.0,
+        origin_px=(10.0, 10.0),
+    )
+    raster_before = (store / "plans" / "main.png").read_bytes()
+
+    plan_beside(session, "main", rooms=PLACEMENTS)
+    result = ingest(store, session)
+    assert result.ok
+
+    [plan] = result.plans
+    assert not plan.imported
+    assert "already in the store" in plan.reason
+    assert (store / "plans" / "main.png").read_bytes() == raster_before
+    kept = load_calibration(store, "main")
+    assert kept.is_calibrated
+    assert "rooms" not in kept.extra, "nothing from the phone was merged in"
+
+
+def test_force_re_ingesting_a_session_does_not_extend_to_its_plan(tmp_path: Path, session: Path):
+    plan_beside(session, "main", rooms=PLACEMENTS)
+    store = tmp_path / "data"
+    first = ingest(store, session)
+    assert first.plans[0].imported
+
+    (store / "plans" / "main.json").write_text(
+        json.dumps({**json.loads((store / "plans" / "main.json").read_text()), "rooms": []}),
+        encoding="utf-8",
+    )
+    again = ingest(store, session, force=True)
+    assert again.ok
+    assert not again.plans[0].imported
+    assert load_calibration(store, "main").extra["rooms"] == []
+
+
+def test_a_session_with_no_plans_beside_it_reports_none(tmp_path: Path, session: Path):
+    result = ingest(tmp_path / "data", session)
+    assert result.plans == []
+    assert not (tmp_path / "data" / "plans").exists()
+
+
+def test_a_plan_that_breaks_section_13_is_skipped_with_a_reason(tmp_path: Path, session: Path):
+    """A bad plan file is not a reason to refuse the capture beside it."""
+    plans = plan_beside(session, "upper")
+    upper = json.loads((plans / "upper.json").read_text(encoding="utf-8"))
+    (plans / "upper.json").write_text(json.dumps({**upper, "level": "attic"}))  # rule 1
+    plan_beside(session, "basement")
+    (plans / "basement.png").unlink()  # rule 2: the raster must be beside it
+    plan_beside(session, "garage", image="drawing.png")
+    (plans / "loft.json").write_text("{ not json", encoding="utf-8")
+
+    store = tmp_path / "data"
+    result = ingest(store, session)
+    assert result.ok
+
+    outcome = {plan.level: plan for plan in result.plans}
+    assert set(outcome) == {"basement", "garage", "loft", "upper"}
+    assert not any(plan.imported for plan in result.plans)
+    assert "expected 'upper'" in outcome["upper"].reason
+    assert "no basement.png beside it" in outcome["basement"].reason
+    assert "section 13 expects 'garage.png'" in outcome["garage"].reason
+    assert "does not parse" in outcome["loft"].reason
+    assert not (store / "plans").exists()
+
+
+def test_a_source_file_named_outside_the_plans_folder_is_not_read(tmp_path: Path, session: Path):
+    """`source.file` comes from the JSON, so it is untrusted like a zip member name."""
+    secret = session.parent / "secret.txt"
+    secret.write_text("not a plan", encoding="utf-8")
+    plan_beside(session, "main", source={"file": "../secret.txt", "kind": "pdf", "page": 1})
+
+    store = tmp_path / "data"
+    result = ingest(store, session)
+    [plan] = result.plans
+    assert plan.imported, "the raster and the JSON still come across"
+    assert plan.files == ["main.png", "main.json"]
+    assert not (store / "plans" / "secret.txt").exists()

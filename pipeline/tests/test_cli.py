@@ -398,3 +398,33 @@ class TestPairsParsing:
 
         with pytest.raises(ValueError, match="held no pairs"):
             _clicks(" ; ; ")
+
+
+def test_ingest_says_what_became_of_the_plan(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    """The plan step is the one the owner used to do twice, so its outcome is
+    printed rather than left to be discovered at `plan calibrate`."""
+    import json
+
+    from PIL import Image
+
+    from vividhome.synth import SynthSpec, build
+
+    captured = build(
+        tmp_path / "our-house" / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=4, colour_w=160, colour_h=120),
+    )
+    plans = tmp_path / "our-house" / "plans"
+    plans.mkdir()
+    Image.new("RGB", (100, 80), (255, 255, 255)).save(plans / "main.png", "PNG")
+    (plans / "main.json").write_text(
+        json.dumps({"level": "main", "image": "main.png", "rooms": []}), encoding="utf-8"
+    )
+
+    store = str(tmp_path / "store")
+    assert main(["--store", store, "ingest", str(captured.root)]) == 0
+    out = capsys.readouterr().out
+    assert "plan main: copied from beside the session (main.png, main.json)" in out
+    assert "vividhome plan calibrate --level main" in out
+
+    assert main(["--store", store, "ingest", str(captured.root), "--force"]) == 0
+    assert "plan main: already in the store and left alone" in capsys.readouterr().out

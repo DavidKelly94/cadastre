@@ -282,3 +282,66 @@ def test_perspective_correction_rejects_a_non_image(tmp_path: Path):
     bad.write_bytes(b"nope")
     with pytest.raises(PlanError, match="not an image"):
         correct_perspective(bad, tmp_path / "out.png", [(0.0, 0.0)] * 4)
+
+
+# What the app writes survives what the pipeline writes
+
+
+APP_FIELDS = {
+    "source": {"file": "main.source.pdf", "kind": "pdf", "page": 2},
+    "rooms": [{"room": "kitchen", "x": 120, "y": 80, "placed_at": "2026-09-18T10:00:00Z"}],
+}
+
+
+def test_calibrate_keeps_the_placements_the_app_wrote(store: Path):
+    """Section 12 says readers ignore unknown fields. A writer that dropped them
+    would make `plan calibrate` erase the owner's room placements on its way
+    past, and nothing would say so."""
+    add_plan(store, make_png(store.parent / "src.png"), "main")
+    _, json_path = plan_paths(store, "main")
+    raw = json.loads(json_path.read_text(encoding="utf-8"))
+    json_path.write_text(json.dumps({**raw, **APP_FIELDS}), encoding="utf-8")
+
+    calibrate(
+        store,
+        "main",
+        point_a=(100.0, 100.0),
+        point_b=(300.0, 100.0),
+        distance_m=4.0,
+        origin_px=(100.0, 100.0),
+    )
+    after = json.loads(json_path.read_text(encoding="utf-8"))
+    assert after["metres_per_pixel"] == pytest.approx(0.02)
+    assert after["rooms"] == APP_FIELDS["rooms"]
+    assert after["source"] == APP_FIELDS["source"]
+    assert list(after)[:6] == [
+        "level",
+        "image",
+        "metres_per_pixel",
+        "origin_px",
+        "rotation_deg",
+        "floor_height_m",
+    ], "the six modelled fields stay first, where the app and the docs put them"
+
+    # Replacing the raster keeps them as well, for the same reason it keeps the
+    # calibration: the owner is rescanning the same sheet.
+    add_plan(store, make_png(store.parent / "rescan.png"), "main")
+    assert json.loads(json_path.read_text(encoding="utf-8"))["rooms"] == APP_FIELDS["rooms"]
+
+
+def test_extra_fields_never_shadow_the_modelled_ones():
+    raw = {"level": "main", "image": "main.png", **APP_FIELDS}
+    loaded = PlanCalibration.from_dict(raw)
+    assert loaded.extra == APP_FIELDS
+    assert loaded.to_dict() == {
+        "level": "main",
+        "image": "main.png",
+        "metres_per_pixel": None,
+        "origin_px": None,
+        "rotation_deg": 0.0,
+        "floor_height_m": 0.0,
+        **APP_FIELDS,
+    }
+    # `extra` is carried, not compared: two readings of one file are equal
+    # whatever a later client appended.
+    assert loaded == PlanCalibration(level="main", image="main.png")

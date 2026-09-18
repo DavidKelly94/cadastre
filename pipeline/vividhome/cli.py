@@ -432,6 +432,8 @@ def _run_ingest(args: argparse.Namespace) -> int:
     print(f"ingested {result.session_id}")
     print(f"  {result.destination}")
     print(f"  {result.bytes_copied / 1e6:.1f} MB, {result.report.keyframes} keyframes")
+    for plan in result.plans:
+        print(f"  plan {plan.level}: {plan.reason}")
     if not result.ok:
         print(f"  kept despite {len(result.report.errors)} validation error(s)")
     elif result.report.warnings:

@@ -42,10 +42,14 @@ vividhome-data/
 
 `plans/` may arrive two ways. `plan add` creates it from a PDF or photo on the PC,
 as before. Or the app has already imported the plan and `ingest` copies
-`plans/` across with the sessions ([ADR-0025](../adr/0025-plans-are-a-project-level-asset.md),
-`session-format.md` section 13). The file shape is the same either way, and
-`calibrated` says which state it is in: the app never sets it, because the app
-solves nothing. `plan calibrate` adds `scale_m_per_px` and the origin and flips it.
+`plans/` across when it finds one beside the session being ingested
+([ADR-0025](../adr/0025-plans-are-a-project-level-asset.md),
+`session-format.md` section 13) — verbatim, and only for a level the store has no
+plan for yet, since the store's copy may be calibrated and aligned against. The
+file shape is the same either way. A level is calibrated when `metres_per_pixel`
+and `origin_px` are both present; there is no flag, and the app never sets them
+because it solves nothing. `plan calibrate` fills them in and writes the app's
+`source` and `rooms` back beside them untouched.
 
 `rooms[]` in a plan file is a room slug and a pixel coordinate the owner tapped.
 It exists so the app can shade a room by coverage, and `inspect` can label the

@@ -11,7 +11,7 @@ pipeline/
   pyproject.toml            [project] name = "vividhome"; [project.scripts] vividhome = "vividhome.cli:main"
   vividhome/
     __init__.py
-    cli.py                  argparse subcommands: ingest, validate, apriltag, plan, align, inspect, markers, synth, corners
+    cli.py                  argparse subcommands: ingest, validate, apriltag, plan, align, inspect, markers, synth, corners, coverage
     session.py              Session dataclass: load manifest/JSONL, resolve paths, matrix helpers
     transforms.py           column-major ↔ numpy, ARKit↔OpenCV camera, unproject, SE(2) embed, Umeyama 2D
     validate.py             rules from session-format.md §11
@@ -22,6 +22,7 @@ pipeline/
     inspector.py            static HTML per level + serve
     mesh.py                 read mesh.obj + mesh_classes.u8 (§9); per-face geometry; a builder for fixtures
     corners.py              corner candidates from wall planes, scored against tapped corners (§10)
+    coverage.py             per-wall meshed/photographed coverage against the tapped footprint (§11)
     markers.py              marker PDF + PNG generator
     synth.py                synthetic sessions for tests
     web/                    static HTML/JS for calibrate, align, inspect (no build step)
@@ -119,7 +120,11 @@ Generates `inspect/<level>.html`: the plan raster as background, each aligned se
 
 `corners <session> [--min-area 0.5]`: the room side of `docs/ai-roadmap.md` item 5, run offline so the idea is measured before the app pays for it. Reads `mesh.obj` and `mesh_classes.u8` (`mesh.py`), keeps wall-classified faces whose normal is near horizontal, and clusters them greedily into vertical planes — largest face seeds, faces within 10° and 15 cm join, refit by area with doubled-angle averaging so a wall straddling 0°/180° stays one wall, planes under `--min-area` dropped because furniture ARKit calls "wall" is small. Every pair of planes more than 30° apart is intersected in the x–z plane, and the intersection is a candidate only when both walls' faces run to within 30 cm of it: two lines always cross somewhere, and the reach test is what keeps the far walls of an L-shaped room from proposing a corner in the notch. Candidates sit at floor height (floor faces, else wall bottoms) and carry a heuristic confidence from wall support and reach, `source: "mesh"` and `confirmed: null`. When the session has tapped corners the report scores against them: the fraction within 20 cm (the roadmap's acceptance metric), the distance per tap, and candidates with no tap within 50 cm. Writes `derived/corner_candidates.json`; never touches `landmarks.jsonl`.
 
-## 11. Later (weeks 3+, own design docs when started)
+## 11. `coverage`
+
+`coverage <session> [--range 4.0]`: the offline half of `docs/ai-roadmap.md` item 3, with the denominator chosen on purpose. A percentage needs one, and the only honest one a session carries is the room the owner declared: the tapped corners in tap order, which the capture protocol makes the walk order. The mesh cannot be it — ARKit meshes only what the LiDAR saw, so an unscanned wall is simply absent — and the plan is not in the session. Each wall between consecutive taps is walked in 10 cm cells, and each cell is asked two things: *meshed* (a wall-classified face within 25 cm of the wall line covers it) and *photographed* (some keyframe has the cell's bearing within its horizontal spread, within `--range`, with no other footprint wall between them; the spread comes from the four image-corner rays projected onto the floor, so a phone held upright gets its narrow axis sideways; frames pointed at the floor or ceiling are not counted, and pitch is otherwise ignored, so it can overcount). The report names gaps in metres from a corner before any percentage — *"not photographed 1.9..5.0 m from corner-ne"* — because that is what a person standing in the room can act on. Writes `derived/coverage.json`. It says nothing about walls the owner did not tap.
+
+## 12. Later (weeks 3+, own design docs when started)
 
 - `graph`: pose graph over sessions and markers (scipy least squares).
 - `mesh`: Open3D TSDF integration per session; GLB export for the viewer.

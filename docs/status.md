@@ -8,8 +8,8 @@ this says what is true.
 than none, because it is believed.
 
 Last updated: 2026-09-18, after the inspect page learned to open the photos,
-`ingest` learned to carry the plan across, and `corners` proposed its first
-corners from a mesh.
+`ingest` learned to carry the plan across, and `corners` and `coverage` ran
+their first geometry over a mesh.
 
 ## The short version
 
@@ -48,8 +48,9 @@ Three things to hold against that:
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the session, verbatim, for levels the store lacks |
 | `serve` | done | Local server for the browser pages |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
+| `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-16 modules, **292 tests passing**, ruff clean.
+17 modules, **302 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -193,6 +194,33 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Coverage per wall, against the corners that were tapped, 2026-09-18
+
+The coverage question had an analysis and no code, and the analysis was the
+hard part: a percentage needs a denominator, the mesh cannot be one because it
+only contains what the LiDAR saw, and the plan is not in the session. The tapped
+corners are the one thing a capture carries that says what the room *is*. So
+`vividhome coverage <session>` takes them in tap order — the protocol's walk
+order — and walks each wall between consecutive taps in 10 cm cells, asking of
+each whether a wall face meshed it and whether a keyframe photographed it:
+bearing within the frame's horizontal spread, within 4 m, nothing in the way.
+
+It prints gaps before percentages. *"corner-se -> corner-sw 4.00 m, meshed
+100%, photographed 0%, not photographed 0.0..4.0 m from corner-se"* is the line
+the owner reads standing in the room; "62%" is the number they cannot act on.
+On the synthetic room a full circle covers every wall, a quarter turn leaves the
+south wall unphotographed and the report says so, and a mesh with a wall left
+out reports that wall as not meshed. **Untested on a real capture**, where the
+open questions are whether 4 m and the 25 cm mesh band are right, and how often
+a frame pointed at the ceiling — which the check does not catch beyond a pitch
+cut-off — inflates "photographed".
+
+What it deliberately does not do: count a wall nobody tapped, or read the room's
+shape from anything but the taps. A room tapped as four corners is measured as
+four walls whatever it really is. That is the honest denominator's cost, and it
+is the same reason the corner proposal above exists: fewer taps skipped means a
+truer footprint.
 
 ## Corners proposed from the mesh, measured before the app pays for them, 2026-09-18
 

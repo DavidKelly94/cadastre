@@ -12,8 +12,9 @@ MVP_COMMANDS = frozenset(
     {"ingest", "validate", "apriltag", "plan", "align", "inspect", "markers", "synth"}
 )
 
-#: Commands beyond the MVP: `corners` is the offline half of ai-roadmap item 5.
-EXTRA_COMMANDS = frozenset({"corners"})
+#: Commands beyond the MVP: `corners` is the offline half of ai-roadmap item 5,
+#: `coverage` the per-wall answer to "what did I miss".
+EXTRA_COMMANDS = frozenset({"corners", "coverage"})
 
 
 def test_help_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:
@@ -454,3 +455,23 @@ def test_corners_says_when_there_is_no_mesh(
 ) -> None:
     assert main(["corners", str(session_dir)]) == 1
     assert "no mesh.obj" in capsys.readouterr().err
+
+
+def test_coverage_runs_on_a_synthetic_session(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    from vividhome.synth import SynthSpec, build
+
+    captured = build(
+        tmp_path / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=24),
+    )
+    assert main(["coverage", str(captured.root)]) == 0
+    out = capsys.readouterr().out
+    assert "footprint: 4 tapped corners" in out
+    assert "corner-nw -> corner-ne" in out
+    assert "Measured against the corners you tapped" in out
+    assert (captured.root / "derived" / "coverage.json").exists()
+
+
+def test_coverage_needs_a_footprint(session_dir, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["coverage", str(session_dir)]) == 1
+    assert "at least three" in capsys.readouterr().err

@@ -46,6 +46,8 @@ The owner trials the first four items during electrical and plumbing rough-in in
 
 **Rough-in trial.** Run on every rough-in session the same day; measure time from ingest to report (target under 2 minutes), flagged items, and how many the owner agrees were real gaps on the next visit (target 8 in 10).
 
+**Offline report, first slice built 2026-09-18.** `vividhome coverage <session>` answers the geometric part against the corners the owner tapped rather than against the mesh, which is the denominator question this item had left open: the mesh cannot say what was missed because it only contains what was seen. Per wall between consecutive taps it reports what the LiDAR meshed and what a keyframe photographed within range and unobstructed, as gaps in metres from a named corner — *"north wall, 1.9 m from corner NE, not photographed"* is the shape, and "62%" is printed second. Not yet built from the list above: closest-distance and grazing-angle per cell, blur, tracking and thermal spans, and the checklist pass over the stills. Not yet run on a real capture.
+
 **Effort.** S for the offline report, M for live HUD hints.
 
 **Risk and fallback.** False alarms cost trust fast; start loose and tighten. Fallback: the manual coverage checklist strip already in the HUD design.

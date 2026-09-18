@@ -182,6 +182,20 @@ def _add_corners(sub: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_coverage(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "coverage",
+        help="per-wall capture coverage against the corners that were tapped",
+    )
+    p.add_argument("session", help="session directory or id within the store")
+    p.add_argument(
+        "--range",
+        type=float,
+        default=4.0,
+        help="farthest a keyframe may be from a wall and still count as photographing it",
+    )
+
+
 def _add_synth(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("synth", help="write a synthetic, format-valid session for tests")
     p.add_argument("--out", required=True, help="destination directory")
@@ -212,6 +226,7 @@ def build_parser() -> argparse.ArgumentParser:
         _add_markers,
         _add_synth,
         _add_corners,
+        _add_coverage,
     ):
         add(sub)
     return parser
@@ -631,6 +646,22 @@ def _run_corners(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_coverage(args: argparse.Namespace) -> int:
+    from .coverage import wall_coverage, write_coverage
+    from .session import Session, SessionError
+
+    try:
+        session = Session.load(resolve_session(args.store, args.session))
+        report = wall_coverage(session, range_m=args.range)
+    except (FileNotFoundError, SessionError) as error:
+        print(f"vividhome coverage: {error}", file=sys.stderr)
+        return 1
+
+    print(report.render())
+    print(f"\nwrote {write_coverage(session, report)}")
+    return 0
+
+
 def _run_synth(args: argparse.Namespace) -> int:
     from .synth import SynthSpec, build
 
@@ -658,6 +689,7 @@ _HANDLERS = {
     "ingest": _run_ingest,
     "markers": _run_markers,
     "corners": _run_corners,
+    "coverage": _run_coverage,
 }
 
 

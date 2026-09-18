@@ -19,6 +19,7 @@ struct ProjectOverviewView: View {
 
   @State private var digest: ProjectDigest?
   @State private var loading = true
+  @State private var adding = false
 
   private var store: SessionStore {
     SessionStore(documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
@@ -63,14 +64,25 @@ struct ProjectOverviewView: View {
           ContentUnavailableView(
             "Nothing here yet", systemImage: "house",
             description: Text(
-              "Import a plan and place a room, or just start a capture. "
-                + "Rooms show up here once either has happened."))
+              "Tap New room to record the first one. Rooms also appear here "
+                + "once they are placed on a plan."))
         } else {
           list
         }
       }
       .navigationTitle(digest?.name ?? "Project")
       .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .primaryAction) {
+          Button("New room", systemImage: "plus") { adding = true }
+        }
+      }
+      .sheet(isPresented: $adding) {
+        NewRoomSheet(levels: knownLevels) { level, room in
+          adding = false
+          onPick(level, room)
+        }
+      }
       .task { await load() }
       .refreshable { await load() }
     }
@@ -151,6 +163,12 @@ struct ProjectOverviewView: View {
   /// capture corrects.
   private func ref(for section: LevelSection) -> LevelRef {
     LevelRef(slug: section.slug, name: section.name, index: section.index)
+  }
+
+  /// The levels already known, for the new-room sheet to offer. A new level is
+  /// created there rather than here, so this only has to list.
+  private var knownLevels: [LevelRef] {
+    sections.map { LevelRef(slug: $0.slug, name: $0.name, index: $0.index) }
   }
 
   private func load() async {

@@ -12,11 +12,15 @@ struct ContentView: View {
   @StateObject private var coordinator = CaptureCoordinator()
   @StateObject private var plans = PlanStore(project: CaptureCoordinator.projectSlug)
   @State private var sheet: Sheet?
-  @State private var levelName = "Level 1"
-  @State private var roomName = ""
-  /// Nil until a room is chosen, which is what keeps the project screen the
-  /// root rather than something reachable only by backing out of capture.
-  @State private var picked: Bool = false
+  /// Nil until the house screen chooses one, which keeps that screen the root
+  /// rather than something reachable only by backing out of capture.
+  ///
+  /// The whole LevelRef, not its name: the slug is derivable from the name and
+  /// so must not be copied, but the storey index is not derivable from
+  /// anything — "Basement", "Ground" and "Lower" all mean below and no string
+  /// says so — so it has to be carried. Passing only the name is what left
+  /// every manifest claiming storey 1.
+  @State private var chosen: Choice?
 
   private enum Sheet: Int, Identifiable {
     case importPlan
@@ -39,31 +43,26 @@ struct ContentView: View {
         unsupported
       } else {
         switch coordinator.phase {
-        case .setup where !picked:
-          ProjectOverviewView(
-            project: CaptureCoordinator.projectSlug,
-            plans: plans,
-            onPick: { level, room in
-              // The name only. Everything downstream derives the slug with
-              // SessionID.slug, and carrying a second copy of it here would be
-              // a second source of truth for the same string.
-              levelName = level.name
-              roomName = room
-              picked = true
-            })
         case .setup:
-          CaptureSetupView(
-            coordinator: coordinator,
-            plans: plans,
-            levelName: $levelName,
-            roomName: $roomName,
-            onAddPlan: { sheet = .importPlan },
-            onShowCoverage: { sheet = .coverage },
-            onShowSessions: { sheet = .sessions },
-            onBackToProject: {
-              picked = false
-              roomName = ""
-            })
+          if let chosen {
+            CaptureSetupView(
+              coordinator: coordinator,
+              plans: plans,
+              level: chosen.level,
+              room: chosen.room,
+              onAddPlan: { sheet = .importPlan },
+              onShowCoverage: { sheet = .coverage },
+              onShowSessions: { sheet = .sessions },
+              onBackToProject: { self.chosen = nil })
+          } else {
+            ProjectOverviewView(
+              project: CaptureCoordinator.projectSlug,
+              plans: plans,
+              onPick: { level, room in
+                let slug = SessionID.slug(room) ?? "room"
+                chosen = Choice(level: level, room: SlugRef(slug: slug, name: room))
+              })
+          }
         case .recording:
           CaptureHUDView(
             coordinator: coordinator,
@@ -77,8 +76,7 @@ struct ContentView: View {
             // Back to the house rather than to setup with the room still in it:
             // the next room is a different room, and the common case after
             // finishing one is picking the next.
-            picked = false
-            roomName = ""
+            chosen = nil
           }
         case .failed(let message):
           failure(message)
@@ -88,12 +86,12 @@ struct ContentView: View {
     .sheet(item: $sheet) { which in
       switch which {
       case .importPlan:
-        PlanImportView(store: plans, levelName: levelName) { sheet = nil }
+        PlanImportView(store: plans, levelName: chosen?.level.name ?? "") { sheet = nil }
       case .coverage:
         PlanCoverageView(
-          store: plans, level: levelSlug,
-          coverage: plans.coverage(forLevel: levelSlug),
-          currentRoom: roomSlug) { sheet = nil; plans.reload() }
+          store: plans, level: chosen?.level.slug ?? "",
+          coverage: plans.coverage(forLevel: chosen?.level.slug ?? ""),
+          currentRoom: chosen?.room.slug) { sheet = nil; plans.reload() }
       case .sessions:
         SessionListView(project: CaptureCoordinator.projectSlug) { sheet = nil }
       }
@@ -101,8 +99,13 @@ struct ContentView: View {
   }
 
   /// The slug the store keys on, from whatever the owner typed in setup.
-  private var levelSlug: String { SessionID.slug(levelName) ?? "l1" }
-  private var roomSlug: String? { SessionID.slug(roomName) }
+  /// The level and room a capture is for, once the house screen has chosen
+  /// them. A named type rather than a tuple: the same reason ProjectDigest uses
+  /// a struct to accumulate, and the reason a helper is never called `stat`.
+  struct Choice {
+    var level: LevelRef
+    var room: SlugRef
+  }
 
   private var unsupported: some View {
     VStack(spacing: 16) {

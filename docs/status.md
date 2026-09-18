@@ -190,6 +190,42 @@ picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
 
+## The house screen shipped with no way to add a room, 2026-09-18
+
+Build 41 put the project screen above capture, so the house is the root and a
+room is chosen from a list. The owner opened it to test the thing it was built
+for — a second level — and could not: the only route into a capture was tapping
+a room that already had one, and nothing on the screen created a room or a
+level.
+
+**The screen whose entire purpose was to make a two-storey house recordable made
+it impossible.** Before it, the level was a text field and any level could be
+typed; after it, only levels that already existed could be reached. The app got
+strictly less capable.
+
+This is the second time, and the same shape both times. The plan screen shipped
+with `place` reachable only from the drag handler of a pin that did not exist,
+so a freshly imported plan offered no way to add one. Neither was caught by
+brace balance, member existence, argument labels or the compiler, because none
+of those ask whether a user can reach the feature. The check that would have
+caught both is *walk the path a new user walks, on an empty app.*
+
+A second bug surfaced while fixing it, one commit old and entirely mine.
+`LevelRef.index` is hardcoded to `1` where a capture starts, so every manifest
+ever written claims storey 1 — and the storey ordering added to `ProjectDigest`
+the day before sorts on a field the app never varies. Written and tested against
+fixtures that set it, used by an app that does not.
+
+Both fixed: a New room sheet that names a room and, when needed, creates a level
+with an explicit storey; and the whole `LevelRef` carried from the house screen
+to the recorder instead of just its name. The storey is asked for rather than
+guessed, because it cannot be derived — "Basement", "Ground" and "Lower" all
+mean below and no string says so.
+
+The level and room are now chosen in one place. They were editable on both the
+house screen and the setup form, which is two screens setting the same two
+strings — the shape of most of what has broken here.
+
 ## First accuracy number, and a measure that lied about it, 2026-09-16
 
 The full path ran on a real capture: `plan add`, `calibrate`, `align`,

@@ -1,103 +1,45 @@
 import SwiftUI
 import VividHomeCore
 
-/// What a capture needs before it can start: a level, a room and at least one
-/// trade. Deliberately small — the designed Project and Room screens will
-/// replace it, and until they exist this is what stands between the capture
-/// layer and a real session on disk.
+/// The last step before recording: which trades this pass exposes, and a note.
+///
+/// The level and the room are chosen on the house screen and arrive here
+/// settled. They used to be editable here as well, which meant two screens
+/// could set the same two strings — the shape of most of what has broken on
+/// this project. One screen chooses; this one records.
 struct CaptureSetupView: View {
   @ObservedObject var coordinator: CaptureCoordinator
   @ObservedObject var plans: PlanStore
-  /// Owned by ContentView, because the plan screens key on the same level.
-  @Binding var levelName: String
-  @Binding var roomName: String
+  let level: LevelRef
+  let room: SlugRef
   let onAddPlan: () -> Void
   let onShowCoverage: () -> Void
   let onShowSessions: () -> Void
+  let onBackToProject: () -> Void
 
-  @State private var typedRoom = ""
   @State private var notes = ""
   /// Defaults to the last set used, which on a site is nearly always the right
   /// answer: trades finish a floor before they move on.
   @AppStorage("lastPhases") private var lastPhases = ""
   @State private var phases: Set<CapturePhase> = []
 
-  /// Sentinel for "not one of the placed rooms". Not a slug, so it can never
-  /// collide with a real room name.
-  private static let newRoomTag = "\u{0000}new"
-
-  /// The rooms already on this level's plan, which are the ones a capture
-  /// should normally be for.
-  private var placedRooms: [String] {
-    (plans.plans[levelSlug]?.rooms.map(\.room) ?? []).sorted()
-  }
-
-  /// The Picker's selection, resolved so it always names a tag the Picker
-  /// offers. Without this, arriving with `roomName` still empty — which is the
-  /// first run, and every run after a room is placed from the plan screen —
-  /// leaves the Picker with no matching tag: a blank row, no text field, and
-  /// Start disabled. A binding settles it in both directions rather than an
-  /// `onAppear` that does not fire again when a sheet is dismissed.
-  private var roomSelection: Binding<String> {
-    Binding(
-      get: {
-        if self.roomName == Self.newRoomTag || self.placedRooms.contains(self.roomName) {
-          return self.roomName
-        }
-        return self.placedRooms.first ?? Self.newRoomTag
-      },
-      set: { self.roomName = $0 })
-  }
-
-  /// What the capture is actually for, whichever way it was chosen.
-  private var effectiveRoom: String {
-    if placedRooms.isEmpty || roomSelection.wrappedValue == Self.newRoomTag {
-      return typedRoom.trimmingCharacters(in: .whitespaces)
-    }
-    return roomSelection.wrappedValue
-  }
-
   private var roomIsPlaced: Bool {
-    guard let slug = SessionID.slug(effectiveRoom), let plan = plans.plans[levelSlug] else {
-      return false
-    }
-    return plan.placement(of: slug) != nil
+    guard let plan = plans.plans[levelSlug] else { return false }
+    return plan.placement(of: room.slug) != nil
   }
 
-  private var canStart: Bool {
-    !effectiveRoom.isEmpty && !phases.isEmpty
-  }
+  private var canStart: Bool { !phases.isEmpty }
 
   var body: some View {
     NavigationStack {
       Form {
         Section {
-          TextField("Level", text: $levelName)
-
-          // The room slug is the join key between a session and its placement
-          // on the plan, so retyping it is not a convenience question: "Bedroom"
-          // and "bedroom 2" slugify differently, and the capture then belongs to
-          // a room nothing else knows about. Once a room is on the plan it is
-          // picked, never typed again.
-          if !placedRooms.isEmpty {
-            Picker("Room", selection: roomSelection) {
-              ForEach(placedRooms, id: \.self) { room in
-                Text(room).tag(room)
-              }
-              Text("Another room…").tag(Self.newRoomTag)
-            }
-          }
-
-          if placedRooms.isEmpty || roomSelection.wrappedValue == Self.newRoomTag {
-            TextField("Room name", text: $typedRoom)
-              .textInputAutocapitalization(.words)
-          }
+          LabeledContent("Level", value: level.name)
+          LabeledContent("Room", value: room.name)
         } header: {
           Text("Where")
         } footer: {
-          if !placedRooms.isEmpty {
-            Text("Rooms come from the plan, so a capture lands on the room it is actually in.")
-          }
+          Text("Chosen on the house screen. Tap House above to pick a different room.")
         }
 
         Section {
@@ -128,7 +70,7 @@ struct CaptureSetupView: View {
           if let plan = plans.plans[levelSlug] {
             Button(action: onShowCoverage) {
               HStack {
-                Label("Plan for \(levelName)", systemImage: "map")
+                Label("Plan for \(level.name)", systemImage: "map")
                 Spacer()
                 Text(placementSummary(plan))
                   .font(.footnote).foregroundStyle(.secondary)
@@ -136,17 +78,17 @@ struct CaptureSetupView: View {
             }
           } else {
             Button(action: onAddPlan) {
-              Label("Add a plan for \(levelName)", systemImage: "map")
+              Label("Add a plan for \(level.name)", systemImage: "map")
             }
           }
 
           // A room typed here is fine — a hallway may not be labelled on the
           // drawing at all — but it has to end up on the plan, or the capture
           // has nothing to be placed against (ADR-0026).
-          if plans.plans[levelSlug] != nil, !effectiveRoom.isEmpty, !roomIsPlaced {
+          if plans.plans[levelSlug] != nil, !roomIsPlaced {
             Button(action: onShowCoverage) {
               Label {
-                Text("\(effectiveRoom) is not on the plan yet")
+                Text("\(room.name) is not on the plan yet")
               } icon: {
                 Image(systemName: "mappin.slash").foregroundStyle(.orange)
               }
@@ -180,16 +122,19 @@ struct CaptureSetupView: View {
         }
       }
       .navigationTitle("New capture")
+      .toolbar {
+        ToolbarItem(placement: .cancellationAction) {
+          Button("House", systemImage: "chevron.left", action: onBackToProject)
+        }
+      }
       .onAppear(perform: restorePhases)
     }
   }
 
-  private var levelSlug: String { SessionID.slug(levelName) ?? "l1" }
+  private var levelSlug: String { level.slug }
 
   private func placementSummary(_ plan: PlanFile) -> String {
-    let slug = SessionID.slug(effectiveRoom)
-    if let slug, plan.placement(of: slug) != nil { return "this room placed" }
-    return "\(plan.rooms.count) placed"
+    plan.placement(of: room.slug) != nil ? "this room placed" : "\(plan.rooms.count) placed"
   }
 
   private func restorePhases() {
@@ -197,19 +142,9 @@ struct CaptureSetupView: View {
   }
 
   private func start() {
-    let trimmedRoom = effectiveRoom
-    // Hand the chosen room back up, so the plan screens and the session agree
-    // on one name.
-    roomName = trimmedRoom
-    let trimmedLevel = levelName.trimmingCharacters(in: .whitespaces)
     let ordered = CapturePhase.allCases.filter { phases.contains($0) }
     lastPhases = ordered.map(\.rawValue).joined(separator: ",")
-
     coordinator.start(
-      level: LevelRef(
-        slug: SessionID.slug(trimmedLevel) ?? "l1", name: trimmedLevel, index: 1),
-      room: SlugRef(slug: SessionID.slug(trimmedRoom) ?? "room", name: trimmedRoom),
-      phases: ordered,
-      notes: notes.isEmpty ? nil : notes)
+      level: level, room: room, phases: ordered, notes: notes.isEmpty ? nil : notes)
   }
 }

@@ -7,13 +7,14 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-16, after the first end-to-end run on a real capture.
+Last updated: 2026-09-18, after the inspect page learned to open the photos.
 
 ## The short version
 
 **The whole chain works on real data.** A room captured on an iPhone reaches the
 PC, validates, gets a plan, calibrates, aligns and renders on an inspection page
-that shows the room outline, the tapped landmarks and the walk path. That is the
+that shows the room outline, the tapped landmarks and the walk path, and opens
+any keyframe or still at full resolution from the spot it was taken. That is the
 product's spine, and it is no longer hypothetical.
 
 The pipeline and the Swift core are complete and tested. The capture app runs on
@@ -41,11 +42,11 @@ Three things to hold against that:
 | `apriltag` | done | 36h11 via `cv2.aruco`, subpixel refinement, IPPE_SQUARE |
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
-| `inspect` | done | Level page, groups multi-phase sessions by earliest trade |
+| `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project |
 | `serve` | done | Local server for the browser pages |
 
-14 modules, **260 tests passing**, ruff clean.
+14 modules, **265 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -189,6 +190,37 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The inspect page opens the photos, 2026-09-18
+
+The owner's question after the first real capture was whether the images were
+any good, and the honest answer was that nothing showed them. `inspect` drew a
+320 px thumbnail on hover over every fifth keyframe and stopped: the page held
+no `<a>` and no `href`. The full-resolution keyframes and the stills — the
+product's actual record — were reachable only by opening `rgb/` and `stills/`
+and guessing which index was taken where.
+
+Now every drawn keyframe and every still links to the JPEG in the session
+folder. Click a dot and the file opens in a lightbox with a plain link to it;
+the arrow keys step through the capture in time order; a tick on each dot shows
+which way the camera looked, so a photo can be found from the wall it shows
+rather than from its index. The heading is the camera's `-z` carried through
+`T_hs`, horizontal part only — a camera pointed at the floor gets no tick rather
+than a spurious one. Stills are drawn as diamonds, all of them, because they are
+the deliberate photographs and there are a handful per room. `--no-thumbnails`
+now skips only the hover preview; the links stay, since speed is not a reason to
+hide the record.
+
+Checked in a real browser and not only by tests: the generated page was driven
+in headless Chromium — hover, click, step, Escape, backdrop — with no console
+errors, on a synthetic session. It has not yet been opened on a real capture,
+and the thumbnail-on-hover over a 1920x1440 source has not been timed on a
+real 800-keyframe room.
+
+This is not the viewer. `web/` is not started and `docs/design/viewer-design.md`
+still describes the real answer — click-to-nearest-photo with the clicked point
+re-projected into each image. `inspect` remains a diagnostic page; what changed
+is that a capture can be reviewed from it.
 
 ## The house screen shipped with no way to add a room, 2026-09-18
 

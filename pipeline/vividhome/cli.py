@@ -146,9 +146,16 @@ def _add_inspect(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--serve", action="store_true", help="serve the pages after writing them")
     p.add_argument("--port", type=int, default=8765, help="port for --serve")
     p.add_argument(
-        "--no-thumbnails", action="store_true", help="skip the hover thumbnails (faster)"
+        "--no-thumbnails",
+        action="store_true",
+        help="skip the hover previews (faster); the links to the full photos stay",
     )
-    p.add_argument("--thumbnail-stride", type=int, default=5, help="thumbnail every Nth keyframe")
+    p.add_argument(
+        "--thumbnail-stride",
+        type=int,
+        default=5,
+        help="draw and link every Nth keyframe (stills are always drawn)",
+    )
 
 
 def _add_markers(sub: argparse._SubParsersAction) -> None:

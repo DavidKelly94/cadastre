@@ -7,13 +7,13 @@ jobs:
     runs-on: ubuntu-latest
     container: swift:6.1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: swift test --package-path ios/VividHomeCore
   python:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --project pipeline
       - run: uv run --project pipeline ruff check pipeline
       - run: uv run --project pipeline pytest pipeline -q
@@ -26,8 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     container: swift:6.1
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - name: Write a session with VividHomeCore
         run: |
           swift run --package-path ios/VividHomeCore vividhome-fixture "$PWD/fixture-session"

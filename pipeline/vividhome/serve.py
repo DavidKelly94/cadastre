@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import socket
+import sys
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -26,7 +27,7 @@ from pathlib import Path
 from . import __version__
 from .index import build_index
 
-__all__ = ["SERVICE_TYPE", "Advertisement", "make_server", "serve", "service_info"]
+__all__ = ["SERVICE_TYPE", "Advertisement", "StoreServer", "make_server", "serve", "service_info"]
 
 #: The most a single POST may carry. Generous for a list of clicked points, small
 #: enough that a runaway request cannot fill memory.
@@ -118,13 +119,29 @@ class StoreHandler(SimpleHTTPRequestHandler):
         return target
 
 
+class StoreServer(ThreadingHTTPServer):
+    """A threading server that does not print a traceback when a client hangs up.
+
+    A phone that closes a connection halfway through a JPEG is normal on a
+    LAN, and the default handler answers it with forty lines on stderr, which
+    is the one thing the CLI's output must not be buried under. Anything that
+    is not a dropped connection is still reported as before.
+    """
+
+    def handle_error(self, request, client_address) -> None:
+        error = sys.exc_info()[1]
+        if isinstance(error, BrokenPipeError | ConnectionResetError | ConnectionAbortedError):
+            return
+        super().handle_error(request, client_address)
+
+
 def make_server(
     store: str | Path, *, host: str = "127.0.0.1", port: int = 0, writable: bool = True
 ):
     """Build a server rooted at the store. Port 0 asks the OS for a free one."""
     root = Path(store).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    return ThreadingHTTPServer((host, port), partial(StoreHandler, root=root, writable=writable))
+    return StoreServer((host, port), partial(StoreHandler, root=root, writable=writable))
 
 
 def lan_addresses() -> list[str]:

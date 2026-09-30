@@ -177,3 +177,25 @@ def test_the_bonjour_record_names_the_store_and_the_index():
 def test_a_store_name_with_a_dot_still_makes_a_valid_instance_name():
     info = service_info("our.house", 1, ["10.0.0.2"])
     assert info.name == f"our-house.{SERVICE_TYPE}"
+
+
+def test_a_client_that_hangs_up_is_not_a_traceback(server, capsys):
+    """Phones drop connections halfway through a JPEG; the CLI's output must not
+    be buried under forty lines of stderr each time."""
+    import socketserver
+
+    from vividhome.serve import StoreServer
+
+    httpd = StoreServer.__new__(StoreServer)
+    socketserver.BaseServer.__init__(httpd, ("127.0.0.1", 0), None)
+    try:
+        raise BrokenPipeError(32, "Broken pipe")
+    except BrokenPipeError:
+        httpd.handle_error(None, ("127.0.0.1", 1))
+    assert capsys.readouterr().err == ""
+
+    try:
+        raise ValueError("something real")
+    except ValueError:
+        httpd.handle_error(None, ("127.0.0.1", 1))
+    assert "something real" in capsys.readouterr().err

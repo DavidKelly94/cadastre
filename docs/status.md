@@ -7,13 +7,16 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-16, after the first end-to-end run on a real capture.
+Last updated: 2026-09-30, when the owner's two asks — photos on the phone, and
+the rendering back in the app — became ADR-0028 and a design, and the work
+queue moved into this file.
 
 ## The short version
 
 **The whole chain works on real data.** A room captured on an iPhone reaches the
 PC, validates, gets a plan, calibrates, aligns and renders on an inspection page
-that shows the room outline, the tapped landmarks and the walk path. That is the
+that shows the room outline, the tapped landmarks and the walk path, and opens
+any keyframe or still at full resolution from the spot it was taken. That is the
 product's spine, and it is no longer hypothetical.
 
 The pipeline and the Swift core are complete and tested. The capture app runs on
@@ -31,6 +34,36 @@ Three things to hold against that:
 - **One project and one level are reachable**, because the Projects and Levels
   screens do not exist. A house with two floors cannot be captured as one.
 
+## Work queue
+
+The order things are worth doing in, kept here rather than in a chat handoff so
+it survives one. Owner-side items are things only the owner can do.
+
+1. **Photos on the phone, and to the camera roll** — the owner's ask of
+   2026-09-30. Design in `docs/design/return-path-design.md` §2. A convenience,
+   and the kind that decides whether captures get reviewed at all. iOS work.
+2. **The rendering back in the app** — the other ask. ADR-0028. PC side first
+   (`serve --lan`, the write refusal, `/index.json`, Bonjour), because it can be
+   tested here; then the PC entry in Settings and the web view. §3 of the same
+   design. The inspect page needs a tap path before it is shown on a phone.
+3. **Free-space readout and multi-select delete** in Past captures. iOS. The
+   "delete what is already on the PC" version needs a decision on where the
+   signal comes from; the recommended one is an app-side "shared at" mark,
+   labelled as shared rather than ingested.
+4. **Run `corners` and `coverage` on the real captures** in the store. Both are
+   right on the synthetic room and their tolerances are guesses until a real mesh
+   disagrees with them. Owner-side; one command each.
+5. **The app names a plan's original `source.pdf`**, against section 13's
+   `<level>.source.pdf`; two PDF levels overwrite each other's original. One-line
+   iOS fix.
+6. **Corner candidates on the phone** (roadmap item 5, room side), once item 4
+   says the offline number earns the screen time.
+
+Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
+level → storey 0 and confirm two levels show as separate sections; import the
+new house's real plan in the app and see whether the room-name chips appear; fix
+the private `base` Actions access from `docs/transfer-runbook.md` step 12.
+
 ## Pipeline (`pipeline/`) — complete
 
 | Command | State | Notes |
@@ -41,11 +74,13 @@ Three things to hold against that:
 | `apriltag` | done | 36h11 via `cv2.aruco`, subpixel refinement, IPPE_SQUARE |
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
-| `inspect` | done | Level page, groups multi-phase sessions by earliest trade |
-| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project |
+| `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
+| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the session, verbatim, for levels the store lacks |
 | `serve` | done | Local server for the browser pages |
+| `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
+| `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-14 modules, **260 tests passing**, ruff clean.
+17 modules, **302 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -189,6 +224,133 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Coverage per wall, against the corners that were tapped, 2026-09-18
+
+The coverage question had an analysis and no code, and the analysis was the
+hard part: a percentage needs a denominator, the mesh cannot be one because it
+only contains what the LiDAR saw, and the plan is not in the session. The tapped
+corners are the one thing a capture carries that says what the room *is*. So
+`vividhome coverage <session>` takes them in tap order — the protocol's walk
+order — and walks each wall between consecutive taps in 10 cm cells, asking of
+each whether a wall face meshed it and whether a keyframe photographed it:
+bearing within the frame's horizontal spread, within 4 m, nothing in the way.
+
+It prints gaps before percentages. *"corner-se -> corner-sw 4.00 m, meshed
+100%, photographed 0%, not photographed 0.0..4.0 m from corner-se"* is the line
+the owner reads standing in the room; "62%" is the number they cannot act on.
+On the synthetic room a full circle covers every wall, a quarter turn leaves the
+south wall unphotographed and the report says so, and a mesh with a wall left
+out reports that wall as not meshed. **Untested on a real capture**, where the
+open questions are whether 4 m and the 25 cm mesh band are right, and how often
+a frame pointed at the ceiling — which the check does not catch beyond a pitch
+cut-off — inflates "photographed".
+
+What it deliberately does not do: count a wall nobody tapped, or read the room's
+shape from anything but the taps. A room tapped as four corners is measured as
+four walls whatever it really is. That is the honest denominator's cost, and it
+is the same reason the corner proposal above exists: fewer taps skipped means a
+truer footprint.
+
+## Corners proposed from the mesh, measured before the app pays for them, 2026-09-18
+
+Roadmap item 5's room side — fit planes to the wall-classified mesh, intersect
+adjacent pairs, offer the intersections as corners to drag rather than tap — is
+the owner's stated big win, and it is app work that cannot be checked here. The
+roadmap's own advice is to measure before spending, so the measurement was built
+first: `vividhome corners <session>` runs that geometry on the PC over a
+capture's mesh and scores the result against the corners the owner tapped, as
+the fraction within 20 cm plus the candidates no tap is near.
+
+On the synthetic room it finds the four walls, ignores the 0.4 x 0.3 m "wall"
+planted in the middle of it, and puts all four corners within 2 cm of the taps.
+An L-shaped room in the tests gets its six corners and none of the ghosts two
+crossing lines would otherwise invent, which is the part that needed a rule: two
+walls propose a corner only where both actually reach it. **None of this has
+touched a real mesh.** ARKit's walls are noisier, tilted and full of holes, and
+the tolerances (10 degrees, 15 cm, half a square metre) are guesses until a real
+session says otherwise. The store already holds captures with meshes and taps;
+the number is one command away.
+
+Two rules held on purpose. Every candidate is written with `source`, a
+heuristic `confidence` and `confirmed: null`, under `derived/`, and nothing
+writes to `landmarks.jsonl` — rule 9, and the roadmap's guardrail. And the
+phone got nothing: no candidate is drawn until the offline number says the
+approach earns its screen time.
+
+Two side effects worth knowing. `synth` now writes the room's mesh, so `align`
+reads the synthetic floor from floor faces rather than guessing it from the
+lowest landmark; its tests say so. And `align.py` still carries its own small
+OBJ reader from before `mesh.py` existed; it works and was left alone.
+
+## The plan comes across with the capture, 2026-09-18
+
+ADR-0025's promise was that the plan travels to the PC with the capture. Section
+13 said, correctly until now, that it did not: the copy step was never written,
+so the owner imported the same drawing twice — once in the app, to place rooms
+on it, and once with `plan add` on the PC — as two copies that knew nothing of
+each other.
+
+`ingest` now copies `plans/` when it finds one beside the session it is
+ingesting, which is the app's own layout. It copies the raster, the JSON and the
+retained original verbatim, and only for a level the store has no plan for yet,
+because the store's copy may be calibrated with alignments solved against it and
+a swapped raster would move every session drawn on it. It prints what it did per
+level, and `--force` stays a session flag. Calibration is still the PC's job,
+so the next line it prints is the `plan calibrate` command to run.
+
+Two things that were quietly wrong, found by making this true:
+
+- **`plan calibrate` would have erased the app's room placements.** The pipeline
+  modelled six fields and wrote back only those, so the first calibration of a
+  plan the app had written would have dropped `rooms` and `source` on its way
+  past — section 12's "readers ignore unknown fields" honoured by a writer that
+  threw them away. `PlanCalibration` now carries every field it does not model
+  and writes it back unchanged, with the six modelled fields kept first. A test
+  round-trips the app's fields through `calibrate` and a raster replacement.
+- **The app names the kept original `source.pdf`; section 13 says
+  `<level>.source.pdf`.** `PlanImportView` builds the `source` record before the
+  level slug exists. Two levels imported from PDFs would overwrite each other's
+  original on the phone, and `ingest` copies the file under the name the JSON
+  gives, so the store inherits the collision. An app-side fix on the iOS branch;
+  the pipeline reads nothing from the original, so nothing downstream is wrong
+  yet.
+
+Not exercised on a real project folder: the SMB and USB routes copy whatever the
+owner selects, and the `ShareLink` route shares one session, which carries no
+`plans/`. The owner has to share or copy the project folder for the plan to be
+found; `ingest` says nothing when there is nothing beside the session.
+
+## The inspect page opens the photos, 2026-09-18
+
+The owner's question after the first real capture was whether the images were
+any good, and the honest answer was that nothing showed them. `inspect` drew a
+320 px thumbnail on hover over every fifth keyframe and stopped: the page held
+no `<a>` and no `href`. The full-resolution keyframes and the stills — the
+product's actual record — were reachable only by opening `rgb/` and `stills/`
+and guessing which index was taken where.
+
+Now every drawn keyframe and every still links to the JPEG in the session
+folder. Click a dot and the file opens in a lightbox with a plain link to it;
+the arrow keys step through the capture in time order; a tick on each dot shows
+which way the camera looked, so a photo can be found from the wall it shows
+rather than from its index. The heading is the camera's `-z` carried through
+`T_hs`, horizontal part only — a camera pointed at the floor gets no tick rather
+than a spurious one. Stills are drawn as diamonds, all of them, because they are
+the deliberate photographs and there are a handful per room. `--no-thumbnails`
+now skips only the hover preview; the links stay, since speed is not a reason to
+hide the record.
+
+Checked in a real browser and not only by tests: the generated page was driven
+in headless Chromium — hover, click, step, Escape, backdrop — with no console
+errors, on a synthetic session. It has not yet been opened on a real capture,
+and the thumbnail-on-hover over a 1920x1440 source has not been timed on a
+real 800-keyframe room.
+
+This is not the viewer. `web/` is not started and `docs/design/viewer-design.md`
+still describes the real answer — click-to-nearest-photo with the clicked point
+re-projected into each image. `inspect` remains a diagnostic page; what changed
+is that a capture can be reviewed from it.
 
 ## The house screen shipped with no way to add a room, 2026-09-18
 

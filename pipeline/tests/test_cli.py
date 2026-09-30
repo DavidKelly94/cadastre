@@ -12,6 +12,10 @@ MVP_COMMANDS = frozenset(
     {"ingest", "validate", "apriltag", "plan", "align", "inspect", "markers", "synth"}
 )
 
+#: Commands beyond the MVP: `corners` is the offline half of ai-roadmap item 5,
+#: `coverage` the per-wall answer to "what did I miss".
+EXTRA_COMMANDS = frozenset({"corners", "coverage"})
+
 
 def test_help_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
@@ -40,8 +44,8 @@ def test_every_mvp_command_is_registered_and_implemented() -> None:
         for choice in (action.choices or {})
         if isinstance(action.choices, dict)
     }
-    assert parser_commands >= MVP_COMMANDS
-    assert set(_HANDLERS) == MVP_COMMANDS
+    assert parser_commands >= MVP_COMMANDS | EXTRA_COMMANDS
+    assert set(_HANDLERS) == MVP_COMMANDS | EXTRA_COMMANDS
 
 
 def test_a_command_without_a_handler_still_exits_cleanly(monkeypatch) -> None:
@@ -398,3 +402,76 @@ class TestPairsParsing:
 
         with pytest.raises(ValueError, match="held no pairs"):
             _clicks(" ; ; ")
+
+
+def test_ingest_says_what_became_of_the_plan(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    """The plan step is the one the owner used to do twice, so its outcome is
+    printed rather than left to be discovered at `plan calibrate`."""
+    import json
+
+    from PIL import Image
+
+    from vividhome.synth import SynthSpec, build
+
+    captured = build(
+        tmp_path / "our-house" / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=4, colour_w=160, colour_h=120),
+    )
+    plans = tmp_path / "our-house" / "plans"
+    plans.mkdir()
+    Image.new("RGB", (100, 80), (255, 255, 255)).save(plans / "main.png", "PNG")
+    (plans / "main.json").write_text(
+        json.dumps({"level": "main", "image": "main.png", "rooms": []}), encoding="utf-8"
+    )
+
+    store = str(tmp_path / "store")
+    assert main(["--store", store, "ingest", str(captured.root)]) == 0
+    out = capsys.readouterr().out
+    assert "plan main: copied from beside the session (main.png, main.json)" in out
+    assert "vividhome plan calibrate --level main" in out
+
+    assert main(["--store", store, "ingest", str(captured.root), "--force"]) == 0
+    assert "plan main: already in the store and left alone" in capsys.readouterr().out
+
+
+def test_corners_runs_on_a_synthetic_session(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    from vividhome.synth import SynthSpec, build
+
+    captured = build(
+        tmp_path / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=2, colour_w=160, colour_h=120),
+    )
+    assert main(["corners", str(captured.root)]) == 0
+    out = capsys.readouterr().out
+    assert "4 wall plane(s)" in out
+    assert "4 corner candidate(s)" in out
+    assert "against 4 tapped corner(s): 4 within 0.20 m (100%)" in out
+    assert "Candidates, not measurements" in out
+    assert (captured.root / "derived" / "corner_candidates.json").exists()
+
+
+def test_corners_says_when_there_is_no_mesh(
+    session_dir, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert main(["corners", str(session_dir)]) == 1
+    assert "no mesh.obj" in capsys.readouterr().err
+
+
+def test_coverage_runs_on_a_synthetic_session(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    from vividhome.synth import SynthSpec, build
+
+    captured = build(
+        tmp_path / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=24),
+    )
+    assert main(["coverage", str(captured.root)]) == 0
+    out = capsys.readouterr().out
+    assert "footprint: 4 tapped corners" in out
+    assert "corner-nw -> corner-ne" in out
+    assert "Measured against the corners you tapped" in out
+    assert (captured.root / "derived" / "coverage.json").exists()
+
+
+def test_coverage_needs_a_footprint(session_dir, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["coverage", str(session_dir)]) == 1
+    assert "at least three" in capsys.readouterr().err

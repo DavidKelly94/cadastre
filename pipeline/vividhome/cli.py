@@ -146,9 +146,16 @@ def _add_inspect(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--serve", action="store_true", help="serve the pages after writing them")
     p.add_argument("--port", type=int, default=8765, help="port for --serve")
     p.add_argument(
-        "--no-thumbnails", action="store_true", help="skip the hover thumbnails (faster)"
+        "--no-thumbnails",
+        action="store_true",
+        help="skip the hover previews (faster); the links to the full photos stay",
     )
-    p.add_argument("--thumbnail-stride", type=int, default=5, help="thumbnail every Nth keyframe")
+    p.add_argument(
+        "--thumbnail-stride",
+        type=int,
+        default=5,
+        help="draw and link every Nth keyframe (stills are always drawn)",
+    )
 
 
 def _add_markers(sub: argparse._SubParsersAction) -> None:
@@ -158,6 +165,34 @@ def _add_markers(sub: argparse._SubParsersAction) -> None:
     p.add_argument("--ids", default="0-59", help="ids, e.g. 0-59 or 3,7,12")
     p.add_argument(
         "--page-size", default="letter", choices=["letter", "a4"], help="paper size for the PDF"
+    )
+
+
+def _add_corners(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "corners",
+        help="propose room corners from the wall mesh and score them against the tapped ones",
+    )
+    p.add_argument("session", help="session directory or id within the store")
+    p.add_argument(
+        "--min-area",
+        type=float,
+        default=0.5,
+        help="smallest wall plane to keep, in square metres (furniture is smaller)",
+    )
+
+
+def _add_coverage(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "coverage",
+        help="per-wall capture coverage against the corners that were tapped",
+    )
+    p.add_argument("session", help="session directory or id within the store")
+    p.add_argument(
+        "--range",
+        type=float,
+        default=4.0,
+        help="farthest a keyframe may be from a wall and still count as photographing it",
     )
 
 
@@ -190,6 +225,8 @@ def build_parser() -> argparse.ArgumentParser:
         _add_inspect,
         _add_markers,
         _add_synth,
+        _add_corners,
+        _add_coverage,
     ):
         add(sub)
     return parser
@@ -425,6 +462,8 @@ def _run_ingest(args: argparse.Namespace) -> int:
     print(f"ingested {result.session_id}")
     print(f"  {result.destination}")
     print(f"  {result.bytes_copied / 1e6:.1f} MB, {result.report.keyframes} keyframes")
+    for plan in result.plans:
+        print(f"  plan {plan.level}: {plan.reason}")
     if not result.ok:
         print(f"  kept despite {len(result.report.errors)} validation error(s)")
     elif result.report.warnings:
@@ -591,6 +630,38 @@ def _run_apriltag(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_corners(args: argparse.Namespace) -> int:
+    from .corners import propose_corners, write_candidates
+    from .session import Session, SessionError
+
+    try:
+        session = Session.load(resolve_session(args.store, args.session))
+        report = propose_corners(session, min_area_m2=args.min_area)
+    except (FileNotFoundError, SessionError) as error:
+        print(f"vividhome corners: {error}", file=sys.stderr)
+        return 1
+
+    print(report.render())
+    print(f"\nwrote {write_candidates(session, report)}")
+    return 0
+
+
+def _run_coverage(args: argparse.Namespace) -> int:
+    from .coverage import wall_coverage, write_coverage
+    from .session import Session, SessionError
+
+    try:
+        session = Session.load(resolve_session(args.store, args.session))
+        report = wall_coverage(session, range_m=args.range)
+    except (FileNotFoundError, SessionError) as error:
+        print(f"vividhome coverage: {error}", file=sys.stderr)
+        return 1
+
+    print(report.render())
+    print(f"\nwrote {write_coverage(session, report)}")
+    return 0
+
+
 def _run_synth(args: argparse.Namespace) -> int:
     from .synth import SynthSpec, build
 
@@ -617,6 +688,8 @@ _HANDLERS = {
     "inspect": _run_inspect,
     "ingest": _run_ingest,
     "markers": _run_markers,
+    "corners": _run_corners,
+    "coverage": _run_coverage,
 }
 
 

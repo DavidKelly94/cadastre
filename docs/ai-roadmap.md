@@ -46,6 +46,8 @@ The owner trials the first four items during electrical and plumbing rough-in in
 
 **Rough-in trial.** Run on every rough-in session the same day; measure time from ingest to report (target under 2 minutes), flagged items, and how many the owner agrees were real gaps on the next visit (target 8 in 10).
 
+**Offline report, first slice built 2026-09-18.** `vividhome coverage <session>` answers the geometric part against the corners the owner tapped rather than against the mesh, which is the denominator question this item had left open: the mesh cannot say what was missed because it only contains what was seen. Per wall between consecutive taps it reports what the LiDAR meshed and what a keyframe photographed within range and unobstructed, as gaps in metres from a named corner — *"north wall, 1.9 m from corner NE, not photographed"* is the shape, and "62%" is printed second. Not yet built from the list above: closest-distance and grazing-angle per cell, blur, tracking and thermal spans, and the checklist pass over the stills. Not yet run on a real capture.
+
 **Effort.** S for the offline report, M for live HUD hints.
 
 **Risk and fallback.** False alarms cost trust fast; start loose and tighten. Fallback: the manual coverage checklist strip already in the HUD design.
@@ -73,6 +75,8 @@ The owner trials the first four items during electrical and plumbing rough-in in
 **Inputs.** `plans/<level>.png` and `<level>.json`; `mesh.obj` with `mesh_classes.u8` (wall faces are already captured and classified); optionally ARKit vertical planes, which are currently switched off.
 
 **Plan side: built, 2026-09-15.** `PlanLabelReader` in the app runs `VNRecognizeTextRequest` over the imported raster and offers what it finds as room candidates the owner taps to place and drags to correct. Candidates are held in memory and never written to `plans/<level>.json`, which is what keeps rule 9 true without a `confirmed` flag in the contract that could drift from what it describes. What remains is the room side below, and using polygon geometry rather than only label position.
+
+**Room side: measured offline first, 2026-09-18.** `vividhome corners <session>` runs the approach below on the PC over a capture's `mesh.obj` — wall planes, adjacent intersections, floor height — and scores the candidates against the corners the owner actually tapped: the fraction within 20 cm, per tap, plus the candidates no tap is near. On the synthetic room it is 4 of 4 within 2 cm, which says only that the geometry is right; the number that matters comes from running it on the real captures already in the store, and nobody has yet. Nothing on the phone changed: no candidate is drawn, and `landmarks.jsonl` is not written by it. The on-device half — the same fit over live `ARMeshAnchor` geometry, drawn unconfirmed, dragged into place — waits on that number.
 
 **Candidate approach, plan side.** Mostly classical and all on-device. `VNRecognizeTextRequest` reads room names off an architect's sheet; `VNDetectContoursRequest` gives room polygons whose vertices *are* the corners; the nearest text to a polygon names it, and compass sense on the sheet turns a vertex into "NW". A vector PDF short-circuits most of this — pdfplumber already gives text with positions (see Plan understanding below). No model is required for the common case, which is the point: a plan is a drawing made of lines and labels, not a photograph to be interpreted.
 

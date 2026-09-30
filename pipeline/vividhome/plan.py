@@ -20,8 +20,9 @@ from __future__ import annotations
 import json
 import math
 import shutil
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
@@ -59,6 +60,17 @@ class PlanCalibration:
     origin_px: tuple[float, float] | None = None
     rotation_deg: float = 0.0
     floor_height_m: float = 0.0
+    #: Everything else in the file: the app's ``source`` and ``rooms`` (section
+    #: 13), and whatever a later client adds. Section 12 says readers ignore
+    #: unknown fields, but a writer that dropped them would make ``plan
+    #: calibrate`` erase the owner's room placements on its way past, so they
+    #: ride along and are written back untouched.
+    extra: dict[str, Any] = field(default_factory=dict, compare=False)
+
+    #: The fields this class models; anything else in the file is ``extra``.
+    FIELDS = frozenset(
+        {"level", "image", "metres_per_pixel", "origin_px", "rotation_deg", "floor_height_m"}
+    )
 
     @property
     def is_calibrated(self) -> bool:
@@ -72,6 +84,7 @@ class PlanCalibration:
             "origin_px": list(self.origin_px) if self.origin_px else None,
             "rotation_deg": self.rotation_deg,
             "floor_height_m": self.floor_height_m,
+            **{key: value for key, value in self.extra.items() if key not in self.FIELDS},
         }
 
     @classmethod
@@ -84,6 +97,7 @@ class PlanCalibration:
             origin_px=(float(origin[0]), float(origin[1])) if origin else None,
             rotation_deg=float(raw.get("rotation_deg", 0.0)),
             floor_height_m=float(raw.get("floor_height_m", 0.0)),
+            extra={key: value for key, value in raw.items() if key not in cls.FIELDS},
         )
 
 

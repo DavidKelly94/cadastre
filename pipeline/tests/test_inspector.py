@@ -152,9 +152,110 @@ def test_thumbnails_are_written_and_referenced(store: Path):
             assert image.width == 320
 
 
-def test_thumbnails_can_be_skipped(store: Path):
+def test_skipping_thumbnails_keeps_the_photos_reachable(store: Path):
+    """--no-thumbnails is a speed choice, not a decision to hide the record.
+
+    The keyframes are still drawn and still link to the full JPEG; only the
+    hover preview, which is the part that decodes every source image, is left
+    out.
+    """
     data = page_data(build_page(store, "main", thumbnails=False))
-    assert data["sessions"][0]["keyframes"] == []
+    session = data["sessions"][0]
+    assert session["keyframes"], "keyframes must still be drawn without thumbnails"
+    assert all(k["thumb"] is None for k in session["keyframes"])
+    assert all(k["rgb"] for k in session["keyframes"])
+    assert session["stills"]
+    assert all(s["thumb"] is None for s in session["stills"])
+
+
+def test_keyframes_link_to_the_full_resolution_image(store: Path):
+    """The thumbnail is a preview; the link is to the file that is the record."""
+    target = build_page(store, "main", thumbnails=True, thumbnail_stride=4)
+    data = page_data(target)
+    session = Session.load(store / "sessions" / "synthetic" / SESSION_ID)
+    declared = {frame.i: (frame.w, frame.h) for frame in session.frames()}
+
+    keyframes = data["sessions"][0]["keyframes"]
+    assert keyframes
+    for entry in keyframes:
+        resolved = (target.parent / entry["rgb"]).resolve()
+        assert resolved.exists(), entry["rgb"]
+        assert resolved.is_relative_to((store / "sessions").resolve()), "not a copy"
+        with Image.open(resolved) as image:
+            assert image.size == declared[entry["i"]], "the link must be the original, not a thumb"
+        assert entry["rgb"] != entry["thumb"]
+
+
+def test_stills_are_drawn_where_they_were_taken_and_link_to_the_file(store: Path):
+    target = build_page(store, "main", thumbnails=True)
+    data = page_data(target)
+    session = Session.load(store / "sessions" / "synthetic" / SESSION_ID)
+    stills = list(session.stills())
+    assert stills, "the synthetic session writes at least one still"
+
+    drawn = data["sessions"][0]["stills"]
+    assert [entry["s"] for entry in drawn] == [still.s for still in stills]
+    keyframes = {frame.i: frame for frame in session.frames()}
+    for entry, still in zip(drawn, stills, strict=True):
+        resolved = (target.parent / entry["path"]).resolve()
+        assert resolved.exists(), entry["path"]
+        with Image.open(resolved) as image:
+            assert image.size == (still.w, still.h)
+        # A still is taken from wherever the camera was; the synthetic one shares a
+        # pose with a keyframe, so it must land on that keyframe's dot.
+        expected = next(k for k in data["sessions"][0]["keyframes"] if k["i"] == still.i)
+        assert (entry["u"], entry["v"]) == pytest.approx((expected["u"], expected["v"]), abs=0.02)
+        assert keyframes[still.i].i == still.i
+        thumb = (target.parent / entry["thumb"]).resolve()
+        assert thumb.exists()
+        with Image.open(thumb) as image:
+            assert image.width == 320
+
+
+def test_headings_point_where_the_camera_looked(store: Path):
+    """The synthetic walk circles the room looking outward, so every heading
+    must point away from the room centre — a check that does not reuse the
+    formula it is checking."""
+    from vividhome.plan import load_calibration
+    from vividhome.synth import SynthSpec
+
+    calibration = load_calibration(store, "main")
+    cx, cz = SynthSpec().centre
+    house = TRANSFORM @ np.array([cx, 0.0, cz, 1.0])
+    centre = np.array(house_to_plan(calibration, house[0], house[2]))
+
+    data = page_data(build_page(store, "main", thumbnails=False, thumbnail_stride=1))
+    session = data["sessions"][0]
+    assert len(session["keyframes"]) == 12
+    for entry in session["keyframes"] + session["stills"]:
+        heading = np.array(entry["heading"])
+        assert np.linalg.norm(heading) == pytest.approx(1.0, abs=1e-3)
+        outward = np.array([entry["u"], entry["v"]]) - centre
+        outward /= np.linalg.norm(outward)
+        assert float(heading @ outward) > 0.99, entry
+
+
+def test_a_camera_pointed_at_the_floor_has_no_heading():
+    from vividhome.inspector import _heading
+    from vividhome.plan import PlanCalibration
+
+    calibration = PlanCalibration(
+        level="main", image="main.png", metres_per_pixel=0.01, origin_px=(0.0, 0.0)
+    )
+    # Camera -z is world -y: rotate the camera 90 degrees about x so it looks down.
+    down = np.eye(4)
+    down[:3, :3] = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]])
+    assert _heading(calibration, np.eye(4), down) is None
+    # And an unrotated camera looks along -z, which is up the page.
+    assert _heading(calibration, np.eye(4), np.eye(4)) == [0.0, -1.0]
+
+
+def test_the_page_links_to_the_photo_file(store: Path):
+    """A page that can only show a preview is not a way to review a capture:
+    the full image has to be one click away, as a plain link."""
+    text = build_page(store, "main", thumbnails=False).read_text(encoding="utf-8")
+    assert re.search(r'<a id="open" href="" target="_blank"', text)
+    assert 'getElementById("open").href = photo.src' in text
 
 
 def test_an_uncalibrated_level_is_refused(tmp_path: Path):

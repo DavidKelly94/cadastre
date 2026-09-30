@@ -5,24 +5,40 @@ the only thing that writes one, it writes it once, and it refuses to overwrite a
 existing session rather than merging into it — a half-overwritten capture is
 worse than either version of it.
 
-Sessions arrive either as a folder or as a zip from the Files app.
+Sessions arrive either as a folder or as a zip from the Files app. When the
+project's ``plans/`` folder is beside the session — the app's own layout,
+section 13 — the plan comes across with the capture, which is what ADR-0025
+promised and what saves importing the same drawing twice.
 """
 
 from __future__ import annotations
 
+import json
 import shutil
 import zipfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
+from .plan import plan_paths
 from .session import Session, SessionError
 from .validate import Report, validate_session
 
-__all__ = ["IngestError", "IngestResult", "ingest"]
+__all__ = ["IngestError", "IngestResult", "PlanImport", "ingest"]
 
 
 class IngestError(Exception):
     """A session could not be brought into the store."""
+
+
+@dataclass
+class PlanImport:
+    """What became of one ``plans/<level>.json`` found beside the session."""
+
+    level: str
+    imported: bool
+    #: One sentence for the owner: what was copied, or why nothing was.
+    reason: str
+    files: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -31,6 +47,7 @@ class IngestResult:
     destination: Path
     bytes_copied: int
     report: Report
+    plans: list[PlanImport] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -76,6 +93,103 @@ def _directory_size(path: Path) -> int:
     return sum(item.stat().st_size for item in path.rglob("*") if item.is_file())
 
 
+def _import_plans(store_root: Path, session_root: Path) -> list[PlanImport]:
+    """Copy the project's plans found beside the session into the store.
+
+    Section 13 puts ``plans/`` beside a project's sessions on the phone, and
+    ADR-0025 says the plan travels to the PC with the capture. The store keeps
+    one ``plans/`` for everything (a known inconsistency, section 13), so a level
+    is copied only when the store has no plan for it yet: a plan already there
+    may be calibrated and aligned against, and replacing its raster under those
+    alignments would move every session drawn on it. Replacing one on purpose is
+    ``vividhome plan add``.
+
+    Files are copied verbatim. The app's ``rooms`` and ``source`` are part of the
+    JSON and survive; nothing here rewrites what the app wrote.
+    """
+    source_dir = session_root.parent / "plans"
+    if not source_dir.is_dir():
+        return []
+
+    results: list[PlanImport] = []
+    for json_path in sorted(source_dir.glob("*.json")):
+        level = json_path.stem
+        try:
+            raw = json.loads(json_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            results.append(PlanImport(level, False, f"{json_path.name} does not parse ({error})"))
+            continue
+        if not isinstance(raw, dict) or raw.get("level") != level:
+            found = raw.get("level") if isinstance(raw, dict) else None
+            results.append(
+                PlanImport(
+                    level, False, f"{json_path.name} says level {found!r}, expected {level!r}"
+                )
+            )
+            continue
+
+        image_path, target_json = plan_paths(store_root, level)
+        image_name = str(raw.get("image") or "")
+        if image_name != image_path.name:
+            results.append(
+                PlanImport(
+                    level,
+                    False,
+                    f"{json_path.name} names its raster {image_name!r}; "
+                    f"section 13 expects {image_path.name!r}",
+                )
+            )
+            continue
+        source_image = source_dir / image_name
+        if not source_image.is_file():
+            results.append(
+                PlanImport(level, False, f"{json_path.name} has no {image_name} beside it")
+            )
+            continue
+        if target_json.exists():
+            results.append(
+                PlanImport(
+                    level,
+                    False,
+                    "already in the store and left alone; "
+                    "'vividhome plan add' replaces it deliberately",
+                )
+            )
+            continue
+
+        image_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source_image, image_path)
+        shutil.copyfile(json_path, target_json)
+        files = [image_path.name, target_json.name]
+
+        # The retained original, when the app kept one. Its name comes from the
+        # JSON, so it is checked to sit inside plans/ before being read: the
+        # file is the owner's, but a zip's contents are only as trusted as its
+        # member names, and those are already guarded.
+        original = raw.get("source")
+        if isinstance(original, dict) and original.get("file"):
+            original_path = (source_dir / str(original["file"])).resolve()
+            target_original = image_path.parent / original_path.name
+            if (
+                original_path.is_relative_to(source_dir.resolve())
+                and original_path.is_file()
+                and not target_original.exists()
+            ):
+                shutil.copyfile(original_path, target_original)
+                files.append(target_original.name)
+
+        results.append(
+            PlanImport(
+                level,
+                True,
+                f"copied from beside the session ({', '.join(files)}); "
+                f"calibrate it with 'vividhome plan calibrate --level {level}'",
+                files,
+            )
+        )
+    return results
+
+
 def manifest_project(session: Session) -> str | None:
     """The project slug the capture says it belongs to, or None if it does not say.
 
@@ -108,6 +222,10 @@ def ingest(
     ``force`` replaces an existing session outright. ``keep_going`` keeps a session
     that fails validation instead of removing it, which is what the owner wants
     when the capture is the only one they have and the alternative is losing it.
+
+    A ``plans/`` folder beside the session (the app's layout, section 13) is
+    copied into the store for every level the store has no plan for yet; see
+    :func:`_import_plans`. ``force`` does not extend to plans.
     """
     source = Path(source)
     if not source.exists():
@@ -174,6 +292,9 @@ def ingest(
             shutil.move(str(session_root), str(destination))
         else:
             shutil.copytree(session_root, destination)
+
+        # Before the staging directory goes: for a zip, plans/ is only there.
+        plans = _import_plans(store_root, session_root)
     finally:
         if staging is not None and staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
@@ -192,4 +313,5 @@ def ingest(
         destination=destination,
         bytes_copied=_directory_size(destination),
         report=report,
+        plans=plans,
     )

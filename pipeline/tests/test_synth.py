@@ -188,3 +188,23 @@ def test_a_smaller_session_can_be_requested(tmp_path: Path):
     result = build(tmp_path / "small", SynthSpec(keyframes=4, colour_w=160, colour_h=120))
     assert len(result.poses) == 4
     assert validate_session(Session.load(result.root)).ok
+
+
+def test_the_mesh_is_written_with_one_class_byte_per_face(tmp_path):
+    """Section 9: mesh.obj, one classification byte per face, and a summary."""
+    import json
+
+    from vividhome.mesh import read_mesh
+    from vividhome.session import Session
+
+    truth = build(tmp_path / "20261103-141502_main_room_framing_aaaaaa", SynthSpec(keyframes=2))
+    mesh = read_mesh(Session.load(truth.root))
+    assert len(mesh.classes) == len(mesh.faces)
+    summary = json.loads((truth.root / "mesh.json").read_text(encoding="utf-8"))
+    assert summary["faces"] == len(mesh.faces)
+    assert summary["vertices"] == len(mesh.vertices)
+    assert set(summary["class_histogram"]) == {"wall", "floor", "ceiling"}
+    # Everything sits inside the documented 4 x 5 x 2.5 m room.
+    spec = SynthSpec()
+    assert mesh.vertices.min(axis=0) == pytest.approx([0.0, 0.0, 0.0])
+    assert mesh.vertices.max(axis=0) == pytest.approx([spec.width_m, spec.height_m, spec.depth_m])

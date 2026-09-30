@@ -49,6 +49,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIRequiredDeviceCapabilities: [arkit, arm64]
         NSCameraUsageDescription: "VividHome records the camera and LiDAR to document your house during construction."
+        NSPhotoLibraryAddUsageDescription: "VividHome saves the photos you choose from a capture to your camera roll."
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         ITSAppUsesNonExemptEncryption: false

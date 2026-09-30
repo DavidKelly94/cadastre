@@ -40,8 +40,11 @@ The order things are worth doing in, kept here rather than in a chat handoff so
 it survives one. Owner-side items are things only the owner can do.
 
 1. **Photos on the phone, and to the camera roll** — the owner's ask of
-   2026-09-30. Design in `docs/design/return-path-design.md` §2. A convenience,
-   and the kind that decides whether captures get reviewed at all. iOS work.
+   2026-09-30. Design in `docs/design/return-path-design.md` §2. **Written,
+   not walked**: the Photos screen, the label, the orientation from the pose
+   and the camera-roll copy exist as of 2026-09-30 and have compiled in CI at
+   best. The first thing to check on a device is whether a portrait capture
+   shows upright, which is the one claim no Linux test can make.
 2. **The rendering back in the app** — the other ask. ADR-0028. The PC side is
    built (`serve --lan`, the write refusal, `/index.json`, Bonjour; section 14
    of the format), and the inspect page works by touch at phone width. Left:
@@ -225,6 +228,38 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Photos on the phone, written blind, 2026-09-30
+
+The first of ADR-0028's asks. A **Photos** screen, reached from a capture in
+Past captures and from Session review, shows the keyframes and stills a session
+holds — every 5th keyframe by default, every still always — turned the way the
+phone was held, with a label that says only what the session knows: project,
+level, room, trades, keyframe and time, and the landmarks tapped at that frame.
+Tap one for full screen with swipe, select several, and *Save to Photos* copies
+them to the camera roll with the label in the metadata, the capture's own time
+as the creation date, and the EXIF orientation set so Photos shows them
+upright. The JPEG bytes are copied, not re-encoded; the session is never
+changed.
+
+What can be trusted and what cannot, kept apart on purpose:
+
+- **Tested on Linux:** the reader (time order, a still after its keyframe, a
+  truncated last line skipped, landmarks attached by keyframe index), the label
+  text, the taken-at arithmetic, and the orientation from the pose for six
+  poses. That is `SessionPhotos`, `PhotoLabel` and `DisplayOrientation` in the
+  core package.
+- **Compiled at best, never run:** the screen, the thumbnail loading, the
+  metadata merge and the photo-library write. The one claim that matters most
+  — a portrait capture shows upright — rests on ARKit's stored image having
+  its right along camera `+x` and its up along camera `+y`, which section 3
+  says and no test here can check. If a device shows portrait captures lying
+  on their side, the fix is one sign in `DisplayOrientation.from`.
+- **Not built:** the optional burned-in caption, and an album (add-only access
+  forbids reading the library, so there is none; the design says why).
+
+The `ios-testflight` workflow now also builds from the handoff branch, so the
+next push that touches `ios/` produces a build to walk.
 
 ## The PC side of the return path, 2026-09-30
 

@@ -7,6 +7,7 @@ on:
     branches:
       - claude/construction-3d-mapping-app-nzm3bb
       - claude/confident-cerf-q37nev
+      - claude/vividhome-handoff-queue-73jwoo
     paths: ["ios/**"]
   workflow_dispatch:
 concurrency:

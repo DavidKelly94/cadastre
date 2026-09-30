@@ -177,6 +177,11 @@ struct SessionDetailView: View {
       }
 
       Section {
+        NavigationLink {
+          SessionPhotosView(layout: row.layout, manifest: row.manifest)
+        } label: {
+          Label("Photos", systemImage: "photo.on.rectangle")
+        }
         ShareLink(item: row.layout.root) {
           Label("Share this capture", systemImage: "square.and.arrow.up")
         }

@@ -24,7 +24,7 @@ The last line is what makes "labelled" useful rather than decorative: `landmarks
 
 **Orientation.** Stored images are landscape sensor orientation regardless of how the phone was held (`session-format.md` §3). The viewer rotates *for display* from the pose: the camera's up axis is the second column of `T_wc`, and its horizontal component says which way the sensor's top was pointing; a phone held upright shows its keyframes upright. The file is never rotated and pixel coordinates in the JSON keep referring to the stored image.
 
-**Save to camera roll.** Select one or many, then *Save to Photos*. Uses `PHPhotoLibrary` with add-only access (`NSPhotoLibraryAddUsageDescription` in `ios/project.yml`; the app never reads the library). Each photo is written into an album named `VividHome` with:
+**Save to camera roll.** Select one or many, then *Save to Photos*. Uses `PHPhotoLibrary` with add-only access (`NSPhotoLibraryAddUsageDescription` in `ios/project.yml`; the app never reads the library). No album: finding or creating one means reading the library, which add-only access rightly forbids and the app has no business doing; the label and the creation date are what make the copies findable. Each photo is written with:
 
 - the original JPEG bytes unchanged, so what leaves the app is what the session holds;
 - an EXIF orientation tag from the same pose reading, so the camera roll shows it upright;

@@ -44,9 +44,9 @@ it survives one. Owner-side items are things only the owner can do.
    and the kind that decides whether captures get reviewed at all. iOS work.
 2. **The rendering back in the app** — the other ask. ADR-0028. The PC side is
    built (`serve --lan`, the write refusal, `/index.json`, Bonjour; section 14
-   of the format). Left: the PC entry in Settings and the web view in the app,
-   §3 of the design, and a tap path on the inspect page before it is shown on
-   a phone. Bonjour is untested on the owner's network.
+   of the format), and the inspect page works by touch at phone width. Left:
+   the PC entry in Settings and the web view in the app, §3 of the design.
+   Bonjour is untested on the owner's network.
 3. **Free-space readout and multi-select delete** in Past captures. iOS. The
    "delete what is already on the PC" version needs a decision on where the
    signal comes from; the recommended one is an app-side "shared at" mark,
@@ -243,8 +243,12 @@ house put a file on the owner's PC. The refusal is tested, and `--lan` is never
 the default.
 
 What the phone can do with it today, before the app reads any of it: open the
-served inspect page in Safari by address. Hover does not exist there, so the
-photo preview needs a tap path first; the click-to-open lightbox already works.
+served inspect page in Safari by address. The page now works by touch: at phone
+width the session list stacks above the plan, which scrolls and pinches; each
+dot has a finger-sized invisible target; a tap opens the photo, a swipe steps,
+a tap outside closes; and the page opens scrolled to the walk rather than to a
+blank corner of the sheet. Driven in Chromium's iPhone emulation with real
+touch events, no console errors. Not yet opened on an actual phone.
 
 Not tested: Bonjour on a real network. `zeroconf` registers in a sandbox here
 without complaint, which says nothing about the Windows firewall prompt or a

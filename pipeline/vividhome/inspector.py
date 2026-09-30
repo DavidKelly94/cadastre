@@ -361,6 +361,7 @@ def _render(page: LevelPage) -> str:
     title = html.escape(f"VividHome — {page.level}")
     return f"""<!doctype html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <style>
   :root {{ color-scheme: light dark; }}
@@ -385,19 +386,36 @@ def _render(page: LevelPage) -> str:
             flex-direction: column; align-items: center; justify-content: center; }}
   #light[hidden] {{ display: none; }}
   #full {{ max-width: 96vw; max-height: 88vh; object-fit: contain; }}
-  #caption {{ color: #eee; padding: 10px; font-size: 13px; }}
+  #caption {{ color: #eee; padding: 10px; font-size: 13px; text-align: center; }}
   #caption a {{ color: #9cf; }}
+  .hit {{ fill: transparent; }}
+  /* A phone: the list above the plan, and the plan scrolls and pinches. */
+  @media (max-width: 700px) {{
+    body {{ flex-direction: column; height: 100dvh; }}
+    #panel {{ width: auto; max-height: 34vh; border-right: 0; border-bottom: 1px solid #8884;
+              padding: 12px 16px; }}
+    #stage {{ -webkit-overflow-scrolling: touch; }}
+  }}
+  @media (hover: none) {{
+    #thumb {{ display: none !important; }}
+    .hint-mouse {{ display: none; }}
+  }}
+  @media (hover: hover) {{
+    .hint-touch {{ display: none; }}
+  }}
 </style>
 <div id="panel"><h1>{title}</h1><div id="list"></div>
-<div class="hint">Hover a dot for a preview, click it for the full photo. The tick
-shows which way the camera looked. Diamonds are stills.</div></div>
+<div class="hint"><span class="hint-mouse">Hover a dot for a preview, click it for the full
+photo; arrow keys step.</span><span class="hint-touch">Tap a dot for the photo; swipe to step.</span>
+The tick shows which way the camera looked. Diamonds are stills.</div></div>
 <div id="stage"><img id="plan" alt="plan"><svg id="overlay"></svg></div>
 <img id="thumb">
 <div id="light" hidden>
   <img id="full" alt="">
   <div id="caption"><span id="what"></span> &middot;
     <a id="open" href="" target="_blank" rel="noopener">open the file</a> &middot;
-    &larr; &rarr; step &middot; Esc closes</div>
+    <span class="hint-mouse">&larr; &rarr; step &middot; Esc closes</span>
+    <span class="hint-touch">swipe to step &middot; tap outside to close</span></div>
 </div>
 <script>
 const DATA = {data};
@@ -487,6 +505,11 @@ function photoMark(session, photo, at, colour) {{
     mark.setAttribute("fill", colour); mark.setAttribute("fill-opacity", "0.5");
   }}
   group.appendChild(mark);
+  // A finger is wider than a 3 px dot: an invisible disc takes the tap.
+  const hit = document.createElementNS(NS, "circle");
+  hit.setAttribute("class", "hit");
+  hit.setAttribute("cx", photo.u); hit.setAttribute("cy", photo.v); hit.setAttribute("r", "12");
+  group.appendChild(hit);
   group.appendChild(title(caption(session, photo)));
   group.addEventListener("mouseenter", event => showThumb(event, photo.thumb));
   group.addEventListener("mouseleave", hideThumb);
@@ -540,6 +563,17 @@ function step(delta) {{
   openPhoto(current.session, (current.at + delta + count) % count);
 }}
 light.addEventListener("click", event => {{ if (event.target === light) closePhoto(); }});
+// Swipe left or right to step; a short tap on the backdrop still closes.
+let touchStart = null;
+light.addEventListener("touchstart", event => {{
+  touchStart = event.touches.length === 1 ? event.touches[0].clientX : null;
+}}, {{ passive: true }});
+light.addEventListener("touchend", event => {{
+  if (touchStart === null || event.changedTouches.length !== 1) return;
+  const delta = event.changedTouches[0].clientX - touchStart;
+  touchStart = null;
+  if (Math.abs(delta) >= 40) step(delta < 0 ? 1 : -1);
+}}, {{ passive: true }});
 addEventListener("keydown", event => {{
   if (light.hidden) return;
   if (event.key === "Escape") closePhoto();
@@ -576,5 +610,18 @@ DATA.sessions.forEach(s => {{
 }});
 
 draw();
+
+// Open on the walk, not on a blank corner of the sheet: scroll the stage so
+// the first session's path is in view. Matters most on a phone, where the
+// sheet is several screens wide.
+const first = DATA.sessions.find(s => s.trajectory.length);
+if (first) {{
+  const stage = document.getElementById("stage");
+  const us = first.trajectory.map(p => p[0]), vs = first.trajectory.map(p => p[1]);
+  const cu = (Math.min(...us) + Math.max(...us)) / 2;
+  const cv = (Math.min(...vs) + Math.max(...vs)) / 2;
+  stage.scrollLeft = Math.max(0, cu - stage.clientWidth / 2);
+  stage.scrollTop = Math.max(0, cv - stage.clientHeight / 2);
+}}
 </script>
 """

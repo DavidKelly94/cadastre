@@ -7,9 +7,9 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-18, after the inspect page learned to open the photos,
-`ingest` learned to carry the plan across, and `corners` and `coverage` ran
-their first geometry over a mesh.
+Last updated: 2026-09-30, when the owner's two asks — photos on the phone, and
+the rendering back in the app — became ADR-0028 and a design, and the work
+queue moved into this file.
 
 ## The short version
 
@@ -33,6 +33,36 @@ Three things to hold against that:
   plumbing and not the pairing.
 - **One project and one level are reachable**, because the Projects and Levels
   screens do not exist. A house with two floors cannot be captured as one.
+
+## Work queue
+
+The order things are worth doing in, kept here rather than in a chat handoff so
+it survives one. Owner-side items are things only the owner can do.
+
+1. **Photos on the phone, and to the camera roll** — the owner's ask of
+   2026-09-30. Design in `docs/design/return-path-design.md` §2. A convenience,
+   and the kind that decides whether captures get reviewed at all. iOS work.
+2. **The rendering back in the app** — the other ask. ADR-0028. PC side first
+   (`serve --lan`, the write refusal, `/index.json`, Bonjour), because it can be
+   tested here; then the PC entry in Settings and the web view. §3 of the same
+   design. The inspect page needs a tap path before it is shown on a phone.
+3. **Free-space readout and multi-select delete** in Past captures. iOS. The
+   "delete what is already on the PC" version needs a decision on where the
+   signal comes from; the recommended one is an app-side "shared at" mark,
+   labelled as shared rather than ingested.
+4. **Run `corners` and `coverage` on the real captures** in the store. Both are
+   right on the synthetic room and their tolerances are guesses until a real mesh
+   disagrees with them. Owner-side; one command each.
+5. **The app names a plan's original `source.pdf`**, against section 13's
+   `<level>.source.pdf`; two PDF levels overwrite each other's original. One-line
+   iOS fix.
+6. **Corner candidates on the phone** (roadmap item 5, room side), once item 4
+   says the offline number earns the screen time.
+
+Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
+level → storey 0 and confirm two levels show as separate sections; import the
+new house's real plan in the app and see whether the room-name chips appear; fix
+the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 
 ## Pipeline (`pipeline/`) — complete
 

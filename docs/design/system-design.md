@@ -105,6 +105,7 @@ Everything is local: no accounts, no telemetry, no uploads in the MVP. Sessions 
 - **Splats** (nerfstudio splatfacto or Postshot) per room, seeded with ARKit poses; delivered as SOG.
 - **AI**: see `ai-roadmap.md`; all items consume the session format as-is.
 - **AR x-ray**: the app relocalizes in a finished room using landmarks/plan geometry and renders earlier-phase photos and meshes through `T_hs`.
+- **The return path** ([ADR-0028](../adr/0028-results-return-to-the-app.md), `return-path-design.md`): the app shows and exports the photos it recorded, and the PC's rendered output comes back to it over the home network — `vividhome serve --lan` plus a web view first, native later if needed. The data-flow diagram above is one-directional and will not be once this lands.
 
 ## 10. Security of the build pipeline
 

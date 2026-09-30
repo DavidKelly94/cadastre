@@ -11,6 +11,8 @@ import VividHomeCore
 struct ContentView: View {
   @StateObject private var coordinator = CaptureCoordinator()
   @StateObject private var plans = PlanStore(project: CaptureCoordinator.projectSlug)
+  /// The PC on the home network, when there is one (ADR-0028).
+  @StateObject private var link = PCLink()
   @State private var sheet: Sheet?
   /// Nil until the house screen chooses one, which keeps that screen the root
   /// rather than something reachable only by backing out of capture.
@@ -58,6 +60,7 @@ struct ContentView: View {
             ProjectOverviewView(
               project: CaptureCoordinator.projectSlug,
               plans: plans,
+              link: link,
               onPick: { level, room in
                 let slug = SessionID.slug(room) ?? "room"
                 chosen = Choice(level: level, room: SlugRef(slug: slug, name: room))

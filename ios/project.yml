@@ -50,6 +50,14 @@ targets:
         UIRequiredDeviceCapabilities: [arkit, arm64]
         NSCameraUsageDescription: "VividHome records the camera and LiDAR to document your house during construction."
         NSPhotoLibraryAddUsageDescription: "VividHome saves the photos you choose from a capture to your camera roll."
+        NSLocalNetworkUsageDescription: "VividHome looks for your PC on this network to show the rendering it made from your captures."
+        # Must match SERVICE_TYPE in pipeline/vividhome/serve.py and PCLink.serviceType.
+        NSBonjourServices: [_vividhome._tcp]
+        # The PC serves plain HTTP on the home network (ADR-0028). This allows
+        # that to local addresses only; everything else stays under App
+        # Transport Security.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         ITSAppUsesNonExemptEncryption: false

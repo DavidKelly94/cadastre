@@ -195,6 +195,14 @@ public struct PhotoLabel: Equatable, Sendable {
   /// The manifest's `started_at` (ISO 8601 with offset), with or without
   /// fractional seconds, or nil.
   public static func date(fromISO8601 text: String) -> Date? {
+    ISO8601Text.date(from: text)
+  }
+}
+
+/// ISO 8601 as the manifest and the PC write it: internet date-time with an
+/// offset or `Z`, with or without fractional seconds.
+public enum ISO8601Text {
+  public static func date(from text: String) -> Date? {
     let parser = ISO8601DateFormatter()
     parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     if let date = parser.date(from: text) { return date }

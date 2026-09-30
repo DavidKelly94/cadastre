@@ -1,0 +1,184 @@
+import Combine
+import Foundation
+import Network
+import VividHomeCore
+
+/// The PC on the home network that holds the rendering (ADR-0028).
+///
+/// Finds it over Bonjour, or takes an address the owner typed; fetches
+/// `/index.json` to say what it holds and how old that is; and turns a
+/// project level into the URL of its rendered page. Nothing here writes to
+/// the PC, and the PC refuses writes on the network anyway.
+///
+/// Read-only and LAN-only on purpose: the design carries the plaintext server
+/// knowingly, and the app's side of that bargain is to send nothing.
+@MainActor
+final class PCLink: ObservableObject {
+  /// What the owner typed, or the address of a discovered PC they picked.
+  @Published var addressText: String {
+    didSet { UserDefaults.standard.set(addressText, forKey: Self.addressKey) }
+  }
+  @Published private(set) var discovered: [Discovered] = []
+  @Published private(set) var index: ServerIndex?
+  @Published private(set) var checkedAt: Date?
+  @Published private(set) var problem: String?
+  @Published private(set) var testing = false
+
+  struct Discovered: Identifiable, Equatable {
+    var id: String { name }
+    var name: String
+    /// Nil until the service name has been resolved to a host and port.
+    var url: URL?
+  }
+
+  /// Must match `SERVICE_TYPE` in the pipeline's `serve.py` and
+  /// `NSBonjourServices` in `ios/project.yml`; change all three or none.
+  static let serviceType = "_vividhome._tcp"
+  private static let addressKey = "pc.address"
+
+  private var browser: NWBrowser?
+
+  init() {
+    addressText = UserDefaults.standard.string(forKey: Self.addressKey) ?? ""
+  }
+
+  var baseURL: URL? { PCAddress.url(from: addressText) }
+  var isConfigured: Bool { baseURL != nil }
+
+  // MARK: - Discovery
+
+  func startBrowsing() {
+    guard browser == nil else { return }
+    let parameters = NWParameters.tcp
+    parameters.includePeerToPeer = true
+    let browser = NWBrowser(for: .bonjour(type: Self.serviceType, domain: nil), using: parameters)
+    browser.browseResultsChangedHandler = { [weak self] results, _ in
+      Task { @MainActor in self?.update(results) }
+    }
+    browser.start(queue: .main)
+    self.browser = browser
+  }
+
+  func stopBrowsing() {
+    browser?.cancel()
+    browser = nil
+  }
+
+  private func update(_ results: Set<NWBrowser.Result>) {
+    var found: [Discovered] = []
+    for result in results {
+      guard case .service(let name, _, _, _) = result.endpoint else { continue }
+      let known = discovered.first { $0.name == name }
+      found.append(Discovered(name: name, url: known?.url))
+      if known?.url == nil {
+        resolve(result.endpoint, name: name)
+      }
+    }
+    discovered = found.sorted { $0.name < $1.name }
+  }
+
+  /// Bonjour hands over a service name; a URL needs a host and a port.
+  /// Connecting once resolves it, then the connection is dropped.
+  private func resolve(_ endpoint: NWEndpoint, name: String) {
+    let connection = NWConnection(to: endpoint, using: .tcp)
+    connection.stateUpdateHandler = { [weak self] state in
+      switch state {
+      case .ready:
+        var url: URL?
+        if case .hostPort(let host, let port)? = connection.currentPath?.remoteEndpoint {
+          url = URL(string: "http://\(Self.text(for: host)):\(port.rawValue)")
+        }
+        connection.cancel()
+        Task { @MainActor in self?.resolved(name: name, url: url) }
+      case .failed, .cancelled:
+        connection.cancel()
+      default:
+        break
+      }
+    }
+    connection.start(queue: .main)
+  }
+
+  private static func text(for host: NWEndpoint.Host) -> String {
+    switch host {
+    case .ipv4(let address):
+      return "\(address)"
+    case .ipv6(let address):
+      return "[\(address)]"
+    case .name(let name, _):
+      return name
+    @unknown default:
+      return "\(host)"
+    }
+  }
+
+  private func resolved(name: String, url: URL?) {
+    guard let position = discovered.firstIndex(where: { $0.name == name }) else { return }
+    discovered[position].url = url
+  }
+
+  func use(_ item: Discovered) {
+    guard let url = item.url else { return }
+    addressText = url.absoluteString
+  }
+
+  // MARK: - The index
+
+  /// Fetch `/index.json` and keep what came back, or say why nothing did.
+  func test() async {
+    guard let base = baseURL else {
+      problem = "Type the PC's address, or pick one that was found."
+      return
+    }
+    testing = true
+    defer { testing = false }
+    problem = nil
+    do {
+      var request = URLRequest(url: base.appendingPathComponent("index.json"))
+      request.timeoutInterval = 6
+      let (data, response) = try await URLSession.shared.data(for: request)
+      let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+      guard status == 200 else {
+        throw Problem.status(status)
+      }
+      index = try JSONDecoder().decode(ServerIndex.self, from: data)
+      checkedAt = Date()
+    } catch {
+      index = nil
+      problem = Self.describe(error)
+    }
+  }
+
+  private enum Problem: Error {
+    case status(Int)
+  }
+
+  private static func describe(_ error: Error) -> String {
+    if case Problem.status(let code) = error {
+      return "The address answered, but not as VividHome (HTTP \(code)). "
+        + "Is `vividhome serve --lan` what is running there?"
+    }
+    let code = (error as? URLError)?.code
+    switch code {
+    case .timedOut, .cannotConnectToHost, .cannotFindHost, .networkConnectionLost:
+      return "Nothing answered at that address. Is the PC on, on this Wi-Fi, "
+        + "and running `vividhome serve --lan`? A guest network that isolates "
+        + "devices looks the same as a PC that is off."
+    case .notConnectedToInternet:
+      return "This phone is not on a network."
+    default:
+      if error is DecodingError {
+        return "The PC answered with something this build does not understand. "
+          + "Update one side or the other."
+      }
+      return error.localizedDescription
+    }
+  }
+
+  /// The rendered page for a level, if the PC has one.
+  func inspectURL(project: String, level: String) -> URL? {
+    guard let base = baseURL, let page = index?.inspectPage(project: project, level: level)
+    else { return nil }
+    return base.appendingPathComponent(page)
+  }
+}

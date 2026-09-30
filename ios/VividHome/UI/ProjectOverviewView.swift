@@ -15,11 +15,14 @@ import VividHomeCore
 struct ProjectOverviewView: View {
   let project: String
   @ObservedObject var plans: PlanStore
+  @ObservedObject var link: PCLink
   let onPick: (LevelRef, String) -> Void
 
   @State private var digest: ProjectDigest?
   @State private var loading = true
   @State private var adding = false
+  @State private var showingPC = false
+  @State private var rendering: RenderingTarget?
 
   private var store: SessionStore {
     SessionStore(documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
@@ -73,6 +76,9 @@ struct ProjectOverviewView: View {
       .navigationTitle(digest?.name ?? "Project")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button("PC", systemImage: "desktopcomputer") { showingPC = true }
+        }
         ToolbarItem(placement: .primaryAction) {
           Button("New room", systemImage: "plus") { adding = true }
         }
@@ -83,8 +89,23 @@ struct ProjectOverviewView: View {
           onPick(level, room)
         }
       }
+      .sheet(isPresented: $showingPC) {
+        PCSettingsView(link: link) {
+          showingPC = false
+          Task { await link.test() }
+        }
+      }
+      .fullScreenCover(item: $rendering) { target in
+        RenderingView(
+          url: target.url, title: target.title, generatedAt: target.generatedAt
+        ) { rendering = nil }
+      }
       .task { await load() }
-      .refreshable { await load() }
+      .task { if link.isConfigured { await link.test() } }
+      .refreshable {
+        await load()
+        if link.isConfigured { await link.test() }
+      }
     }
   }
 
@@ -92,6 +113,22 @@ struct ProjectOverviewView: View {
     List {
       ForEach(sections) { section in
         Section {
+          // What the PC made of this level, when it has made anything and is
+          // reachable (ADR-0028). Absent rather than disabled otherwise: a row
+          // that cannot be tapped says nothing about why.
+          if let url = link.inspectURL(project: project, level: section.slug) {
+            Button {
+              rendering = RenderingTarget(
+                url: url, title: section.name, generatedAt: link.index?.generated)
+            } label: {
+              HStack {
+                Label("Rendering on the PC", systemImage: "map")
+                Spacer()
+                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+              }
+            }
+            .buttonStyle(.plain)
+          }
           ForEach(section.rooms, id: \.room) { room in
             Button {
               onPick(ref(for: section), room.room)
@@ -195,5 +232,13 @@ struct ProjectOverviewView: View {
     var index: Int
     var rooms: [RoomDigest]
     var unwalked: [String]
+  }
+
+  /// A page to open full screen: the URL is the identity.
+  struct RenderingTarget: Identifiable {
+    var id: String { url.absoluteString }
+    var url: URL
+    var title: String
+    var generatedAt: Date?
   }
 }

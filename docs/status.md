@@ -47,9 +47,10 @@ it survives one. Owner-side items are things only the owner can do.
    shows upright, which is the one claim no Linux test can make.
 2. **The rendering back in the app** — the other ask. ADR-0028. The PC side is
    built (`serve --lan`, the write refusal, `/index.json`, Bonjour; section 14
-   of the format), and the inspect page works by touch at phone width. Left:
-   the PC entry in Settings and the web view in the app, §3 of the design.
-   Bonjour is untested on the owner's network.
+   of the format), the inspect page works by touch at phone width, and the app
+   side is **written, not walked**: the PC entry on the project screen, Bonjour
+   discovery, the Test fetch and the web view per level (2026-09-30). Neither
+   Bonjour nor the fetch has been tried on a real network.
 3. **Free-space readout and multi-select delete** in Past captures. iOS. The
    "delete what is already on the PC" version needs a decision on where the
    signal comes from; the recommended one is an app-side "shared at" mark,
@@ -228,6 +229,28 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The rendering back in the app, written blind, 2026-09-30
+
+The second of ADR-0028's asks, app side. A **PC** button on the project screen
+opens a sheet that lists PCs found over Bonjour (`_vividhome._tcp`), takes a
+typed address, and has a *Test* that fetches `/index.json` and says what the
+store holds and how old that answer is, or why nothing answered — the PC off,
+the phone on cellular and a router isolating guests all look alike from the
+phone, so the text tries to tell them apart. Once the index is in, each level
+the PC has rendered gets a *Rendering on the PC* row that opens the served
+inspect page in a web view, with the page's generation time underneath. The
+address is remembered; the index is fetched again whenever the project screen
+appears.
+
+Tested on Linux: the section 14 reader against the document's own example,
+including a `null` that must read as "no report" and a field the phone does
+not know; and the typed-address parser. Compiled at best: the Bonjour browse
+and the resolve-by-connecting trick that turns a service name into a host and
+port, the fetch, and the web view. Three Info.plist entries are load-bearing
+and untestable here: local-network usage, the Bonjour service type, and
+`NSAllowsLocalNetworking`, without which App Transport Security refuses plain
+HTTP to the PC and the symptom is an unhelpful error rather than a page.
 
 ## Photos on the phone, written blind, 2026-09-30
 

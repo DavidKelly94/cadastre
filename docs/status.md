@@ -51,16 +51,20 @@ it survives one. Owner-side items are things only the owner can do.
    side is **written, not walked**: the PC entry on the project screen, Bonjour
    discovery, the Test fetch and the web view per level (2026-09-30). Neither
    Bonjour nor the fetch has been tried on a real network.
-3. **Free-space readout and multi-select delete** in Past captures. iOS. The
-   "delete what is already on the PC" version needs a decision on where the
-   signal comes from; the recommended one is an app-side "shared at" mark,
-   labelled as shared rather than ingested.
+3. **Free-space readout and multi-select delete** in Past captures. **Written,
+   not walked** (2026-09-30): the list header says what is free against the
+   2 GB floor, and Edit selects several to delete at once with their total
+   size on the button. The "delete what is already on the PC" version still
+   needs a decision on where the signal comes from; the recommended one is an
+   app-side "shared at" mark, labelled as shared rather than ingested.
 4. **Run `corners` and `coverage` on the real captures** in the store. Both are
    right on the synthetic room and their tolerances are guesses until a real mesh
    disagrees with them. Owner-side; one command each.
 5. **The app names a plan's original `source.pdf`**, against section 13's
-   `<level>.source.pdf`; two PDF levels overwrite each other's original. One-line
-   iOS fix.
+   `<level>.source.pdf`; two PDF levels overwrite each other's original.
+   **Fixed 2026-09-30** in `PlanStore`, with the naming in the core package and
+   tested; an original already on the phone keeps its old name until the plan
+   is imported again, and nothing reads it meanwhile.
 6. **Corner candidates on the phone** (roadmap item 5, room side), once item 4
    says the offline number earns the screen time.
 
@@ -229,6 +233,25 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Past captures says what is free, and deletes several at once, 2026-09-30
+
+Queue item 3, written blind like the rest of today's iOS work. The list's
+header now reads *"12.3 GB free on this iPhone; capture stops starting below
+2.0 GB"* from `volumeAvailableCapacityForImportantUsage`, which is the number
+that decides whether a capture can start rather than the raw volume figure,
+and the floor is `HealthPolicy`'s constant rather than a second literal. Edit
+turns the rows selectable; the bottom button says *Delete 3 (1.2 GB)* and asks
+once before doing it. Swipe-to-delete stays. The "delete what is already on
+the PC" version is still a decision, not code: nothing on the phone knows what
+the PC has, and the honest signal would be an app-side "shared at" mark.
+
+While in the same file: the app named every plan's retained original
+`source.pdf` where section 13 says `<level>.source.pdf`, so two PDF levels
+overwrote each other's original on the phone. The store names it for the
+level now, with the naming in the core package and a test. An original
+already on the phone keeps its old name until that plan is imported again;
+nothing reads the file yet, so nothing is wrong meanwhile.
 
 ## The rendering back in the app, written blind, 2026-09-30
 

@@ -16,6 +16,10 @@ struct SessionListView: View {
   @State private var rows: [Row] = []
   @State private var sharing: URL?
   @State private var failure: String?
+  @State private var freeBytes: Int?
+  @State private var selected: Set<String> = []
+  @State private var confirmingDelete = false
+  @Environment(\.editMode) private var editMode
 
   /// A session as the list shows it. Read once when the list appears rather
   /// than held live: these are finished sessions and their numbers are final.
@@ -27,8 +31,16 @@ struct SessionListView: View {
     var incomplete: Bool
   }
 
-  private var store: SessionStore {
-    SessionStore(documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
+  private var documents: URL {
+    FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+  }
+
+  private var store: SessionStore { SessionStore(documents: documents) }
+
+  private var editing: Bool { editMode?.wrappedValue.isEditing == true }
+
+  private var selectedBytes: Int {
+    rows.filter { selected.contains($0.id) }.reduce(0) { $0 + $1.bytes }
   }
 
   var body: some View {
@@ -39,7 +51,7 @@ struct SessionListView: View {
             "No captures yet", systemImage: "square.stack.3d.up",
             description: Text("Recorded rooms show up here, and stay until you delete them."))
         } else {
-          List {
+          List(selection: $selected) {
             Section {
               ForEach(rows) { row in
                 NavigationLink {
@@ -49,6 +61,10 @@ struct SessionListView: View {
                 }
               }
               .onDelete(perform: delete)
+            } header: {
+              // What deleting would gain, against the floor capture refuses at.
+              // A 5-minute room is 300-800 MB, so this number moves fast.
+              Text(freeSpace)
             } footer: {
               Text("Copy a session to the PC before deleting it here. "
                 + "Deleting the app deletes every capture still on the phone.")
@@ -58,7 +74,32 @@ struct SessionListView: View {
       }
       .navigationTitle("Captures")
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) } }
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          if !rows.isEmpty { EditButton() }
+        }
+        ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
+        ToolbarItem(placement: .bottomBar) {
+          if editing {
+            Button(role: .destructive) {
+              confirmingDelete = true
+            } label: {
+              Text(selected.isEmpty
+                ? "Select captures to delete"
+                : "Delete \(selected.count) (\(Self.bytes(selectedBytes)))")
+            }
+            .disabled(selected.isEmpty)
+          }
+        }
+      }
+      .confirmationDialog(
+        "Delete \(selected.count) capture\(selected.count == 1 ? "" : "s")?",
+        isPresented: $confirmingDelete, titleVisibility: .visible
+      ) {
+        Button("Delete", role: .destructive, action: deleteSelected)
+      } message: {
+        Text("Only captures already copied to the PC should go. This cannot be undone.")
+      }
       .onAppear(perform: reload)
       .alert("Could not delete", isPresented: .constant(failure != nil)) {
         Button("OK") { failure = nil }
@@ -107,6 +148,7 @@ struct SessionListView: View {
         bytes: store.countedStats(at: layout).bytes,
         incomplete: manifest?.status != .complete)
     }
+    freeBytes = Self.freeBytes(on: documents)
   }
 
   private func delete(at offsets: IndexSet) {
@@ -120,6 +162,41 @@ struct SessionListView: View {
       }
     }
     rows.remove(atOffsets: offsets)
+    freeBytes = Self.freeBytes(on: documents)
+  }
+
+  private func deleteSelected() {
+    let store = store
+    for row in rows where selected.contains(row.id) {
+      do {
+        try store.delete(at: row.layout)
+      } catch {
+        failure = error.localizedDescription
+        break
+      }
+      rows.removeAll { $0.id == row.id }
+    }
+    selected = []
+    editMode?.wrappedValue = .inactive
+    freeBytes = Self.freeBytes(on: documents)
+  }
+
+  /// What deleting would gain, against the floor capture refuses at.
+  private var freeSpace: String {
+    guard let freeBytes else { return "Free space unknown" }
+    let floor = HealthPolicy.minimumFreeBytesToStart
+    let state =
+      freeBytes < floor
+      ? "capture will not start below \(Self.bytes(floor))"
+      : "capture stops starting below \(Self.bytes(floor))"
+    return "\(Self.bytes(freeBytes)) free on this iPhone; \(state)"
+  }
+
+  /// Free space as iOS would let this app use it, which is the number that
+  /// decides whether a capture can start, not the raw volume figure.
+  static func freeBytes(on url: URL) -> Int? {
+    let values = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+    return values?.volumeAvailableCapacityForImportantUsage.map { Int($0) }
   }
 
   static func bytes(_ value: Int) -> String {

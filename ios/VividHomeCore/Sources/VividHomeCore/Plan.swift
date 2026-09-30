@@ -133,6 +133,24 @@ public struct PlanSource: Codable, Equatable, Sendable {
     self.kind = kind
     self.page = page
   }
+
+  /// The extension section 13 gives each kind of original.
+  public var fileExtension: String {
+    switch kind {
+    case .pdf: return "pdf"
+    case .jpeg: return "jpg"
+    case .heic: return "heic"
+    }
+  }
+
+  /// The same source, filed as `<level>.source.<ext>` per section 13.
+  ///
+  /// The import view builds a source before the level slug exists, so it
+  /// cannot name the file; the store can, and must, because two levels
+  /// imported from PDFs and both called `source.pdf` overwrite each other.
+  public func named(forLevel level: String) -> PlanSource {
+    PlanSource(file: "\(level).source.\(fileExtension)", kind: kind, page: page)
+  }
 }
 
 /// Where the owner says a room is, in **pixels of the raster**, origin top-left.

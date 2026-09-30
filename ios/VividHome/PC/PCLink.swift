@@ -12,7 +12,11 @@ import VividHomeCore
 ///
 /// Read-only and LAN-only on purpose: the design carries the plaintext server
 /// knowingly, and the app's side of that bargain is to send nothing.
-@MainActor
+///
+/// Not `@MainActor`, like the app's other observable objects: it is created in
+/// a view's property initialiser. Every published value is still set on the
+/// main queue — the browser and the resolving connections are started on it,
+/// and `test()` is isolated so its awaits resume there.
 final class PCLink: ObservableObject {
   /// What the owner typed, or the address of a discovered PC they picked.
   @Published var addressText: String {
@@ -52,8 +56,9 @@ final class PCLink: ObservableObject {
     let parameters = NWParameters.tcp
     parameters.includePeerToPeer = true
     let browser = NWBrowser(for: .bonjour(type: Self.serviceType, domain: nil), using: parameters)
+    // Started on the main queue, so the handler already runs there.
     browser.browseResultsChangedHandler = { [weak self] results, _ in
-      Task { @MainActor in self?.update(results) }
+      self?.update(results)
     }
     browser.start(queue: .main)
     self.browser = browser
@@ -89,7 +94,7 @@ final class PCLink: ObservableObject {
           url = URL(string: "http://\(Self.text(for: host)):\(port.rawValue)")
         }
         connection.cancel()
-        Task { @MainActor in self?.resolved(name: name, url: url) }
+        self?.resolved(name: name, url: url)
       case .failed, .cancelled:
         connection.cancel()
       default:
@@ -125,6 +130,7 @@ final class PCLink: ObservableObject {
   // MARK: - The index
 
   /// Fetch `/index.json` and keep what came back, or say why nothing did.
+  @MainActor
   func test() async {
     guard let base = baseURL else {
       problem = "Type the PC's address, or pick one that was found."
@@ -158,7 +164,13 @@ final class PCLink: ObservableObject {
       return "The address answered, but not as VividHome (HTTP \(code)). "
         + "Is `vividhome serve --lan` what is running there?"
     }
-    let code = (error as? URLError)?.code
+    if error is DecodingError {
+      return "The PC answered with something this build does not understand. "
+        + "Update one side or the other."
+    }
+    guard let code = (error as? URLError)?.code else {
+      return error.localizedDescription
+    }
     switch code {
     case .timedOut, .cannotConnectToHost, .cannotFindHost, .networkConnectionLost:
       return "Nothing answered at that address. Is the PC on, on this Wi-Fi, "
@@ -167,10 +179,6 @@ final class PCLink: ObservableObject {
     case .notConnectedToInternet:
       return "This phone is not on a network."
     default:
-      if error is DecodingError {
-        return "The PC answered with something this build does not understand. "
-          + "Update one side or the other."
-      }
       return error.localizedDescription
     }
   }

@@ -196,6 +196,22 @@ def _add_coverage(sub: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_serve(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "serve",
+        help="serve the store's pages; --lan makes them readable from the phone",
+    )
+    p.add_argument("--port", type=int, default=8765, help="port to listen on")
+    p.add_argument(
+        "--lan",
+        action="store_true",
+        help="listen on every interface, read-only, and advertise over Bonjour (ADR-0028)",
+    )
+    p.add_argument(
+        "--open", default="", help="path to print as the page to open, e.g. inspect/main.html"
+    )
+
+
 def _add_synth(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("synth", help="write a synthetic, format-valid session for tests")
     p.add_argument("--out", required=True, help="destination directory")
@@ -227,6 +243,7 @@ def build_parser() -> argparse.ArgumentParser:
         _add_synth,
         _add_corners,
         _add_coverage,
+        _add_serve,
     ):
         add(sub)
     return parser
@@ -662,6 +679,13 @@ def _run_coverage(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_serve(args: argparse.Namespace) -> int:
+    from .serve import serve
+
+    serve(args.store, port=args.port, open_path=args.open, lan=args.lan)
+    return 0
+
+
 def _run_synth(args: argparse.Namespace) -> int:
     from .synth import SynthSpec, build
 
@@ -690,6 +714,7 @@ _HANDLERS = {
     "markers": _run_markers,
     "corners": _run_corners,
     "coverage": _run_coverage,
+    "serve": _run_serve,
 }
 
 

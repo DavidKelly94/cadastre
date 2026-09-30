@@ -14,7 +14,7 @@ MVP_COMMANDS = frozenset(
 
 #: Commands beyond the MVP: `corners` is the offline half of ai-roadmap item 5,
 #: `coverage` the per-wall answer to "what did I miss".
-EXTRA_COMMANDS = frozenset({"corners", "coverage"})
+EXTRA_COMMANDS = frozenset({"corners", "coverage", "serve"})
 
 
 def test_help_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:

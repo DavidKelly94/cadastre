@@ -42,10 +42,11 @@ it survives one. Owner-side items are things only the owner can do.
 1. **Photos on the phone, and to the camera roll** — the owner's ask of
    2026-09-30. Design in `docs/design/return-path-design.md` §2. A convenience,
    and the kind that decides whether captures get reviewed at all. iOS work.
-2. **The rendering back in the app** — the other ask. ADR-0028. PC side first
-   (`serve --lan`, the write refusal, `/index.json`, Bonjour), because it can be
-   tested here; then the PC entry in Settings and the web view. §3 of the same
-   design. The inspect page needs a tap path before it is shown on a phone.
+2. **The rendering back in the app** — the other ask. ADR-0028. The PC side is
+   built (`serve --lan`, the write refusal, `/index.json`, Bonjour; section 14
+   of the format). Left: the PC entry in Settings and the web view in the app,
+   §3 of the design, and a tap path on the inspect page before it is shown on
+   a phone. Bonjour is untested on the owner's network.
 3. **Free-space readout and multi-select delete** in Past captures. iOS. The
    "delete what is already on the PC" version needs a decision on where the
    signal comes from; the recommended one is an app-side "shared at" mark,
@@ -76,11 +77,11 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the session, verbatim, for levels the store lacks |
-| `serve` | done | Local server for the browser pages |
+| `serve` | done | Local server for the browser pages; `--lan` serves the store read-only to the phone with `/index.json` and Bonjour (ADR-0028) |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-17 modules, **302 tests passing**, ruff clean.
+18 modules, **315 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -224,6 +225,30 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The PC side of the return path, 2026-09-30
+
+ADR-0028 wants the rendering back on the phone, and the half that can be built
+and tested here is the PC's. `vividhome serve --lan` now serves the store on the
+home network: every interface, the addresses printed, `GET /index.json` saying
+what the store holds (section 14 of the format, generated from the files on
+each request so it cannot lie about them), `GET /_vividhome/ping`, and a
+Bonjour advertisement as `_vividhome._tcp` so the app will find the PC without
+an address being typed.
+
+The rule that shaped it: **on the network, the server refuses every POST.** The
+localhost server accepts `POST /save` so the calibrate and align pages can write
+their JSON; the same endpoint reachable from the LAN would let any device in the
+house put a file on the owner's PC. The refusal is tested, and `--lan` is never
+the default.
+
+What the phone can do with it today, before the app reads any of it: open the
+served inspect page in Safari by address. Hover does not exist there, so the
+photo preview needs a tap path first; the click-to-open lightbox already works.
+
+Not tested: Bonjour on a real network. `zeroconf` registers in a sandbox here
+without complaint, which says nothing about the Windows firewall prompt or a
+router that isolates clients; the app's Test button is designed to say which.
 
 ## Coverage per wall, against the corners that were tapped, 2026-09-18
 

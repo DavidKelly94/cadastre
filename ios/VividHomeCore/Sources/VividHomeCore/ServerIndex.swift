@@ -102,6 +102,42 @@ public struct ServerIndex: Codable, Equatable, Sendable {
   public var renderedLevelCount: Int {
     projects.reduce(0) { $0 + $1.levels.filter { $0.inspect != nil }.count }
   }
+
+  /// What the PC says about one session, by id, across every project.
+  ///
+  /// This is the signal "delete what is already on the PC" was waiting for: not
+  /// a mark the phone made when a share sheet closed, but the PC's own word
+  /// that it ingested the capture and that `validate` passed. Only `.validated`
+  /// makes a capture safe to delete here; `.held` means the PC has the bytes
+  /// but has not said they are good, which is not the same thing.
+  public func holding(of sessionID: String) -> Holding {
+    for project in projects {
+      for session in project.sessions where session.sessionID == sessionID {
+        return session.validated == true ? .validated : .held
+      }
+    }
+    return .absent
+  }
+
+  public enum Holding: Equatable, Sendable {
+    /// Ingested, and `validate` passed.
+    case validated
+    /// Ingested, but not validated, or validation failed.
+    case held
+    /// Not on the PC.
+    case absent
+  }
+
+  /// Every session id the PC has ingested and validated.
+  public var validatedSessionIDs: Set<String> {
+    var out: Set<String> = []
+    for project in projects {
+      for session in project.sessions where session.validated == true {
+        out.insert(session.sessionID)
+      }
+    }
+    return out
+  }
 }
 
 /// Where the PC is, from whatever the owner typed or Bonjour found.

@@ -101,7 +101,7 @@ struct ProjectOverviewView: View {
         ) { rendering = nil }
       }
       .task { await load() }
-      .task { if link.isConfigured { await link.test() } }
+      .task { await link.refreshIfStale() }
       .refreshable {
         await load()
         if link.isConfigured { await link.test() }

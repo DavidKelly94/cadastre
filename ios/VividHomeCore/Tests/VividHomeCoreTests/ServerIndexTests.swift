@@ -83,4 +83,19 @@ final class ServerIndexTests: XCTestCase {
     XCTAssertNil(PCAddress.url(from: "ftp://pc.local"))
     XCTAssertNil(PCAddress.url(from: "http://"))
   }
+
+  func testThePCsWordOnASessionIsValidatedHeldOrAbsent() throws {
+    let index = try JSONDecoder().decode(ServerIndex.self, from: Data(example.utf8))
+    XCTAssertEqual(index.holding(of: "20261103-141502_main_kitchen_k3x7qa"), .validated)
+    XCTAssertEqual(
+      index.holding(of: "20261104-090000_upper_hall_bbbbbb"), .held,
+      "ingested but never validated is not safe to delete")
+    XCTAssertEqual(index.holding(of: "20261105-000000_main_x_cccccc"), .absent)
+    XCTAssertEqual(index.validatedSessionIDs, ["20261103-141502_main_kitchen_k3x7qa"])
+
+    var failed = index
+    failed.projects[0].sessions[0].validated = false
+    XCTAssertEqual(failed.holding(of: "20261103-141502_main_kitchen_k3x7qa"), .held)
+    XCTAssertEqual(failed.validatedSessionIDs, [])
+  }
 }

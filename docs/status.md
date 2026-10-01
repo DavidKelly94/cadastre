@@ -7,9 +7,8 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-09-30, when the owner's two asks — photos on the phone, and
-the rendering back in the app — became ADR-0028 and a design, and the work
-queue moved into this file.
+Last updated: 2026-10-01, after Past captures learned from the PC's index
+which captures are safe to delete.
 
 ## The short version
 
@@ -54,9 +53,11 @@ it survives one. Owner-side items are things only the owner can do.
 3. **Free-space readout and multi-select delete** in Past captures. **Written,
    not walked** (2026-09-30): the list header says what is free against the
    2 GB floor, and Edit selects several to delete at once with their total
-   size on the button. The "delete what is already on the PC" version still
-   needs a decision on where the signal comes from; the recommended one is an
-   app-side "shared at" mark, labelled as shared rather than ingested.
+   size on the button. **"Delete what is already on the PC" resolved
+   2026-10-01**, on the PC's own word: the index from `serve --lan` lists every
+   session it ingested and whether `validate` passed, so rows are marked *on
+   the PC* and one button deletes exactly the validated ones. No "shared at"
+   mark was needed. Walked by nobody yet.
 4. **Run `corners` and `coverage` on the real captures** in the store. Both are
    right on the synthetic room and their tolerances are guesses until a real mesh
    disagrees with them. Owner-side; one command each.
@@ -233,6 +234,30 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The PC's word on what is safe to delete, 2026-10-01
+
+The handoff of 2026-09-18 said the one bulk action that is actually safe —
+"delete everything already ingested" — needed a marker written back after
+`ingest`, a contract question nobody wanted to open. It did not: the return
+path's index (section 14) already lists every session the PC holds and whether
+`validate` passed, and the phone can read it. So Past captures now asks the PC
+and marks each row *on the PC* when the PC says validated, *on the PC,
+unchecked* when it holds the bytes and has not said they are good, and nothing
+when it has never seen them. One button deletes exactly the validated ones from
+the phone, naming the store and the time it answered; nothing is deleted on the
+PC. The "shared at" mark recommended twice in this file was never built, and
+that is the better outcome: a share sheet closing says nothing about what
+arrived.
+
+Two hitches flagged at merge time are fixed in the same change: the Photos
+screen reads its JSONL off the main thread, and the project screen fetches the
+index only when the last answer is older than a minute instead of on every
+appearance, which with the PC off was a six-second timeout each time.
+
+Written blind like the rest of the app side; the logic that decides what is
+safe is in the core package with a test, including the case where the PC
+holds a capture that failed validation, which must not count.
 
 ## Past captures says what is free, and deletes several at once, 2026-09-30
 

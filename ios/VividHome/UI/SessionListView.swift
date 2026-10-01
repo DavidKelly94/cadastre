@@ -81,7 +81,9 @@ struct SessionListView: View {
             Section {
               ForEach(rows) { row in
                 NavigationLink {
-                  SessionDetailView(row: row)
+                  SessionDetailView(row: row, onPC: link.index?.holding(of: row.id)) {
+                    delete([row])
+                  }
                 } label: {
                   label(row)
                 }
@@ -104,17 +106,10 @@ struct SessionListView: View {
           if !rows.isEmpty { EditButton() }
         }
         ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
-        ToolbarItem(placement: .bottomBar) {
-          if editing {
-            Button(role: .destructive) {
-              confirmingDelete = true
-            } label: {
-              Text(selected.isEmpty
-                ? "Select captures to delete"
-                : "Delete \(selected.count) (\(Self.bytes(selectedBytes)))")
-            }
-            .disabled(selected.isEmpty)
-          }
+      }
+      .safeAreaInset(edge: .bottom) {
+        if editing {
+          deleteBar
         }
       }
       .confirmationDialog(
@@ -177,6 +172,41 @@ struct SessionListView: View {
       .foregroundStyle(tone)
   }
 
+  /// The edit-mode action, as a strip that cannot be missed: the first walk
+  /// found Edit → select → delete hard to discover, and a toolbar item in a
+  /// sheet is easy to overlook. Select all is here because the common case is
+  /// clearing a whole visit after it has reached the PC.
+  private var deleteBar: some View {
+    VStack(spacing: 8) {
+      HStack {
+        Text(selected.isEmpty
+          ? "Tap captures to select them"
+          : "\(selected.count) selected · \(Self.bytes(selectedBytes))")
+          .font(.footnote).foregroundStyle(.secondary)
+        Spacer()
+        Button(selected.count == rows.count ? "Select none" : "Select all") {
+          selected = selected.count == rows.count ? [] : Set(rows.map(\.id))
+        }
+        .font(.footnote)
+      }
+      Button(role: .destructive) {
+        confirmingDelete = true
+      } label: {
+        Label(
+          selected.isEmpty
+            ? "Delete selected captures"
+            : "Delete \(selected.count) capture\(selected.count == 1 ? "" : "s") from this iPhone",
+          systemImage: "trash")
+        .frame(maxWidth: .infinity)
+      }
+      .buttonStyle(.borderedProminent)
+      .tint(.red)
+      .disabled(selected.isEmpty)
+    }
+    .padding(.horizontal, 16).padding(.vertical, 10)
+    .background(.bar)
+  }
+
   private var pcFooter: String {
     guard let index = link.index, let checkedAt = link.checkedAt else { return "" }
     return "\(index.store) listed them as ingested and validated at "
@@ -200,7 +230,9 @@ struct SessionListView: View {
     guard let manifest = row.manifest else { return "no manifest" }
     let phases = manifest.phases.map(\.shortName).joined(separator: " + ")
     let size = row.bytes > 0 ? " · \(Self.bytes(row.bytes))" : ""
-    return "\(manifest.level.name) · \(phases)\(size)"
+    // The date first: the same room walked three times is three rows, and the
+    // date is what tells them apart.
+    return "\(Self.started(manifest.capture.startedAt)) · \(manifest.level.name) · \(phases)\(size)"
   }
 
   // MARK: - Data
@@ -296,9 +328,16 @@ struct SessionListView: View {
   }
 }
 
-/// One past capture: what it holds, and the way off the phone.
+/// One past capture: what it holds, the way off the phone, and the way off
+/// the phone for good.
 struct SessionDetailView: View {
   let row: SessionListView.Row
+  /// The PC's word on this capture, when it has been asked.
+  let onPC: ServerIndex.Holding?
+  let onDelete: () -> Void
+
+  @Environment(\.dismiss) private var dismiss
+  @State private var confirming = false
 
   var body: some View {
     List {
@@ -341,9 +380,44 @@ struct SessionDetailView: View {
       } footer: {
         Text("Also reachable in the Files app under On My iPhone → VividHome → sessions.")
       }
+
+      Section {
+        Button(role: .destructive) {
+          confirming = true
+        } label: {
+          Label("Delete this capture from the iPhone", systemImage: "trash")
+        }
+      } footer: {
+        Text(deleteFooter)
+      }
     }
     .navigationTitle(row.manifest?.room.name ?? "Capture")
     .navigationBarTitleDisplayMode(.inline)
+    .confirmationDialog(
+      "Delete this capture from the iPhone?", isPresented: $confirming, titleVisibility: .visible
+    ) {
+      Button("Delete", role: .destructive) {
+        onDelete()
+        dismiss()
+      }
+    } message: {
+      Text(deleteFooter)
+    }
+  }
+
+  private var deleteFooter: String {
+    switch onPC {
+    case .validated?:
+      return "The PC has this capture and validated it. Deleting here frees "
+        + "\(SessionListView.bytes(row.bytes)) and changes nothing on the PC."
+    case .held?:
+      return "The PC has this capture but has not validated it. Keep it until it does."
+    case .absent?:
+      return "The PC does not have this capture. Share it first; deleting here is the only copy gone."
+    case nil:
+      return "Whether the PC has this capture is unknown. Share it first unless you are sure. "
+        + "This cannot be undone."
+    }
   }
 
   private func detail(_ label: String, _ value: String) -> some View {

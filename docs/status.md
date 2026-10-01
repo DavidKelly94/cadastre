@@ -247,6 +247,19 @@ named beside the ones that landed rather than stopping them. The plan beside
 the sessions comes across once per folder. Pointing it at the project folder
 copied off the phone is now the whole PC-side step for a visit.
 
+## Deleting a capture is a thing you can find, 2026-10-01
+
+The owner's other reaction to build 47 was that managing captures did not feel
+intuitive, and Edit → select → a toolbar button at the bottom of a sheet is
+easy to miss. Three changes. Every row now leads with its date, so the same
+room walked three times reads as three passes rather than three copies. The
+edit-mode action is a strip above the home indicator that cannot be missed,
+with the count and size of what is selected, Select all, and one red button.
+And a capture's own screen can delete it, with a footer that says what the PC
+knows about it — validated, held but unchecked, absent, or unknown — because
+that is the moment the question "is it safe to delete this?" is actually asked.
+Swipe-to-delete stays. Written blind.
+
 ## The house screen leads with the plan, 2026-10-01
 
 The owner's reaction to the house screen was that landing on a room list, with

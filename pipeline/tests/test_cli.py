@@ -475,3 +475,30 @@ def test_coverage_runs_on_a_synthetic_session(tmp_path, capsys: pytest.CaptureFi
 def test_coverage_needs_a_footprint(session_dir, capsys: pytest.CaptureFixture[str]) -> None:
     assert main(["coverage", str(session_dir)]) == 1
     assert "at least three" in capsys.readouterr().err
+
+
+def test_ingest_takes_a_whole_project_folder(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
+    import json
+    import shutil
+
+    from vividhome.synth import SynthSpec, build
+
+    project = tmp_path / "our-house"
+    first = build(
+        project / "20261103-141502_main_room_framing_aaaaaa",
+        SynthSpec(keyframes=2, colour_w=160, colour_h=120),
+    ).root
+    second = project / "20261103-150000_main_hall_framing_bbbbbb"
+    shutil.copytree(first, second)
+    manifest = json.loads((second / "manifest.json").read_text(encoding="utf-8"))
+    manifest["session_id"] = second.name
+    (second / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (second / "depth" / "000001.f32").unlink()
+
+    store = str(tmp_path / "store")
+    assert main(["--store", store, "ingest", str(project)]) == 1
+    captured = capsys.readouterr()
+    assert "ingested 20261103-141502_main_room_framing_aaaaaa" in captured.out
+    assert "1 of 2 session(s) ingested" in captured.out
+    assert "not ingested 20261103-150000_main_hall_framing_bbbbbb" in captured.err
+    assert "failed validation" in captured.err

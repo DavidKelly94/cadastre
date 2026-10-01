@@ -25,8 +25,11 @@ DEFAULT_STORE = "./vividhome-data"
 
 
 def _add_ingest(sub: argparse._SubParsersAction) -> None:
-    p = sub.add_parser("ingest", help="copy or unzip a session into the store, then validate")
-    p.add_argument("source", help="session directory or .zip produced by the app")
+    p = sub.add_parser("ingest", help="copy or unzip sessions into the store, then validate each")
+    p.add_argument(
+        "source",
+        help="a session folder, a project folder holding several, or a .zip of either",
+    )
     p.add_argument(
         "--project",
         default=None,
@@ -462,10 +465,10 @@ def _run_markers(args: argparse.Namespace) -> int:
 
 
 def _run_ingest(args: argparse.Namespace) -> int:
-    from .ingest import IngestError, ingest
+    from .ingest import IngestError, ingest_many
 
     try:
-        result = ingest(
+        batch = ingest_many(
             args.store,
             args.source,
             args.project,
@@ -476,16 +479,25 @@ def _run_ingest(args: argparse.Namespace) -> int:
         print(f"vividhome ingest: {error}", file=sys.stderr)
         return 1
 
-    print(f"ingested {result.session_id}")
-    print(f"  {result.destination}")
-    print(f"  {result.bytes_copied / 1e6:.1f} MB, {result.report.keyframes} keyframes")
-    for plan in result.plans:
-        print(f"  plan {plan.level}: {plan.reason}")
-    if not result.ok:
-        print(f"  kept despite {len(result.report.errors)} validation error(s)")
-    elif result.report.warnings:
-        print(f"  {len(result.report.warnings)} warning(s); run 'vividhome validate' for detail")
-    return 0 if result.ok else 1
+    for result in batch.results:
+        print(f"ingested {result.session_id}")
+        print(f"  {result.destination}")
+        print(f"  {result.bytes_copied / 1e6:.1f} MB, {result.report.keyframes} keyframes")
+        if not result.ok:
+            print(f"  kept despite {len(result.report.errors)} validation error(s)")
+        elif result.report.warnings:
+            print(
+                f"  {len(result.report.warnings)} warning(s); run 'vividhome validate' for detail"
+            )
+    for name, reason in batch.failures:
+        print(f"not ingested {name}", file=sys.stderr)
+        print("  " + reason.replace("\n", "\n  "), file=sys.stderr)
+    for plan in batch.plans:
+        print(f"plan {plan.level}: {plan.reason}")
+    if len(batch.results) + len(batch.failures) > 1:
+        kept = len(batch.results)
+        print(f"{kept} of {kept + len(batch.failures)} session(s) ingested")
+    return 0 if batch.ok else 1
 
 
 def _run_inspect(args: argparse.Namespace) -> int:

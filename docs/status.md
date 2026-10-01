@@ -85,12 +85,12 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
-| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the session, verbatim, for levels the store lacks |
+| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session |
 | `serve` | done | Local server for the browser pages; `--lan` serves the store read-only to the phone with `/index.json` and Bonjour (ADR-0028) |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-18 modules, **315 tests passing**, ruff clean.
+18 modules, **323 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -234,6 +234,18 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## One command per visit, not per room, 2026-10-01
+
+`ingest` refused a folder or zip holding more than one session with "ingest
+them one at a time", which was the wrong shape for how the work goes: several
+rooms in one visit, then everything to the PC afterwards, as this file already
+said about the captures list. It now takes a session folder, a project folder
+holding several, or a zip of either, ingests every session it finds, and
+reports each — a session that fails validation or is already in the store is
+named beside the ones that landed rather than stopping them. The plan beside
+the sessions comes across once per folder. Pointing it at the project folder
+copied off the phone is now the whole PC-side step for a visit.
 
 ## The PC's word on what is safe to delete, 2026-10-01
 

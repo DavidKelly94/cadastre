@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from vividhome.ingest import IngestError, ingest
+from vividhome.ingest import IngestError, ingest, ingest_many
 from vividhome.plan import add_plan, calibrate, load_calibration
 from vividhome.synth import SynthSpec, build
 
@@ -179,7 +179,7 @@ def test_a_zip_with_two_sessions_is_rejected(tmp_path: Path, session: Path):
                 if item.is_file():
                     zf.write(item, Path(root.name) / item.relative_to(root))
 
-    with pytest.raises(IngestError, match="one at a time"):
+    with pytest.raises(IngestError, match="more than one session"):
         ingest(tmp_path / "data", archive, "our-house")
 
 
@@ -435,3 +435,90 @@ def test_a_source_file_named_outside_the_plans_folder_is_not_read(tmp_path: Path
     assert plan.imported, "the raster and the JSON still come across"
     assert plan.files == ["main.png", "main.json"]
     assert not (store / "plans" / "secret.txt").exists()
+
+
+# A whole visit at once: ingest_many
+
+
+def second_session(session: Path, name: str = "20261103-150000_main_hall_framing_bbbbbb") -> Path:
+    """Another session in the same project folder, with its id rewritten so the
+    store files it separately."""
+    other = session.parent / name
+    shutil.copytree(session, other)
+    manifest = json.loads((other / "manifest.json").read_text(encoding="utf-8"))
+    manifest["session_id"] = name
+    manifest["room"] = {"slug": "hall", "name": "Hall"}
+    (other / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    return other
+
+
+def test_a_project_folder_ingests_every_session_in_it(tmp_path: Path, session: Path):
+    """Several rooms in one visit, then everything to the PC: one command."""
+    other = second_session(session)
+    plan_beside(session, "main", rooms=PLACEMENTS)
+    store = tmp_path / "data"
+
+    batch = ingest_many(store, session.parent)
+    assert batch.ok
+    assert [r.session_id for r in batch.results] == sorted([session.name, other.name])
+    assert all(r.ok for r in batch.results)
+    assert (store / "sessions" / "synthetic" / other.name / "manifest.json").exists()
+    # The plan beside them came across once, not once per session.
+    assert [plan.level for plan in batch.plans] == ["main"]
+    assert batch.plans[0].imported
+    assert batch.failures == []
+
+
+def test_a_zip_of_a_project_folder_ingests_every_session_in_it(tmp_path: Path, session: Path):
+    second_session(session)
+    plan_beside(session, "main")
+    project = session.parent
+    archive = tmp_path / "visit.zip"
+    with zipfile.ZipFile(archive, "w") as zf:
+        for item in sorted(project.rglob("*")):
+            if item.is_file():
+                zf.write(item, Path(project.name) / item.relative_to(project))
+
+    store = tmp_path / "data"
+    batch = ingest_many(store, archive)
+    assert batch.ok
+    assert len(batch.results) == 2
+    assert [plan.level for plan in batch.plans] == ["main"]
+    assert not list(store.glob(".ingest-*"))
+
+
+def test_one_bad_session_does_not_stop_the_others(tmp_path: Path, session: Path):
+    """The owner wants to know what landed, not only about the first problem."""
+    other = second_session(session)
+    (other / "depth" / "000001.f32").unlink()
+    store = tmp_path / "data"
+
+    batch = ingest_many(store, session.parent)
+    assert not batch.ok
+    assert [r.session_id for r in batch.results] == [session.name]
+    assert len(batch.failures) == 1
+    name, reason = batch.failures[0]
+    assert name == other.name
+    assert "failed validation" in reason
+    assert not (store / "sessions" / "synthetic" / other.name).exists()
+
+
+def test_a_session_already_in_the_store_is_reported_beside_the_new_one(
+    tmp_path: Path, session: Path
+):
+    store = tmp_path / "data"
+    ingest(store, session)
+    other = second_session(session)
+
+    batch = ingest_many(store, session.parent)
+    assert [r.session_id for r in batch.results] == [other.name]
+    assert batch.failures[0][0] == session.name
+    assert "already in the store" in batch.failures[0][1]
+    assert not batch.ok
+
+
+def test_a_single_session_is_a_batch_of_one(tmp_path: Path, session: Path):
+    batch = ingest_many(tmp_path / "data", session)
+    assert batch.ok
+    assert len(batch.results) == 1
+    assert batch.results[0].session_id == session.name

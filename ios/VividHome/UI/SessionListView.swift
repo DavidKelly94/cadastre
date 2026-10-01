@@ -261,11 +261,11 @@ struct SessionListView: View {
   private var freeSpace: String {
     guard let freeBytes else { return "Free space unknown" }
     let floor = HealthPolicy.minimumFreeBytesToStart
-    let state =
-      freeBytes < floor
-      ? "capture will not start below \(Self.bytes(floor))"
-      : "capture stops starting below \(Self.bytes(floor))"
-    return "\(Self.bytes(freeBytes)) free on this iPhone; \(state)"
+    if freeBytes < floor {
+      return "\(Self.bytes(freeBytes)) free on this iPhone. A capture needs "
+        + "\(Self.bytes(floor)) to start, so none can until something is deleted."
+    }
+    return "\(Self.bytes(freeBytes)) free on this iPhone. A capture needs \(Self.bytes(floor)) to start."
   }
 
   /// Free space as iOS would let this app use it, which is the number that

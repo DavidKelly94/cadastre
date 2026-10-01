@@ -7,8 +7,8 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-10-01, after Past captures learned from the PC's index
-which captures are safe to delete.
+Last updated: 2026-10-01, after the owner walked build 47 and the first fixes
+from that walk landed.
 
 ## The short version
 
@@ -246,6 +246,33 @@ reports each — a session that fails validation or is already in the store is
 named beside the ones that landed rather than stopping them. The plan beside
 the sessions comes across once per folder. Pointing it at the project folder
 copied off the phone is now the whole PC-side step for a visit.
+
+## Build 47 walked, 2026-10-01
+
+The owner walked build 47 on the phone, with no PC available, and sent
+screenshots. What held and what did not:
+
+- **The Photos screen works.** 73 keyframes of a bedroom, every 5th shown,
+  upright in the grid, the landmark badge on the frame where a tap was made.
+  The orientation claim no Linux test could make holds on at least this phone.
+- **Save to Photos failed**: *"000015.jpg could not be read as a JPEG."* The
+  thumbnail of that same file decoded, so the file was fine and the message
+  blamed the wrong thing: the lossless copy-with-metadata refused. Fixed by
+  falling back — re-encode with the label, then the plain bytes — and by
+  reporting the real reason and which path each photo took, so the next build
+  says what the phone objected to. The lossless path is still tried first.
+- **`plans` appeared in Captures as an "unfinished" capture with no manifest.**
+  The project folder has held `plans/` beside the sessions since ADR-0025, and
+  the session lister never learned to skip it. Only folders named as a session
+  id are sessions now, with a Linux test.
+- **The free-space line read badly** ("capture stops starting below"). Reworded.
+
+Two pieces of feedback that are design, not bugs, and get their own PRs: the
+house screen lands on a room list with the plan nowhere in sight, when the plan
+and the rooms should sit together; and managing captures (Edit, select, delete)
+did not feel intuitive. Noted too: "bedroom" and "Bedroom" were typed as two
+names that share one slug, so the house screen shows one lowercase row — the
+data, not a display bug.
 
 ## The PC's word on what is safe to delete, 2026-10-01
 

@@ -98,6 +98,24 @@ final class SessionStoreTests: XCTestCase {
     XCTAssertEqual(try store.sessions(inProject: "our-house").count, 1)
   }
 
+  func testOnlyFoldersNamedAsSessionsAreSessions() throws {
+    // The project folder also holds plans/ (ADR-0025), and the first walk of
+    // the captures list showed it as an "unfinished" capture with no manifest.
+    try makeSession()
+    let project = documents
+      .appendingPathComponent("sessions", isDirectory: true)
+      .appendingPathComponent("our-house", isDirectory: true)
+    try FileManager.default.createDirectory(
+      at: project.appendingPathComponent("plans", isDirectory: true),
+      withIntermediateDirectories: true)
+    try FileManager.default.createDirectory(
+      at: project.appendingPathComponent("notes", isDirectory: true),
+      withIntermediateDirectories: true)
+
+    let ids = try store.sessions(inProject: "our-house").map(\.root.lastPathComponent)
+    XCTAssertEqual(ids, ["20261103-141502_main_kitchen_k3x7qa"])
+  }
+
   func testSessionsAreNewestFirstByIdNotByFileDate() throws {
     // The id starts with a timestamp, so the name is the capture order. A file
     // date is whenever the bytes landed, which copying off the phone changes.

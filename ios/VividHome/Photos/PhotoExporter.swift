@@ -26,27 +26,71 @@ enum PhotoExporter {
 
   enum Failure: LocalizedError {
     case notAllowed
-    case unreadable(String)
+    case unreadable(String, String)
 
     var errorDescription: String? {
       switch self {
       case .notAllowed:
         return "VividHome is not allowed to add to your photo library. "
           + "Settings → Privacy & Security → Photos → VividHome → Add Photos Only."
-      case .unreadable(let name):
-        return "\(name) could not be read as a JPEG."
+      case .unreadable(let name, let reason):
+        return "\(name) could not be saved: \(reason)"
       }
     }
   }
 
-  /// Save every job. Returns how many were added.
-  static func save(_ jobs: [Job]) async throws -> Int {
+  /// How a photo's bytes were prepared, so the result can say what happened.
+  enum Prepared: Equatable {
+    /// The session's bytes unchanged, label and orientation in the metadata.
+    case lossless
+    /// Decoded and re-encoded, label and orientation in the metadata.
+    case reencoded
+    /// The session's bytes unchanged and nothing added; the label was lost.
+    case plain
+  }
+
+  struct Outcome {
+    var saved: Int
+    var reencoded: Int
+    var plain: Int
+    /// Why the lossless path refused, the first time it did. For the next build.
+    var firstRefusal: String?
+
+    var summary: String {
+      var text = saved == 1 ? "Saved to Photos." : "Saved \(saved) photos to Photos."
+      if reencoded > 0 {
+        text += " \(reencoded) re-encoded to attach the label."
+      }
+      if plain > 0 {
+        text += " \(plain) saved without a label."
+      }
+      if let firstRefusal {
+        text += " Lossless copy refused: \(firstRefusal)"
+      }
+      return text
+    }
+  }
+
+  /// Save every job. Says how many were added and how they had to be prepared.
+  static func save(_ jobs: [Job]) async throws -> Outcome {
     let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
     guard status == .authorized || status == .limited else { throw Failure.notAllowed }
 
-    let items: [(data: Data, takenAt: Date?)] = try jobs.map { job in
-      (try labelled(job.url, label: job.label, orientation: job.orientation), job.label.takenAt)
+    var outcome = Outcome(saved: 0, reencoded: 0, plain: 0, firstRefusal: nil)
+    var items: [(data: Data, takenAt: Date?)] = []
+    for job in jobs {
+      let (data, how, refusal) = try prepare(job)
+      items.append((data, job.label.takenAt))
+      switch how {
+      case .lossless: break
+      case .reencoded: outcome.reencoded += 1
+      case .plain: outcome.plain += 1
+      }
+      if outcome.firstRefusal == nil, let refusal {
+        outcome.firstRefusal = refusal
+      }
     }
+
     try await PHPhotoLibrary.shared().performChanges {
       for item in items {
         let request = PHAssetCreationRequest.forAsset()
@@ -56,7 +100,37 @@ enum PhotoExporter {
         }
       }
     }
-    return items.count
+    outcome.saved = items.count
+    return outcome
+  }
+
+  /// The bytes to hand to Photos, by the best path that works for this file.
+  ///
+  /// First the lossless copy with the label merged in. The first walk of this
+  /// screen found a keyframe that path refused — the thumbnail of the same file
+  /// decoded fine, so it was the copy and not the JPEG — and refusing to save
+  /// at all was the wrong answer. Next a decode and re-encode with the same
+  /// label, which costs a little quality. Last the bytes exactly as the session
+  /// holds them, with nothing added, because a photo without its label is still
+  /// the photo the owner asked for. Which path it took is reported, with the
+  /// reason the first one gave, so the next build can narrow it.
+  static func prepare(_ job: Job) throws -> (Data, Prepared, String?) {
+    guard let source = CGImageSourceCreateWithURL(job.url as CFURL, nil) else {
+      throw Failure.unreadable(job.url.lastPathComponent, "the file could not be opened")
+    }
+    var refusal: String?
+    do {
+      return (try lossless(source, label: job.label, orientation: job.orientation), .lossless, nil)
+    } catch {
+      refusal = error.localizedDescription
+    }
+    if let data = reencoded(source, label: job.label, orientation: job.orientation) {
+      return (data, .reencoded, refusal)
+    }
+    guard let raw = try? Data(contentsOf: job.url) else {
+      throw Failure.unreadable(job.url.lastPathComponent, refusal ?? "the file could not be read")
+    }
+    return (raw, .plain, refusal)
   }
 
   /// The JPEG bytes unchanged, with the label and the orientation in the metadata.
@@ -65,17 +139,14 @@ enum PhotoExporter {
   /// decoding and re-encoding it, so what leaves the app is what the session
   /// holds. The label goes into the XMP Dublin Core fields Photos reads as the
   /// caption and keywords.
-  static func labelled(_ url: URL, label: PhotoLabel, orientation: DisplayOrientation) throws
-    -> Data
+  static func lossless(_ source: CGImageSource, label: PhotoLabel, orientation: DisplayOrientation)
+    throws -> Data
   {
-    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
-      throw Failure.unreadable(url.lastPathComponent)
-    }
     let output = NSMutableData()
     guard
       let destination = CGImageDestinationCreateWithData(
         output, UTType.jpeg.identifier as CFString, 1, nil)
-    else { throw Failure.unreadable(url.lastPathComponent) }
+    else { throw Failure.unreadable("", "no JPEG destination") }
 
     let metadata = CGImageMetadataCreateMutable()
     CGImageMetadataSetValueWithPath(
@@ -95,8 +166,46 @@ enum PhotoExporter {
     var error: Unmanaged<CFError>?
     guard CGImageDestinationCopyImageSource(destination, source, options as CFDictionary, &error)
     else {
-      throw Failure.unreadable(url.lastPathComponent)
+      let reason = error.map { ($0.takeRetainedValue() as Error).localizedDescription }
+      throw Failure.unreadable("", reason ?? "CGImageDestinationCopyImageSource returned false")
     }
+    return output as Data
+  }
+
+  /// Decoded and written again, with the label in the classic TIFF, EXIF and
+  /// IPTC fields that every reader understands. Costs one generation of JPEG
+  /// quality, which is why it is the second choice and not the first.
+  static func reencoded(_ source: CGImageSource, label: PhotoLabel, orientation: DisplayOrientation)
+    -> Data?
+  {
+    guard let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+    let output = NSMutableData()
+    guard
+      let destination = CGImageDestinationCreateWithData(
+        output, UTType.jpeg.identifier as CFString, 1, nil)
+    else { return nil }
+
+    var exif: [CFString: Any] = [kCGImagePropertyExifUserComment: label.caption]
+    if let takenAt = label.takenAt {
+      exif[kCGImagePropertyExifDateTimeOriginal] = exifDateText(takenAt)
+      exif[kCGImagePropertyExifDateTimeDigitized] = exifDateText(takenAt)
+    }
+    let properties: [CFString: Any] = [
+      kCGImageDestinationLossyCompressionQuality: 0.92,
+      kCGImagePropertyOrientation: orientation.exifOrientation,
+      kCGImagePropertyTIFFDictionary: [
+        kCGImagePropertyTIFFImageDescription: label.caption,
+        kCGImagePropertyTIFFOrientation: orientation.exifOrientation,
+      ],
+      kCGImagePropertyExifDictionary: exif,
+      kCGImagePropertyIPTCDictionary: [
+        kCGImagePropertyIPTCCaptionAbstract: label.caption,
+        kCGImagePropertyIPTCObjectName: label.headline,
+        kCGImagePropertyIPTCKeywords: label.keywords,
+      ],
+    ]
+    CGImageDestinationAddImage(destination, image, properties as CFDictionary)
+    guard CGImageDestinationFinalize(destination) else { return nil }
     return output as Data
   }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import VividHomeCore
 
 /// The house, by level and room: what has been walked and what has not.
@@ -6,6 +7,13 @@ import VividHomeCore
 /// This sits above capture. Until it existed, one project and one level were
 /// reachable because `ContentView` held a level name in a text field, which
 /// meant a two-storey house could not be recorded as one building.
+///
+/// Each level leads with its plan. The first walk of the house screen landed on
+/// a bare room list with the plan nowhere in sight, and the owner's reaction was
+/// the right one: the plan is what a house looks like, the rooms are what is on
+/// it, and they belong together. The card is the plan with its rooms pinned and
+/// shaded by what has been walked; tapping it opens the full plan to place and
+/// correct rooms. A level with no plan says so and offers to import one.
 ///
 /// Rooms come from two places and the difference matters. A room with captures
 /// is known from its manifests; a room with none is known only because it was
@@ -23,6 +31,7 @@ struct ProjectOverviewView: View {
   @State private var adding = false
   @State private var showingPC = false
   @State private var rendering: RenderingTarget?
+  @State private var planSheet: PlanSheet?
 
   private var store: SessionStore {
     SessionStore(documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
@@ -100,6 +109,23 @@ struct ProjectOverviewView: View {
           url: target.url, title: target.title, generatedAt: target.generatedAt
         ) { rendering = nil }
       }
+      .sheet(item: $planSheet) { which in
+        switch which {
+        case .coverage(let section):
+          PlanCoverageView(
+            store: plans, level: section.slug,
+            coverage: plans.coverage(forLevel: section.slug), currentRoom: nil
+          ) {
+            planSheet = nil
+            plans.reload()
+          }
+        case .importPlan(let section):
+          PlanImportView(store: plans, levelName: section.name) {
+            planSheet = nil
+            plans.reload()
+          }
+        }
+      }
       .task { await load() }
       .task { await link.refreshIfStale() }
       .refreshable {
@@ -113,6 +139,28 @@ struct ProjectOverviewView: View {
     List {
       ForEach(sections) { section in
         Section {
+          // The plan first, with the rooms on it. Then the rooms as a list.
+          if let plan = plans.plans[section.slug] {
+            Button {
+              planSheet = .coverage(section)
+            } label: {
+              PlanCard(
+                plans: plans, plan: plan, coverage: plans.coverage(forLevel: section.slug))
+            }
+            .buttonStyle(.plain)
+            .listRowInsets(EdgeInsets())
+          } else {
+            Button {
+              planSheet = .importPlan(section)
+            } label: {
+              HStack {
+                Label("Import a plan for \(section.name)", systemImage: "map")
+                Spacer()
+                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary)
+              }
+            }
+            .buttonStyle(.plain)
+          }
           // What the PC made of this level, when it has made anything and is
           // reachable (ADR-0028). Absent rather than disabled otherwise: a row
           // that cannot be tapped says nothing about why.
@@ -240,5 +288,103 @@ struct ProjectOverviewView: View {
     var url: URL
     var title: String
     var generatedAt: Date?
+  }
+
+  /// The plan sheets this screen opens, per level.
+  enum PlanSheet: Identifiable {
+    case coverage(LevelSection)
+    case importPlan(LevelSection)
+
+    var id: String {
+      switch self {
+      case .coverage(let section): return "coverage-" + section.slug
+      case .importPlan(let section): return "import-" + section.slug
+      }
+    }
+  }
+}
+
+/// A level's plan with its rooms on it, as a card in the house list.
+///
+/// The same drawing, pins and shading as `PlanCoverageView`, at a glance and
+/// without the editing: tapping the card opens that screen. Rooms are drawn
+/// where the owner put them, shaded by how many passes have been walked, and
+/// a room on the plan that nothing has been recorded in stays hollow — which
+/// is the point of showing the plan here at all: what is left to do, where.
+private struct PlanCard: View {
+  @ObservedObject var plans: PlanStore
+  let plan: PlanFile
+  let coverage: [String: (done: Int, total: Int)]
+
+  @State private var image: UIImage?
+
+  /// Tall enough to read a floor, short enough that the rooms stay on screen.
+  private static let height: CGFloat = 230
+
+  var body: some View {
+    ZStack(alignment: .topLeading) {
+      Color(.secondarySystemBackground)
+      if let image {
+        GeometryReader { outer in
+          let fitted = PlanCoverageView.fit(image.size, into: outer.size)
+          let originX = (outer.size.width - fitted.width) / 2
+          let originY = (outer.size.height - fitted.height) / 2
+          let scale = image.size.width == 0 ? 1 : fitted.width / image.size.width
+
+          ZStack(alignment: .topLeading) {
+            Image(uiImage: image)
+              .resizable().scaledToFit()
+              .frame(width: fitted.width, height: fitted.height)
+              .offset(x: originX, y: originY)
+            ForEach(plan.rooms, id: \.room) { room in
+              pin(room, at: CGPoint(x: originX + room.x * scale, y: originY + room.y * scale))
+            }
+          }
+        }
+      } else {
+        ProgressView()
+          .frame(maxWidth: .infinity, maxHeight: .infinity)
+      }
+      HStack(spacing: 6) {
+        Image(systemName: "map").font(.caption2)
+        Text(plan.rooms.isEmpty
+          ? "No rooms placed yet"
+          : "\(plan.rooms.count) room\(plan.rooms.count == 1 ? "" : "s") placed")
+        Spacer()
+        Text("Open").foregroundStyle(Color.accentColor)
+      }
+      .font(.caption.weight(.semibold))
+      .padding(.horizontal, 10).padding(.vertical, 6)
+      .background(.regularMaterial)
+      .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    .frame(height: Self.height)
+    .contentShape(Rectangle())
+    .task(id: plan.image) {
+      // The stored raster is up to 4096 px on its long edge; the card is a few
+      // hundred points wide. Decode and shrink off the main thread.
+      let plans = plans
+      let plan = plan
+      image = await Task.detached(priority: .userInitiated) {
+        plans.image(for: plan).map { PlanStore.downsampled($0, maxEdge: 1200) }
+      }.value
+    }
+  }
+
+  private func pin(_ room: PlanRoom, at point: CGPoint) -> some View {
+    let done = coverage[room.room]?.done ?? 0
+    let total = coverage[room.room]?.total ?? 0
+    let fraction = total == 0 ? 0 : Double(done) / Double(total)
+    return VStack(spacing: 2) {
+      Circle()
+        .fill(PlanCoverageView.shade(fraction))
+        .overlay(Circle().strokeBorder(PlanCoverageView.ring(fraction), lineWidth: 2))
+        .frame(width: 12, height: 12)
+      Text(room.room)
+        .font(.system(size: 9, weight: .semibold))
+        .padding(.horizontal, 3).padding(.vertical, 1)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 4))
+    }
+    .position(point)
   }
 }

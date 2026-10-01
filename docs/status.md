@@ -247,6 +247,19 @@ named beside the ones that landed rather than stopping them. The plan beside
 the sessions comes across once per folder. Pointing it at the project folder
 copied off the phone is now the whole PC-side step for a visit.
 
+## The house screen leads with the plan, 2026-10-01
+
+The owner's reaction to the house screen was that landing on a room list, with
+the plan nowhere in sight, felt wrong, and that the plan and the rooms should
+sit together. They should: the plan is what a house looks like and the rooms
+are what is on it. Each level's section now opens with its plan as a card —
+the drawing, the rooms pinned where the owner put them, shaded by how many
+passes have been walked, hollow where nothing has — and tapping it opens the
+full plan screen to place and correct rooms. A level with no plan gets an
+*Import a plan* row instead. The room list sits under the card as before.
+Written blind; the card decodes the raster off the main thread and shrinks it,
+since the stored plan is up to 4096 px on a side.
+
 ## Build 47 walked, 2026-10-01
 
 The owner walked build 47 on the phone, with no PC available, and sent

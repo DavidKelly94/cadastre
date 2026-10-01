@@ -27,6 +27,7 @@ enum PhotoExporter {
   enum Failure: LocalizedError {
     case notAllowed
     case unreadable(String, String)
+    case losslessRefused(String)
 
     var errorDescription: String? {
       switch self {
@@ -35,6 +36,8 @@ enum PhotoExporter {
           + "Settings → Privacy & Security → Photos → VividHome → Add Photos Only."
       case .unreadable(let name, let reason):
         return "\(name) could not be saved: \(reason)"
+      case .losslessRefused(let reason):
+        return reason
       }
     }
   }
@@ -133,41 +136,59 @@ enum PhotoExporter {
     return (raw, .plain, refusal)
   }
 
-  /// The JPEG bytes unchanged, with the label and the orientation in the metadata.
+  /// The JPEG bytes unchanged, with the orientation, the date and the label in
+  /// the metadata.
   ///
   /// `CGImageDestinationCopyImageSource` copies the compressed data rather than
   /// decoding and re-encoding it, so what leaves the app is what the session
-  /// holds. The label goes into the XMP Dublin Core fields Photos reads as the
-  /// caption and keywords.
+  /// holds. Two passes, because the first walk of this screen produced the
+  /// exact refusal: *kCGImageDestinationMetadata cannot be used with
+  /// kCGImageDestinationOrientation*. The orientation and the date go in on
+  /// the first pass, the label is merged in on the second, and each pass is a
+  /// combination ImageIO allows. The label goes into the XMP Dublin Core fields
+  /// Photos reads as the caption and keywords.
   static func lossless(_ source: CGImageSource, label: PhotoLabel, orientation: DisplayOrientation)
     throws -> Data
   {
-    let output = NSMutableData()
-    guard
-      let destination = CGImageDestinationCreateWithData(
-        output, UTType.jpeg.identifier as CFString, 1, nil)
-    else { throw Failure.unreadable("", "no JPEG destination") }
+    var first: [CFString: Any] = [kCGImageDestinationOrientation: orientation.exifOrientation]
+    if let takenAt = label.takenAt {
+      first[kCGImageDestinationDateTime] = exifDateText(takenAt) as CFString
+    }
+    let oriented = try copy(source, options: first, pass: "orientation and date")
 
+    guard let turned = CGImageSourceCreateWithData(oriented as CFData, nil) else {
+      throw Failure.losslessRefused("the oriented copy could not be reopened")
+    }
     let metadata = CGImageMetadataCreateMutable()
     CGImageMetadataSetValueWithPath(
       metadata, nil, "dc:description" as CFString, label.caption as CFString)
     CGImageMetadataSetValueWithPath(metadata, nil, "dc:title" as CFString, label.headline as CFString)
     CGImageMetadataSetValueWithPath(metadata, nil, "dc:subject" as CFString, label.keywords as CFArray)
-
-    var options: [CFString: Any] = [
+    let second: [CFString: Any] = [
       kCGImageDestinationMetadata: metadata,
       kCGImageDestinationMergeMetadata: true,
-      kCGImageDestinationOrientation: orientation.exifOrientation,
     ]
-    if let takenAt = label.takenAt {
-      options[kCGImageDestinationDateTime] = exifDateText(takenAt) as CFString
-    }
+    return try copy(turned, options: second, pass: "label")
+  }
+
+  /// One lossless pass of `CGImageDestinationCopyImageSource`, with the reason
+  /// when ImageIO refuses it.
+  private static func copy(_ source: CGImageSource, options: [CFString: Any], pass: String) throws
+    -> Data
+  {
+    let output = NSMutableData()
+    guard
+      let destination = CGImageDestinationCreateWithData(
+        output, UTType.jpeg.identifier as CFString, 1, nil)
+    else { throw Failure.losslessRefused("no JPEG destination for the \(pass) pass") }
 
     var error: Unmanaged<CFError>?
     guard CGImageDestinationCopyImageSource(destination, source, options as CFDictionary, &error)
     else {
-      let reason = error.map { ($0.takeRetainedValue() as Error).localizedDescription }
-      throw Failure.unreadable("", reason ?? "CGImageDestinationCopyImageSource returned false")
+      let reason =
+        error.map { ($0.takeRetainedValue() as Error).localizedDescription }
+        ?? "CGImageDestinationCopyImageSource returned false"
+      throw Failure.losslessRefused("\(pass) pass: \(reason)")
     }
     return output as Data
   }

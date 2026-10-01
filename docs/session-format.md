@@ -263,3 +263,43 @@ Validation, run by `vividhome validate --project <project-dir>` rather than per 
 6. A room slug with no session, or a session whose room has no placement, is a **warning**: both are normal mid-capture.
 
 A project with no `plans/` directory is valid. Plans are optional, and everything in sections 1 to 12 works without one.
+
+## 14. What the PC serves back (`vividhome serve --lan`)
+
+Produced by the pipeline since 2026-09-30; **no client reads it yet**. The app's side is `docs/design/return-path-design.md` §3. It is specified here because a second implementation will read it (ADR-0021), and it is additive: nothing in sections 1 to 13 changes and `format_version` stays 3.
+
+`vividhome serve --lan` serves the store read-only on the home network ([ADR-0028](adr/0028-results-return-to-the-app.md)). Beside the store's files it answers two paths:
+
+- `GET /_vividhome/ping` → `{"vividhome": "<pipeline version>", "store": "<store folder name>"}`
+- `GET /index.json` → what the store holds, generated from the files on every request:
+
+```json
+{
+  "vividhome": "0.1.0",
+  "generated_at": "2026-09-30T18:04:11Z",
+  "store": "vividhome-data",
+  "projects": [
+    {
+      "slug": "our-house",
+      "levels": [
+        { "level": "main", "plan": "plans/main.png", "calibrated": true,
+          "inspect": "inspect/main.html",
+          "sessions": ["20261103-141502_main_kitchen_k3x7qa"] }
+      ],
+      "sessions": [
+        { "session_id": "20261103-141502_main_kitchen_k3x7qa",
+          "path": "sessions/our-house/20261103-141502_main_kitchen_k3x7qa",
+          "level": "main", "aligned": true, "validated": true }
+      ]
+    }
+  ]
+}
+```
+
+- `generated_at` is when the request was answered, UTC. The index is never stored, so it cannot be stale against the store it describes; a client shows this time as the age of what it fetched.
+- Every path is relative to the server root, which is the store, and is fetched with a plain `GET`.
+- `projects[].levels` are the store's plans that this project has a session recorded on or aligned to — `plans/` itself is store-wide (section 13), and this is how the index scopes it. `inspect` is null until `vividhome inspect` has written the page. `sessions` under a level are the ids aligned onto it.
+- `projects[].sessions[].validated` is true or false from `derived/validate.json`, and null when no report has been written. `aligned` says whether `alignments/<session-id>.json` exists. `level` is the manifest's level slug.
+- Discovery: the server advertises `_vividhome._tcp` over Bonjour with the store folder name as the instance and TXT records `store`, `version` and `path` (`/index.json`).
+- The server refuses every POST when it listens beyond localhost. A reader on the network can fetch anything under the store, raw sessions included, and can change nothing.
+- Readers ignore unknown fields (section 12). Nothing in the index is an instruction: a path is a place to fetch, never something to run.

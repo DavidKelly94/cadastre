@@ -106,15 +106,16 @@ final class PlanStore: ObservableObject {
     let name = "\(level).png"
     try png.write(to: directory.appendingPathComponent(name), options: .atomic)
 
-    var storedSource = source
+    var storedSource: PlanSource?
     if let data = originalData, let source {
       // Keeping the original costs storage and buys the one thing a rasterised
       // copy cannot: re-rendering the page at a higher resolution later, and
       // perspective-correcting from the real pixels rather than from a resample.
-      try? data.write(to: directory.appendingPathComponent(source.file), options: .atomic)
-      storedSource = source
-    } else if originalData == nil {
-      storedSource = nil
+      // Named for the level (section 13): the import view cannot know the slug,
+      // and two levels both called `source.pdf` overwrote each other.
+      let named = source.named(forLevel: level)
+      try? data.write(to: directory.appendingPathComponent(named.file), options: .atomic)
+      storedSource = named
     }
 
     // Placements survive a re-import: the plan is the same drawing rescanned,

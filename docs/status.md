@@ -40,22 +40,31 @@ The order things are worth doing in, kept here rather than in a chat handoff so
 it survives one. Owner-side items are things only the owner can do.
 
 1. **Photos on the phone, and to the camera roll** — the owner's ask of
-   2026-09-30. Design in `docs/design/return-path-design.md` §2. A convenience,
-   and the kind that decides whether captures get reviewed at all. iOS work.
-2. **The rendering back in the app** — the other ask. ADR-0028. PC side first
-   (`serve --lan`, the write refusal, `/index.json`, Bonjour), because it can be
-   tested here; then the PC entry in Settings and the web view. §3 of the same
-   design. The inspect page needs a tap path before it is shown on a phone.
-3. **Free-space readout and multi-select delete** in Past captures. iOS. The
-   "delete what is already on the PC" version needs a decision on where the
-   signal comes from; the recommended one is an app-side "shared at" mark,
-   labelled as shared rather than ingested.
+   2026-09-30. Design in `docs/design/return-path-design.md` §2. **Written,
+   not walked**: the Photos screen, the label, the orientation from the pose
+   and the camera-roll copy exist as of 2026-09-30 and have compiled in CI at
+   best. The first thing to check on a device is whether a portrait capture
+   shows upright, which is the one claim no Linux test can make.
+2. **The rendering back in the app** — the other ask. ADR-0028. The PC side is
+   built (`serve --lan`, the write refusal, `/index.json`, Bonjour; section 14
+   of the format), the inspect page works by touch at phone width, and the app
+   side is **written, not walked**: the PC entry on the project screen, Bonjour
+   discovery, the Test fetch and the web view per level (2026-09-30). Neither
+   Bonjour nor the fetch has been tried on a real network.
+3. **Free-space readout and multi-select delete** in Past captures. **Written,
+   not walked** (2026-09-30): the list header says what is free against the
+   2 GB floor, and Edit selects several to delete at once with their total
+   size on the button. The "delete what is already on the PC" version still
+   needs a decision on where the signal comes from; the recommended one is an
+   app-side "shared at" mark, labelled as shared rather than ingested.
 4. **Run `corners` and `coverage` on the real captures** in the store. Both are
    right on the synthetic room and their tolerances are guesses until a real mesh
    disagrees with them. Owner-side; one command each.
 5. **The app names a plan's original `source.pdf`**, against section 13's
-   `<level>.source.pdf`; two PDF levels overwrite each other's original. One-line
-   iOS fix.
+   `<level>.source.pdf`; two PDF levels overwrite each other's original.
+   **Fixed 2026-09-30** in `PlanStore`, with the naming in the core package and
+   tested; an original already on the phone keeps its old name until the plan
+   is imported again, and nothing reads it meanwhile.
 6. **Corner candidates on the phone** (roadmap item 5, room side), once item 4
    says the offline number earns the screen time.
 
@@ -76,11 +85,11 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the session, verbatim, for levels the store lacks |
-| `serve` | done | Local server for the browser pages |
+| `serve` | done | Local server for the browser pages; `--lan` serves the store read-only to the phone with `/index.json` and Bonjour (ADR-0028) |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-17 modules, **302 tests passing**, ruff clean.
+18 modules, **315 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -224,6 +233,107 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Past captures says what is free, and deletes several at once, 2026-09-30
+
+Queue item 3, written blind like the rest of today's iOS work. The list's
+header now reads *"12.3 GB free on this iPhone; capture stops starting below
+2.0 GB"* from `volumeAvailableCapacityForImportantUsage`, which is the number
+that decides whether a capture can start rather than the raw volume figure,
+and the floor is `HealthPolicy`'s constant rather than a second literal. Edit
+turns the rows selectable; the bottom button says *Delete 3 (1.2 GB)* and asks
+once before doing it. Swipe-to-delete stays. The "delete what is already on
+the PC" version is still a decision, not code: nothing on the phone knows what
+the PC has, and the honest signal would be an app-side "shared at" mark.
+
+While in the same file: the app named every plan's retained original
+`source.pdf` where section 13 says `<level>.source.pdf`, so two PDF levels
+overwrote each other's original on the phone. The store names it for the
+level now, with the naming in the core package and a test. An original
+already on the phone keeps its old name until that plan is imported again;
+nothing reads the file yet, so nothing is wrong meanwhile.
+
+## The rendering back in the app, written blind, 2026-09-30
+
+The second of ADR-0028's asks, app side. A **PC** button on the project screen
+opens a sheet that lists PCs found over Bonjour (`_vividhome._tcp`), takes a
+typed address, and has a *Test* that fetches `/index.json` and says what the
+store holds and how old that answer is, or why nothing answered — the PC off,
+the phone on cellular and a router isolating guests all look alike from the
+phone, so the text tries to tell them apart. Once the index is in, each level
+the PC has rendered gets a *Rendering on the PC* row that opens the served
+inspect page in a web view, with the page's generation time underneath. The
+address is remembered; the index is fetched again whenever the project screen
+appears.
+
+Tested on Linux: the section 14 reader against the document's own example,
+including a `null` that must read as "no report" and a field the phone does
+not know; and the typed-address parser. Compiled at best: the Bonjour browse
+and the resolve-by-connecting trick that turns a service name into a host and
+port, the fetch, and the web view. Three Info.plist entries are load-bearing
+and untestable here: local-network usage, the Bonjour service type, and
+`NSAllowsLocalNetworking`, without which App Transport Security refuses plain
+HTTP to the PC and the symptom is an unhelpful error rather than a page.
+
+## Photos on the phone, written blind, 2026-09-30
+
+The first of ADR-0028's asks. A **Photos** screen, reached from a capture in
+Past captures and from Session review, shows the keyframes and stills a session
+holds — every 5th keyframe by default, every still always — turned the way the
+phone was held, with a label that says only what the session knows: project,
+level, room, trades, keyframe and time, and the landmarks tapped at that frame.
+Tap one for full screen with swipe, select several, and *Save to Photos* copies
+them to the camera roll with the label in the metadata, the capture's own time
+as the creation date, and the EXIF orientation set so Photos shows them
+upright. The JPEG bytes are copied, not re-encoded; the session is never
+changed.
+
+What can be trusted and what cannot, kept apart on purpose:
+
+- **Tested on Linux:** the reader (time order, a still after its keyframe, a
+  truncated last line skipped, landmarks attached by keyframe index), the label
+  text, the taken-at arithmetic, and the orientation from the pose for six
+  poses. That is `SessionPhotos`, `PhotoLabel` and `DisplayOrientation` in the
+  core package.
+- **Compiled at best, never run:** the screen, the thumbnail loading, the
+  metadata merge and the photo-library write. The one claim that matters most
+  — a portrait capture shows upright — rests on ARKit's stored image having
+  its right along camera `+x` and its up along camera `+y`, which section 3
+  says and no test here can check. If a device shows portrait captures lying
+  on their side, the fix is one sign in `DisplayOrientation.from`.
+- **Not built:** the optional burned-in caption, and an album (add-only access
+  forbids reading the library, so there is none; the design says why).
+
+The `ios-testflight` workflow now also builds from the handoff branch, so the
+next push that touches `ios/` produces a build to walk.
+
+## The PC side of the return path, 2026-09-30
+
+ADR-0028 wants the rendering back on the phone, and the half that can be built
+and tested here is the PC's. `vividhome serve --lan` now serves the store on the
+home network: every interface, the addresses printed, `GET /index.json` saying
+what the store holds (section 14 of the format, generated from the files on
+each request so it cannot lie about them), `GET /_vividhome/ping`, and a
+Bonjour advertisement as `_vividhome._tcp` so the app will find the PC without
+an address being typed.
+
+The rule that shaped it: **on the network, the server refuses every POST.** The
+localhost server accepts `POST /save` so the calibrate and align pages can write
+their JSON; the same endpoint reachable from the LAN would let any device in the
+house put a file on the owner's PC. The refusal is tested, and `--lan` is never
+the default.
+
+What the phone can do with it today, before the app reads any of it: open the
+served inspect page in Safari by address. The page now works by touch: at phone
+width the session list stacks above the plan, which scrolls and pinches; each
+dot has a finger-sized invisible target; a tap opens the photo, a swipe steps,
+a tap outside closes; and the page opens scrolled to the walk rather than to a
+blank corner of the sheet. Driven in Chromium's iPhone emulation with real
+touch events, no console errors. Not yet opened on an actual phone.
+
+Not tested: Bonjour on a real network. `zeroconf` registers in a sandbox here
+without complaint, which says nothing about the Windows firewall prompt or a
+router that isolates clients; the app's Test button is designed to say which.
 
 ## Coverage per wall, against the corners that were tapped, 2026-09-18
 

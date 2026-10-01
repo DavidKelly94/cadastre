@@ -134,4 +134,18 @@ final class PlanTests: XCTestCase {
     let back = try JSONDecoder().decode(PlanFile.self, from: data)
     XCTAssertEqual(plan, back)
   }
+
+
+  // MARK: - The retained original's name
+
+  func testTheOriginalIsNamedForItsLevel() {
+    // Two PDF levels both called source.pdf overwrote each other on the phone;
+    // section 13 names the file for the level and the store does so on write.
+    let pdf = PlanSource(file: "source.pdf", kind: .pdf, page: 2).named(forLevel: "main")
+    XCTAssertEqual(pdf.file, "main.source.pdf")
+    XCTAssertEqual(pdf.page, 2)
+    XCTAssertEqual(pdf.kind, .pdf)
+    XCTAssertEqual(PlanSource(file: "source.jpg", kind: .jpeg).named(forLevel: "upper").file, "upper.source.jpg")
+    XCTAssertEqual(PlanSource(file: "x", kind: .heic).named(forLevel: "loft").file, "loft.source.heic")
+  }
 }

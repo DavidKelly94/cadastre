@@ -106,6 +106,15 @@ struct SessionReviewView: View {
         }
 
         Section {
+          // The record, readable where it was made (ADR-0028). The manifest is
+          // read back from disk rather than carried in the summary, because
+          // what the Photos screen labels with is what the file says.
+          NavigationLink {
+            let layout = SessionLayout(root: summary.root)
+            SessionPhotosView(layout: layout, manifest: SessionStore(root: summary.root).manifest(at: layout))
+          } label: {
+            Label("Photos", systemImage: "photo.on.rectangle")
+          }
           ShareLink(item: summary.root) {
             Label("Share session folder", systemImage: "square.and.arrow.up")
           }

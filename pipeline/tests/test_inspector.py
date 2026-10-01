@@ -290,3 +290,15 @@ def test_an_alignment_whose_session_is_missing_is_skipped(store: Path, tmp_path:
         assert len(data["sessions"]) == 1
     finally:
         orphan.unlink()
+
+
+def test_the_page_works_without_a_mouse(store: Path):
+    """ADR-0028 puts this page on a phone, where hover does not exist and a
+    3 px dot is not a target. The touch affordances are in the page itself."""
+    text = build_page(store, "main", thumbnails=False).read_text(encoding="utf-8")
+    assert '<meta name="viewport" content="width=device-width, initial-scale=1">' in text
+    assert "@media (hover: none)" in text
+    assert "@media (max-width: 700px)" in text
+    assert 'hit.setAttribute("r", "12")' in text, "a finger-sized disc takes the tap"
+    assert 'addEventListener("touchstart"' in text and 'addEventListener("touchend"' in text
+    assert "swipe to step" in text

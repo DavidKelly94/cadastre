@@ -11,7 +11,7 @@ pipeline/
   pyproject.toml            [project] name = "vividhome"; [project.scripts] vividhome = "vividhome.cli:main"
   vividhome/
     __init__.py
-    cli.py                  argparse subcommands: ingest, validate, apriltag, plan, align, inspect, markers, synth, corners, coverage
+    cli.py                  argparse subcommands: ingest, validate, apriltag, plan, align, inspect, markers, synth, corners, coverage, serve
     session.py              Session dataclass: load manifest/JSONL, resolve paths, matrix helpers
     transforms.py           column-major ↔ numpy, ARKit↔OpenCV camera, unproject, SE(2) embed, Umeyama 2D
     validate.py             rules from session-format.md §11
@@ -26,7 +26,8 @@ pipeline/
     markers.py              marker PDF + PNG generator
     synth.py                synthetic sessions for tests
     web/                    static HTML/JS for calibrate, align, inspect (no build step)
-    serve.py                tiny http.server: GET static files, POST /save → JSON on disk
+    serve.py                tiny http.server: GET static files, POST /save → JSON on disk; --lan serves read-only to the phone
+    index.py                GET /index.json: what the store holds, for a client that cannot list directories (§14 of the format)
   tests/
     test_transforms.py test_validate.py test_apriltag.py test_align.py test_plan.py test_markers.py
     conftest.py             builds a synthetic session in tmp_path
@@ -124,7 +125,11 @@ Generates `inspect/<level>.html`: the plan raster as background, each aligned se
 
 `coverage <session> [--range 4.0]`: the offline half of `docs/ai-roadmap.md` item 3, with the denominator chosen on purpose. A percentage needs one, and the only honest one a session carries is the room the owner declared: the tapped corners in tap order, which the capture protocol makes the walk order. The mesh cannot be it — ARKit meshes only what the LiDAR saw, so an unscanned wall is simply absent — and the plan is not in the session. Each wall between consecutive taps is walked in 10 cm cells, and each cell is asked two things: *meshed* (a wall-classified face within 25 cm of the wall line covers it) and *photographed* (some keyframe has the cell's bearing within its horizontal spread, within `--range`, with no other footprint wall between them; the spread comes from the four image-corner rays projected onto the floor, so a phone held upright gets its narrow axis sideways; frames pointed at the floor or ceiling are not counted, and pitch is otherwise ignored, so it can overcount). The report names gaps in metres from a corner before any percentage — *"not photographed 1.9..5.0 m from corner-ne"* — because that is what a person standing in the room can act on. Writes `derived/coverage.json`. It says nothing about walls the owner did not tap.
 
-## 12. Later (weeks 3+, own design docs when started)
+## 12. `serve`
+
+`serve [--port 8765] [--lan] [--open <path>]`: the same `http.server` the calibrate, align and inspect flows use, as a command of its own. On localhost it serves the store and accepts `POST /save` for the pages that click points. With `--lan` ([ADR-0028](../adr/0028-results-return-to-the-app.md)) it binds every interface, prints the addresses it is reachable on, answers `GET /index.json` (`index.py`, section 14 of the format) and `GET /_vividhome/ping`, advertises `_vividhome._tcp` over Bonjour (`zeroconf`) so the app can find the PC, and **refuses every POST**: a writable endpoint on the home network would be a way to put files on the owner's PC from any device on it. Until the app reads the index, Safari on the phone can already open the served inspect pages by address.
+
+## 13. Later (weeks 3+, own design docs when started)
 
 - `graph`: pose graph over sessions and markers (scipy least squares).
 - `mesh`: Open3D TSDF integration per session; GLB export for the viewer.

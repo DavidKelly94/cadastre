@@ -8,6 +8,7 @@ dependencies = [
     "pypdfium2>=4.30",
     "reportlab>=4.2",
     "pillow>=10.4",
+    "zeroconf>=0.140",
 ]
 
 [project.scripts]

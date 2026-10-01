@@ -247,6 +247,16 @@ named beside the ones that landed rather than stopping them. The plan beside
 the sessions comes across once per folder. Pointing it at the project folder
 copied off the phone is now the whole PC-side step for a visit.
 
+## The lossless copy refused for a reason it named, 2026-10-01
+
+Build 50's alert said it: *kCGImageDestinationMetadata cannot be used with
+kCGImageDestinationOrientation*. ImageIO will not take the label and the
+orientation in one lossless pass, and the fallback did its job — the photo
+reached the camera roll re-encoded. The lossless path now runs in two passes,
+orientation and date first and the label merged second, each a combination
+ImageIO allows, so the next save should say "Saved to Photos." and nothing
+else. If it names a refusal again, the text will say which pass.
+
 ## Deleting a capture is a thing you can find, 2026-10-01
 
 The owner's other reaction to build 47 was that managing captures did not feel

@@ -183,6 +183,16 @@ final class PCLink: ObservableObject {
     }
   }
 
+  /// Fetch again only when the last answer is older than `maxAge` seconds, or
+  /// there is none. The project screen calls this on every appearance, and
+  /// with the PC off a fetch is a six-second timeout each time.
+  @MainActor
+  func refreshIfStale(maxAge: TimeInterval = 60) async {
+    guard isConfigured else { return }
+    if let checkedAt, index != nil, Date().timeIntervalSince(checkedAt) < maxAge { return }
+    await test()
+  }
+
   /// The rendered page for a level, if the PC has one.
   func inspectURL(project: String, level: String) -> URL? {
     guard let base = baseURL, let page = index?.inspectPage(project: project, level: level)

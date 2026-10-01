@@ -15,7 +15,7 @@ pipeline/
     session.py              Session dataclass: load manifest/JSONL, resolve paths, matrix helpers
     transforms.py           column-major ↔ numpy, ARKit↔OpenCV camera, unproject, SE(2) embed, Umeyama 2D
     validate.py             rules from session-format.md §11
-    ingest.py               copy/unzip into the project store, then validate
+    ingest.py               copy/unzip into the project store, then validate; a whole project folder at once, plans/ with it
     apriltag.py             detection, PnP, aggregation, anchor-frame check
     plan.py                 rasterize PDF/photo, perspective correction, calibration page, plan.json
     align.py                landmarks ↔ plan corners → T_hs; residual report; --use-markers

@@ -75,7 +75,14 @@ struct SessionPhotosView: View {
         }
       }
     }
-    .task { photos = SessionPhotos.read(at: layout) }
+    .task {
+      // Hundreds of lines of JSONL: off the main thread, where a hitch would
+      // be the first thing the owner noticed about this screen.
+      let layout = layout
+      photos = await Task.detached(priority: .userInitiated) {
+        SessionPhotos.read(at: layout)
+      }.value
+    }
     .fullScreenCover(item: $viewing) { photo in
       PhotoDetailView(
         layout: layout, manifest: manifest, photos: shown, start: photo,

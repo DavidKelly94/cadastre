@@ -11,6 +11,7 @@ import VividHomeCore
 /// immediately or lose.
 struct SessionListView: View {
   let project: String
+  @ObservedObject var link: PCLink
   let onDone: () -> Void
 
   @State private var rows: [Row] = []
@@ -19,6 +20,7 @@ struct SessionListView: View {
   @State private var freeBytes: Int?
   @State private var selected: Set<String> = []
   @State private var confirmingDelete = false
+  @State private var confirmingValidatedDelete = false
   @Environment(\.editMode) private var editMode
 
   /// A session as the list shows it. Read once when the list appears rather
@@ -43,6 +45,16 @@ struct SessionListView: View {
     rows.filter { selected.contains($0.id) }.reduce(0) { $0 + $1.bytes }
   }
 
+  /// The captures the PC says it has ingested and validated: the only ones
+  /// that are safe to delete here, on the PC's word rather than the phone's.
+  private var validatedOnPC: [Row] {
+    guard let index = link.index else { return [] }
+    let ids = index.validatedSessionIDs
+    return rows.filter { ids.contains($0.id) }
+  }
+
+  private var validatedBytes: Int { validatedOnPC.reduce(0) { $0 + $1.bytes } }
+
   var body: some View {
     NavigationStack {
       Group {
@@ -52,6 +64,20 @@ struct SessionListView: View {
             description: Text("Recorded rooms show up here, and stay until you delete them."))
         } else {
           List(selection: $selected) {
+            if !validatedOnPC.isEmpty {
+              Section {
+                Button(role: .destructive) {
+                  confirmingValidatedDelete = true
+                } label: {
+                  Label(
+                    "Delete the \(validatedOnPC.count) capture\(validatedOnPC.count == 1 ? "" : "s") "
+                      + "the PC has validated (\(Self.bytes(validatedBytes)))",
+                    systemImage: "trash")
+                }
+              } footer: {
+                Text(pcFooter)
+              }
+            }
             Section {
               ForEach(rows) { row in
                 NavigationLink {
@@ -66,8 +92,7 @@ struct SessionListView: View {
               // A 5-minute room is 300-800 MB, so this number moves fast.
               Text(freeSpace)
             } footer: {
-              Text("Copy a session to the PC before deleting it here. "
-                + "Deleting the app deletes every capture still on the phone.")
+              Text(listFooter)
             }
           }
         }
@@ -100,7 +125,17 @@ struct SessionListView: View {
       } message: {
         Text("Only captures already copied to the PC should go. This cannot be undone.")
       }
+      .confirmationDialog(
+        "Delete \(validatedOnPC.count) capture\(validatedOnPC.count == 1 ? "" : "s") from this iPhone?",
+        isPresented: $confirmingValidatedDelete, titleVisibility: .visible
+      ) {
+        Button("Delete from this iPhone", role: .destructive, action: deleteValidated)
+      } message: {
+        Text("The PC listed each of these as ingested and validated. Nothing changes on the PC. "
+          + "This cannot be undone here.")
+      }
       .onAppear(perform: reload)
+      .task { await link.refreshIfStale() }
       .alert("Could not delete", isPresented: .constant(failure != nil)) {
         Button("OK") { failure = nil }
       } message: {
@@ -116,16 +151,49 @@ struct SessionListView: View {
         if row.incomplete {
           // A session the app never finished writing. Shown rather than hidden:
           // it may still hold most of a capture, and `validate` will say.
-          Text("unfinished")
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Color.orange.opacity(0.2), in: Capsule())
-            .foregroundStyle(.orange)
+          chip("unfinished", .orange)
+        }
+        // The PC's word, when it has been asked: "on the PC" is validated;
+        // held-but-unchecked is said as such, because it is not the same.
+        switch link.index?.holding(of: row.id) {
+        case .validated?:
+          chip("on the PC", .green)
+        case .held?:
+          chip("on the PC, unchecked", .secondary)
+        case .absent?, nil:
+          EmptyView()
         }
       }
       Text(subtitle(row)).font(.footnote).foregroundStyle(.secondary)
     }
     .padding(.vertical, 2)
+  }
+
+  private func chip(_ text: String, _ tone: Color) -> some View {
+    Text(text)
+      .font(.caption2.weight(.semibold))
+      .padding(.horizontal, 6).padding(.vertical, 2)
+      .background(tone.opacity(0.2), in: Capsule())
+      .foregroundStyle(tone)
+  }
+
+  private var pcFooter: String {
+    guard let index = link.index, let checkedAt = link.checkedAt else { return "" }
+    return "\(index.store) listed them as ingested and validated at "
+      + "\(checkedAt.formatted(date: .omitted, time: .shortened)). Nothing is deleted on the PC."
+  }
+
+  private var listFooter: String {
+    let base = "Deleting the app deletes every capture still on the phone."
+    if link.index != nil {
+      return "Captures marked \"on the PC\" are the ones the PC says it validated. " + base
+    }
+    if link.isConfigured {
+      return "The PC did not answer, so which captures it has is unknown. Copy a session "
+        + "to the PC before deleting it here. " + base
+    }
+    return "Connect to the PC (project screen → PC) to see which captures it already has. "
+      + "Copy a session to the PC before deleting it here. " + base
   }
 
   private func subtitle(_ row: Row) -> String {
@@ -166,8 +234,18 @@ struct SessionListView: View {
   }
 
   private func deleteSelected() {
+    delete(rows.filter { selected.contains($0.id) })
+    selected = []
+    editMode?.wrappedValue = .inactive
+  }
+
+  private func deleteValidated() {
+    delete(validatedOnPC)
+  }
+
+  private func delete(_ doomed: [Row]) {
     let store = store
-    for row in rows where selected.contains(row.id) {
+    for row in doomed {
       do {
         try store.delete(at: row.layout)
       } catch {
@@ -176,8 +254,6 @@ struct SessionListView: View {
       }
       rows.removeAll { $0.id == row.id }
     }
-    selected = []
-    editMode?.wrappedValue = .inactive
     freeBytes = Self.freeBytes(on: documents)
   }
 

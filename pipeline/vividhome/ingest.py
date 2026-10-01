@@ -5,10 +5,12 @@ the only thing that writes one, it writes it once, and it refuses to overwrite a
 existing session rather than merging into it — a half-overwritten capture is
 worse than either version of it.
 
-Sessions arrive either as a folder or as a zip from the Files app. When the
-project's ``plans/`` folder is beside the session — the app's own layout,
-section 13 — the plan comes across with the capture, which is what ADR-0025
-promised and what saves importing the same drawing twice.
+Sessions arrive either as a folder or as a zip from the Files app, one at a time
+or a whole project folder at once: the owner's visit is several rooms and then
+everything to the PC afterwards, and one command per room was friction for no
+reason. When the project's ``plans/`` folder is beside the sessions — the app's
+own layout, section 13 — the plan comes across with the captures, which is what
+ADR-0025 promised and what saves importing the same drawing twice.
 """
 
 from __future__ import annotations
@@ -23,7 +25,7 @@ from .plan import plan_paths
 from .session import Session, SessionError
 from .validate import Report, validate_session
 
-__all__ = ["IngestError", "IngestResult", "PlanImport", "ingest"]
+__all__ = ["IngestBatch", "IngestError", "IngestResult", "PlanImport", "ingest", "ingest_many"]
 
 
 class IngestError(Exception):
@@ -54,6 +56,20 @@ class IngestResult:
         return self.report.ok
 
 
+@dataclass
+class IngestBatch:
+    """Every session in a source, taken one by one: what landed and what did not."""
+
+    results: list[IngestResult] = field(default_factory=list)
+    #: ``(what the session was called, why it was not ingested)``.
+    failures: list[tuple[str, str]] = field(default_factory=list)
+    plans: list[PlanImport] = field(default_factory=list)
+
+    @property
+    def ok(self) -> bool:
+        return not self.failures and all(result.ok for result in self.results)
+
+
 def _safe_extract(archive: zipfile.ZipFile, destination: Path) -> None:
     """Extract every member, refusing any that would land outside `destination`.
 
@@ -74,19 +90,26 @@ def _safe_extract(archive: zipfile.ZipFile, destination: Path) -> None:
     archive.extractall(destination)
 
 
-def _find_session_root(directory: Path) -> Path:
-    """The folder holding manifest.json, which a zip may nest a level or two deep."""
+def _find_session_roots(directory: Path) -> list[Path]:
+    """Every folder holding a manifest.json, which a zip may nest a level or two deep."""
     if (directory / "manifest.json").exists():
-        return directory
-    candidates = sorted(directory.rglob("manifest.json"))
-    if not candidates:
+        return [directory]
+    roots = sorted(path.parent for path in directory.rglob("manifest.json"))
+    if not roots:
         raise IngestError("no manifest.json found; this does not look like a session")
-    if len(candidates) > 1:
-        names = ", ".join(str(path.parent.relative_to(directory)) for path in candidates[:4])
+    return roots
+
+
+def _find_session_root(directory: Path) -> Path:
+    """The one session in a source, for the single-session entry point."""
+    roots = _find_session_roots(directory)
+    if len(roots) > 1:
+        names = ", ".join(str(root.relative_to(directory)) for root in roots[:4])
         raise IngestError(
-            f"more than one session in this archive ({names}); ingest them one at a time"
+            f"more than one session here ({names}); 'vividhome ingest' takes them all, "
+            "or point it at one"
         )
-    return candidates[0].parent
+    return roots[0]
 
 
 def _directory_size(path: Path) -> int:
@@ -107,6 +130,8 @@ def _import_plans(store_root: Path, session_root: Path) -> list[PlanImport]:
     Files are copied verbatim. The app's ``rooms`` and ``source`` are part of the
     JSON and survive; nothing here rewrites what the app wrote.
     """
+    # ``session_root`` may be a real session folder or any path directly under
+    # the project folder; only its parent matters here.
     source_dir = session_root.parent / "plans"
     if not source_dir.is_dir():
         return []
@@ -227,18 +252,87 @@ def ingest(
     copied into the store for every level the store has no plan for yet; see
     :func:`_import_plans`. ``force`` does not extend to plans.
     """
+    store_root = _prepare_store(store)
     source = Path(source)
-    if not source.exists():
-        raise IngestError(f"{source}: no such file or directory")
+    staging: Path | None = None
+    try:
+        directory, staging = _stage(store_root, source)
+        session_root = _find_session_root(directory)
+        result = _ingest_root(
+            store_root,
+            session_root,
+            source.name,
+            project,
+            staging=staging,
+            force=force,
+            keep_going=keep_going,
+        )
+        # Before the staging directory goes: for a zip, plans/ is only there.
+        result.plans = _import_plans(store_root, session_root)
+    finally:
+        if staging is not None and staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+    return result
 
+
+def ingest_many(
+    store: str | Path,
+    source: str | Path,
+    project: str | None = None,
+    *,
+    force: bool = False,
+    keep_going: bool = False,
+) -> IngestBatch:
+    """Ingest every session in ``source`` — a session folder, a project folder,
+    or a zip of either — and keep going past the ones that fail.
+
+    One session's refusal (already in the store, failed validation) is reported
+    beside the others rather than stopping the batch: the owner copied a whole
+    visit off the phone and wants to know what landed, not to be told about the
+    first problem and nothing else. ``plans/`` beside the sessions is imported
+    once per folder that holds one.
+    """
+    store_root = _prepare_store(store)
+    source = Path(source)
+    batch = IngestBatch()
+    staging: Path | None = None
+    try:
+        directory, staging = _stage(store_root, source)
+        roots = _find_session_roots(directory)
+        for session_root in roots:
+            try:
+                batch.results.append(
+                    _ingest_root(
+                        store_root,
+                        session_root,
+                        session_root.name,
+                        project,
+                        staging=staging,
+                        force=force,
+                        keep_going=keep_going,
+                    )
+                )
+            except IngestError as error:
+                batch.failures.append((session_root.name, str(error)))
+        # Plans once per project folder, not once per session in it.
+        for parent in sorted({root.parent for root in roots}):
+            batch.plans.extend(_import_plans(store_root, parent / "_"))
+    finally:
+        if staging is not None and staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
+    return batch
+
+
+def _prepare_store(store: str | Path) -> Path:
+    """Create the store up front, so an unusable path fails here with something
+    readable instead of five frames down inside pathlib's recursive mkdir.
+
+    The case that produced this: a --store on a drive letter that does not
+    exist, which raised a bare FileNotFoundError naming 'D:\\' after four
+    nested tracebacks. The owner is the person who runs this command, and a
+    traceback is the worst thing to hand them.
+    """
     store_root = Path(store)
-
-    # Create the store up front, so an unusable path fails here with something
-    # readable instead of five frames down inside pathlib's recursive mkdir.
-    # The case that produced this: a --store on a drive letter that does not
-    # exist, which raised a bare FileNotFoundError naming 'D:\\' after four
-    # nested tracebacks. The owner is the person who runs this command, and a
-    # traceback is the worst thing to hand them.
     try:
         store_root.mkdir(parents=True, exist_ok=True)
     except OSError as error:
@@ -246,58 +340,67 @@ def ingest(
             f"cannot use {store_root} as the project store ({error.strerror or error}). "
             f"Check the drive exists and you can write to it."
         ) from error
+    return store_root
 
-    staging: Path | None = None
 
+def _stage(store_root: Path, source: Path) -> tuple[Path, Path | None]:
+    """The directory to look for sessions in, and the staging folder if a zip
+    was unpacked to make one. The caller removes the staging folder."""
+    if not source.exists():
+        raise IngestError(f"{source}: no such file or directory")
+    if source.is_dir():
+        return source, None
+    if not zipfile.is_zipfile(source):
+        raise IngestError(f"{source.name}: not a directory or a zip archive")
+    # Staged at the store root rather than under the project directory,
+    # because which project that is cannot be known until the manifest
+    # inside the archive has been read.
+    staging = store_root / f".ingest-{source.stem}"
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir(parents=True)
+    with zipfile.ZipFile(source) as archive:
+        _safe_extract(archive, staging)
+    return staging, staging
+
+
+def _ingest_root(
+    store_root: Path,
+    session_root: Path,
+    source_name: str,
+    project: str | None,
+    *,
+    staging: Path | None,
+    force: bool,
+    keep_going: bool,
+) -> IngestResult:
+    """Copy one session folder into the store and validate it."""
     try:
-        if source.is_dir():
-            session_root = _find_session_root(source)
-        elif zipfile.is_zipfile(source):
-            # Staged at the store root rather than under the project directory,
-            # because which project that is cannot be known until the manifest
-            # inside the archive has been read.
-            staging = store_root / f".ingest-{source.stem}"
-            if staging.exists():
-                shutil.rmtree(staging)
-            staging.mkdir(parents=True)
-            with zipfile.ZipFile(source) as archive:
-                _safe_extract(archive, staging)
-            session_root = _find_session_root(staging)
-        else:
-            raise IngestError(f"{source.name}: not a directory or a zip archive")
+        session = Session.load(session_root)
+    except SessionError as error:
+        raise IngestError(f"{source_name}: {error}") from error
+    session_id = session.session_id
 
-        try:
-            session = Session.load(session_root)
-        except SessionError as error:
-            raise IngestError(f"{source.name}: {error}") from error
-        session_id = session.session_id
+    # An explicit --project wins, then the manifest, then "default" for a
+    # session old enough not to name one.
+    resolved = project or manifest_project(session) or "default"
+    destination_root = store_root / "sessions" / resolved
+    destination_root.mkdir(parents=True, exist_ok=True)
 
-        # An explicit --project wins, then the manifest, then "default" for a
-        # session old enough not to name one.
-        resolved = project or manifest_project(session) or "default"
-        destination_root = store_root / "sessions" / resolved
-        destination_root.mkdir(parents=True, exist_ok=True)
+    destination = destination_root / session_id
+    if destination.exists():
+        if not force:
+            raise IngestError(
+                f"{session_id} is already in the store. Raw sessions are never modified; "
+                "pass --force to replace it."
+            )
+        shutil.rmtree(destination)
 
-        destination = destination_root / session_id
-        if destination.exists():
-            if not force:
-                raise IngestError(
-                    f"{session_id} is already in the store. Raw sessions are never modified; "
-                    "pass --force to replace it."
-                )
-            shutil.rmtree(destination)
-
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        if staging is not None and session_root.is_relative_to(staging):
-            shutil.move(str(session_root), str(destination))
-        else:
-            shutil.copytree(session_root, destination)
-
-        # Before the staging directory goes: for a zip, plans/ is only there.
-        plans = _import_plans(store_root, session_root)
-    finally:
-        if staging is not None and staging.exists():
-            shutil.rmtree(staging, ignore_errors=True)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if staging is not None and session_root.is_relative_to(staging):
+        shutil.move(str(session_root), str(destination))
+    else:
+        shutil.copytree(session_root, destination)
 
     report = validate_session(Session.load(destination))
     if not report.ok and not keep_going:
@@ -313,5 +416,4 @@ def ingest(
         destination=destination,
         bytes_copied=_directory_size(destination),
         report=report,
-        plans=plans,
     )

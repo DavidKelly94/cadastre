@@ -96,7 +96,7 @@ struct ContentView: View {
           coverage: plans.coverage(forLevel: chosen?.level.slug ?? ""),
           currentRoom: chosen?.room.slug) { sheet = nil; plans.reload() }
       case .sessions:
-        SessionListView(project: CaptureCoordinator.projectSlug) { sheet = nil }
+        SessionListView(project: CaptureCoordinator.projectSlug, link: link) { sheet = nil }
       }
     }
   }

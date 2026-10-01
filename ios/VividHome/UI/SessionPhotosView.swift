@@ -129,8 +129,8 @@ struct SessionPhotosView: View {
     }
     Task {
       do {
-        let count = try await PhotoExporter.save(jobs)
-        notice = count == 1 ? "Saved to Photos." : "Saved \(count) photos to Photos."
+        let outcome = try await PhotoExporter.save(jobs)
+        notice = outcome.summary
         selecting = false
         selected = []
       } catch {

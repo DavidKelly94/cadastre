@@ -38,6 +38,10 @@ public struct SessionStore: Sendable {
   /// Sorted by name rather than by file date: the id begins with a timestamp, so
   /// the name is the capture order, while a file date is whenever the bytes
   /// happened to land — which a copy off the phone would change.
+  ///
+  /// Only folders named as a session id count. The project folder also holds
+  /// `plans/` (ADR-0025, section 13), which the first walk of the captures
+  /// list showed as an "unfinished" capture with no manifest.
   public func sessions(inProject project: String) throws -> [SessionLayout] {
     let directory = root.appendingPathComponent(project, isDirectory: true)
     guard manager.fileExists(atPath: directory.path) else { return [] }
@@ -45,7 +49,7 @@ public struct SessionStore: Sendable {
       at: directory, includingPropertiesForKeys: [.isDirectoryKey]
     )
     .filter(\.hasDirectoryPath)
-    .filter { !$0.lastPathComponent.hasPrefix(".") }
+    .filter { SessionID($0.lastPathComponent) != nil }
     .sorted { $0.lastPathComponent > $1.lastPathComponent }
     .map { SessionLayout(root: $0) }
   }

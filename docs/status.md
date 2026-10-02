@@ -7,16 +7,19 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-10-01, after the owner walked build 47 and the first fixes
-from that walk landed.
+Last updated: 2026-10-02, after the first full round trip on real hardware:
+a capture sent from the phone, processed on the PC, and opened back on the
+phone.
 
 ## The short version
 
-**The whole chain works on real data.** A room captured on an iPhone reaches the
-PC, validates, gets a plan, calibrates, aligns and renders on an inspection page
-that shows the room outline, the tapped landmarks and the walk path, and opens
-any keyframe or still at full resolution from the spot it was taken. That is the
-product's spine, and it is no longer hypothetical.
+**The whole chain works on real data, and the phone is on both ends of it.**
+A room captured on an iPhone is sent to the PC from the app, validates, gets a
+plan, calibrates, aligns and renders on an inspection page that shows the room
+outline, the tapped landmarks and the walk path, opens any keyframe or still at
+full resolution from the spot it was taken, and that page opens in the app
+(2026-10-02, over the home Wi-Fi). That is the product's spine, and it is no
+longer hypothetical.
 
 The pipeline and the Swift core are complete and tested. The capture app runs on
 device and its screens exist: setup, capture HUD, session review, past captures,
@@ -68,6 +71,15 @@ it survives one. Owner-side items are things only the owner can do.
    is imported again, and nothing reads it meanwhile.
 6. **Corner candidates on the phone** (roadmap item 5, room side), once item 4
    says the offline number earns the screen time.
+7. **Captures sent from the app, from anywhere** — the owner's ask of
+   2026-10-02, ADR-0029. **PC side built 2026-10-02** (`/upload/`, the pairing
+   code, the inbox, `done` → ingest), tested against a synthetic capture.
+   **App side written the same day, not walked**: the pairing code under PC
+   (Keychain), Test checks it, *Send to the PC* from Captures and from a
+   capture, three files in flight, resume from the inbox listing, the
+   cellular warning, https addresses for the tailnet. Owner-side next: send
+   one capture on the home Wi-Fi first, then install Tailscale on both ends,
+   `tailscale serve --bg 8765` on the PC, and send one from cellular.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -85,16 +97,16 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
-| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session |
-| `serve` | done | Local server for the browser pages; `--lan` serves the store read-only to the phone with `/index.json` and Bonjour (ADR-0028) |
+| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session; writes `derived/validate.json` so the index can say what passed |
+| `serve` | done | Local server for the browser pages; `--lan` serves the store to the phone with `/index.json` and Bonjour (ADR-0028), and takes captures under `/upload/` with the pairing code into an inbox (ADR-0029). **Not yet tried from a phone** |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-18 modules, **323 tests passing**, ruff clean.
+19 modules, **335 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
-13 modules, 11 test files, all Linux-tested. `Transform`, `SessionID`,
+Every module Linux-tested, `SessionUpload` and `ServerIndex` included. `Transform`, `SessionID`,
 `Records`, `Coding`, `KeyframePolicy`, `HealthPolicy`, `JSONLWriter`,
 `RowPacker`, `SessionLayout`, `SessionLifecycle`, `BoundedWriteQueue`,
 `SessionStore`, plus the `vividhome-fixture` binary the contract job runs.
@@ -234,6 +246,105 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The PC takes captures from the app, 2026-10-02
+
+The owner captures on site and is not on the home network; the captures have
+to reach the PC, be processed, and come back to the phone, without the Files
+app and without being home. ADR-0029 decides it: phone and PC on the owner's
+own tailnet, with `tailscale serve` giving the PC an HTTPS name the app can
+use without an App Transport Security exception, and the app sending captures
+to `vividhome serve --lan` behind a pairing code. The question of whether that
+is safe in a public repository was asked and answered the same day: the code
+holds nothing secret, the pairing code is generated on the PC and never
+committed, and the design assumes the handler's code is read.
+
+**Built, PC side.** `/upload/` (section 14.1 of the format): one `PUT` per
+file into `<store>/.inbox/<session-id>/`, a `GET` that lists what is there so a
+dropped send resumes, and `POST done` that hands the entry to `ingest`, which
+moves the session into the store, validates it, imports any `plans/` beside
+it and removes the inbox entry. Paths are checked as text and as paths, two
+plain segments at most, `derived/` refused, a file capped at 256 MB, a short
+body left under a temporary name and discarded, a session already in the
+store refused. The pairing code is 16 hex characters from `secrets`, printed
+by `serve --lan`, compared in constant time. The handler now speaks HTTP/1.1
+with keep-alive because a capture is thousands of small requests. Twelve tests
+cover it, including a full synthetic capture sent file by file and ingested.
+
+**First run on the owner's PC, 2026-10-02.** `serve --lan` started and printed
+its pairing code; it also printed five `169.254.x.x` addresses from virtual
+adapters around the one that works, and said nothing while a capture arrived.
+Link-local addresses are left out now, and a landed capture prints one line
+with its verdict and destination. On the phone, Test answered "This phone is
+not on a network" with Wi-Fi lit: iOS reports a Local Network permission
+that is off as offline, and Bonjour finds nothing for the same reason. The
+message now names the setting, and the setup guide's table has the row.
+
+**The first real send worked**: Test green with the pairing code accepted, one
+capture sent at 53 MB with its plan, "On the PC and validated; plan for
+level-1 imported", and the *on the PC* chip afterwards. Then `plan calibrate
+--web` took no clicks at all: the SVG that draws the marks sat over the plan
+image and swallowed them, and the align page had the same overlay drawn below
+the image instead of on it. Both pages were only ever exercised through their
+CLI flags before. Fixed with `pointer-events: none` on the overlays and
+checked in headless Chromium: a click puts a mark at the clicked pixel on
+both pages, and the old page puts none. Two things seen and left for later:
+the Bonjour entry stuck at *resolving* (likely the link-local addresses the
+advert carried until this change), and the send sheet saying 49 MB then
+sending 53 MB because the plan files count only in the second figure. The
+sheet now counts the files the way the send does, so the two agree.
+
+**Then the rest of the chain, by hand on the PC.** Calibrate, align (with
+`--force`: the capture is of the owner's current bedroom and the plan is the
+new house, so a 49 cm fit is the honest answer), inspect, and *Rendering on
+the PC* on the phone showed the plan with the walk, the corners and the photo
+marks, and a tap opened a keyframe. Three things seen there and fixed:
+
+- The house screen's plan card had every room pin pushed off its bottom-right
+  corner: the pins are stored in the raster's pixels (§13) and the card
+  scaled them by the shrunk copy it draws. It scales by the raster now.
+- A portrait keyframe opened on its side in the lightbox. The app's Photos
+  screen already turns images upright from the pose; the page now carries
+  the same `turn` per photo, computed by the same rule in `inspector.py`
+  and tested against it, and lays the picture out at its displayed size so a
+  quarter turn fits the phone's width. Checked in headless Chromium at phone
+  width.
+- The rendering's "From the PC, <time>" line was squeezed into a pill that
+  read "Fro...". It is a footer now.
+
+**And the owner fumbled**, which is the finding that matters most: `&&` in
+PowerShell, a placeholder typed as a path, a placeholder typed as a session
+id, the click pages on the port `serve --lan` holds. `docs/runbook.md` is the
+result, written from that walk: two windows, a `$store` variable, every
+command as typed, what each prints, what to click and why, and a table of
+what went wrong. The click pages now step around a busy port by themselves.
+README points at the runbook first.
+
+**Fixed on the way.** `ingest` never wrote `derived/validate.json`; only
+`validate --json` did. So after the documented flow (`ingest`, then `align`
+and `inspect`) the index reported every session as `validated: null` and the
+phone said *on the PC, unchecked* about captures the PC had in fact checked.
+Ingest writes the report now, where the check ran.
+
+**Written, app side, the same day.** `SessionUpload` in the core package lists
+a capture's files the way the server accepts them (never `derived/`, never a
+dotted name, the project's `plans/` beside it), works out what is left to send
+from the PC's listing, and decodes the two answers; tested on Linux against the
+documented examples. In the app, `PCLink` keeps the pairing code in the
+Keychain and Test asks the PC whether it takes it, by listing an inbox entry
+that cannot exist. `SessionUploader` sends three files at a time with two
+retries on a network error, stops the whole send on a refused code, and hands
+`done`'s one-line verdict to the row. Captures gains *Send N captures to the
+PC* for the ones the PC does not list, each capture gains *Send this capture*,
+and the sheet says the size and asks before sending on cellular. `PCAddress`
+treats `https://` with no port as 443, so a tailnet name types as a browser
+would. None of it has run: no send has reached a PC from a phone, and nothing
+has been tried through Tailscale.
+
+**Not yet.** `serve` without `--lan` still has the unauthenticated `/save` for
+the calibrate and align pages, so the setup doc says to run `--lan` behind
+`tailscale serve`, never plain `serve`. Backgrounding the app pauses a send;
+the resume covers it, a background session does not exist yet.
 
 ## One command per visit, not per room, 2026-10-01
 

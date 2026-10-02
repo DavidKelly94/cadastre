@@ -235,6 +235,37 @@ def test_headings_point_where_the_camera_looked(store: Path):
         assert float(heading @ outward) > 0.99, entry
 
 
+def test_the_display_turn_follows_the_cameras_up_axis():
+    """Mirrors the app's DisplayOrientation: the same pose must turn the same
+    way on the page as on the Photos screen."""
+    from vividhome.inspector import _turn
+
+    def rolled(theta: float) -> np.ndarray:
+        # Camera rolled about its view axis: the rotation's second row is
+        # (sin, cos, 0), which is world up seen by the camera.
+        c, s = np.cos(theta), np.sin(theta)
+        t = np.eye(4)
+        t[:3, :3] = [[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]]
+        return t
+
+    assert _turn(np.eye(4)) == 0, "held landscape, stored upright"
+    assert _turn(rolled(np.pi / 2)) == 270, "up on the stored right: a quarter turn left"
+    assert _turn(rolled(-np.pi / 2)) == 90, "up on the stored left: a quarter turn right"
+    assert _turn(rolled(np.pi)) == 180
+    floor = np.eye(4)
+    floor[:3, :3] = [[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]
+    assert _turn(floor) == 0, "pointed at the floor: no meaningful roll"
+
+
+def test_every_photo_says_how_to_turn_it(store: Path):
+    data = page_data(build_page(store, "main", thumbnails=False, thumbnail_stride=1))
+    session = data["sessions"][0]
+    for entry in session["keyframes"] + session["stills"]:
+        assert entry["turn"] in (0, 90, 180, 270), entry
+    page = (store / "inspect" / "main.html").read_text(encoding="utf-8")
+    assert "function layoutPhoto" in page and 'id="frame"' in page
+
+
 def test_a_camera_pointed_at_the_floor_has_no_heading():
     from vividhome.inspector import _heading
     from vividhome.plan import PlanCalibration

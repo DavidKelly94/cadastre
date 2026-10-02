@@ -18,7 +18,11 @@
   #status { margin-top: 12px; min-height: 3em; }
   .err { color: #c0392b; }
   .ok { color: #218c5a; }
-  svg { position: absolute; left: 0; }
+  /* The plan marks sit over the image and must not swallow its clicks; without
+     top: 0 they were drawn below it instead. The session plot stays in flow
+     and keeps its clicks: the landmarks are picked there. */
+  #planMarks { position: absolute; top: 0; left: 0; pointer-events: none; }
+  #session { display: block; }
   img { display: block; }
 </style>
 <div id="panel">

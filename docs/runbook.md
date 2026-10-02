@@ -1,0 +1,207 @@
+# Operating VividHome: from a capture to the rendering
+
+The owner's runbook. Everything here was done once on real hardware on
+2026-10-02 (iPhone, Windows PC, home Wi-Fi), and every place the owner
+stumbled that day is written down here so it does not happen twice. Setup that
+happens once (Apple account, TestFlight, installing uv) is in
+[owner-setup.md](owner-setup.md); this is what you do every visit.
+
+**PowerShell rules.** One command per line. PowerShell 5 does not accept `&&`.
+Paths with spaces go in quotes. Anything in angle brackets is a placeholder you
+replace; nothing below is meant to be typed with the brackets.
+
+## 0. Before the first visit, once
+
+1. Install uv and Git (owner-setup §9), clone the repository, and in
+   `cadastre\pipeline` run `uv sync`.
+2. Pick a folder for the project store, outside the git checkout, for example
+   `C:\Users\<you>\vividhome-data`. Every command takes it as `--store`. It is
+   created on first use and holds everything the PC produces; back it up.
+3. To pick up new pipeline code later: in `cadastre\pipeline`, `git pull` then
+   `uv sync`.
+
+## 1. Two PowerShell windows
+
+The PC runs **a server the phone talks to**, which stays running, and **commands
+you type**, which come and go. Use two windows so the server is never in the
+way. In both, start the same way:
+
+```
+cd "C:\Users\<you>\claude projects\cadastre\pipeline"
+$store = "C:\Users\<you>\vividhome-data"
+```
+
+`$store` is a PowerShell variable; the commands below say `--store $store` and
+PowerShell fills it in. Set it again in every new window.
+
+### Window A: the server
+
+```
+uv run vividhome --store $store serve --lan
+```
+
+It prints:
+
+- the address the phone uses, `http://192.168.x.x:8765/`;
+- the **pairing code**, four groups of four characters. The phone needs it
+  once. It is kept in `<store>\.pairing-code`; delete that file and restart the
+  server to issue a new one. Do not paste it into chats or commits;
+- `advertised as <store> (_vividhome._tcp.local)`, which is how the app finds
+  the PC by itself.
+
+Leave this window alone. The first time, Windows asks whether to allow Python
+through the firewall: allow it on **private** networks. Ctrl+C stops the server;
+start it again the same way whenever the phone needs the PC.
+
+### Window B: the commands
+
+Everything from section 4 on runs here. The click pages (calibrate, align)
+open a browser from this window; if the server's port is taken they pick
+another and print the address, so there is nothing to configure.
+
+## 2. Pair the phone, once
+
+1. Phone on the home Wi-Fi.
+2. iPhone Settings, Privacy & Security, Local Network: **VividHome on**. iOS
+   reports a denied local connection as "offline" even with Wi-Fi connected,
+   and the app finds no PC until this is on.
+3. In the app, on the project screen, tap the monitor icon (PC). Under *Found on
+   this network* tap the PC, or type the `192.168.x.x` address Window A
+   printed. Type the pairing code. Tap **Test**.
+4. Expect two green lines: the store's contents, and *Pairing code accepted;
+   captures can be sent*. Anything red says what to fix.
+
+## 3. After a visit: send the captures
+
+1. Window A running, phone on the home Wi-Fi.
+2. In the app: Captures, then **Send N captures to the PC**, then **Send**. One
+   capture at a time is the same button inside the capture. On cellular the
+   sheet says the size first and asks.
+3. Each row ends *On the PC and validated.* The plan you imported in the app
+   goes across with the first capture, and the row says so. Window A prints one
+   line per capture: `received <session-id>: validated -> sessions/...`.
+4. A send that drops resumes where it stopped: tap Send again.
+5. Tap Done. Captures now show the green **on the PC** chip, and the top of the
+   list offers to delete exactly those from the phone. Delete only what is
+   marked.
+
+## 4. Calibrate the plan, once per level
+
+The app carried the drawing across; the PC still needs its scale and origin.
+
+```
+uv run vividhome --store $store plan calibrate --level level-1 --web
+```
+
+`--level` is the level's slug: the app's level name in lowercase with dashes,
+so *Level 1* is `level-1`. The receipt on the phone said it: "plan for level-1
+imported".
+
+A browser opens on the plan (if not, open the address printed). Three clicks:
+
+1. **One end of a printed dimension.** Pick the longest dimension line you can
+   read with confidence, such as the house's overall width. Click the tick or
+   arrowhead at one end.
+2. **The other end** of the same dimension line.
+3. **The house origin.** Any point you can identify precisely that exists in
+   the built house, such as the outside corner of the foundation at the
+   bottom-left. Use the same point for every level.
+
+Type the printed length exactly as written, for example `25' 0"` or `3.81m`.
+Leave rotation at 0 and floor height at 0 for the first level. Zoom the browser
+with Ctrl and the scroll wheel before clicking; the clicks stay accurate at any
+zoom. *Start the clicks again* resets. Then **Save calibration**.
+
+The terminal prints the scale, for example `20.2 mm per pixel`. Sanity check:
+a house about 30 m across in an image about 1,500 pixels wide is around 20 mm
+per pixel. If the number is wildly different, the two dimension clicks were not
+on the same line.
+
+## 5. Align each capture to the plan
+
+Find the capture's id. It is the folder name under the project:
+
+```
+Get-ChildItem $store\sessions -Recurse -Depth 1 -Directory | Select-Object -ExpandProperty Name
+```
+
+The id starts with the date and time, like `20260915-152407_level-1_bedroom_2hhv3k`.
+Copy it whole into the command:
+
+```
+uv run vividhome --store $store align <session-id> --level level-1 --web
+```
+
+The page shows the plan on the left and the capture on the right: the grey
+line is where you walked, the blue dots are the corners you tapped, labelled.
+Click a dot, then click where that corner is on the plan, at the inside corner
+of the room's walls. Two pairs is the minimum; three or four lets the solver
+say how well they agree. *Undo last* takes back a mistake. Then **Solve and
+save**.
+
+The terminal prints the residual, the average disagreement between the tapped
+corners and the clicked ones, in metres. Under about 0.1 m is good. If it is
+above 0.3 m the command refuses to write the alignment: the usual cause is a
+pair matched to the wrong corner, so run it again and check each pair against
+the walk. `--force` writes it anyway; use that only when you know the capture
+is not of this plan, such as a test room in a different house.
+
+## 6. Render, and look on the phone
+
+```
+uv run vividhome --store $store inspect --level level-1
+```
+
+Run it again after every new alignment. The first run generates thumbnails
+and takes a minute.
+
+On the phone: project screen, **Rendering on the PC**. If the row is not there,
+open PC, tap Test, and go back. The page shows the plan with the walk, the
+corners and a dot per photo; tap a dot to open the photo, swipe to step. A
+page opened once stays openable with the PC off; the footer says when the PC
+made it.
+
+## 7. The whole visit, in order
+
+| Where | What |
+|---|---|
+| Window A | `serve --lan` running |
+| Phone | Captures, Send N captures to the PC |
+| Window B, once per level | `plan calibrate --level <level> --web` |
+| Window B, per capture | `align <session-id> --level <level> --web` |
+| Window B | `inspect --level <level>` |
+| Phone | Rendering on the PC |
+| Phone, when done | Delete the captures the PC has validated |
+
+## 8. Away from home
+
+Phone and PC on your own tailnet make the PC reachable from anywhere, with
+nothing opened to the internet ([ADR-0029](adr/0029-the-pc-is-reached-over-the-owners-tailnet.md)).
+
+1. Install Tailscale on the PC and the phone and sign in with the same account
+   (<https://tailscale.com/kb/1017/install>).
+2. In the Tailscale admin console, enable HTTPS certificates for the tailnet
+   (<https://tailscale.com/kb/1153/enabling-https>).
+3. On the PC, once: `tailscale serve --bg 8765`. It prints the PC's name,
+   `https://<pc>.<tailnet>.ts.net`, and forwards it to Window A's server. Never
+   use `tailscale funnel`, which is the public version.
+4. In the app, PC: type that `https://` name as the address. Test, then send as
+   usual. The PC must be on and Window A running; Tailscale down looks the same
+   as the PC off.
+
+A visit is gigabytes, so send over Wi-Fi where you can; a send that stops
+resumes.
+
+## 9. When something goes wrong
+
+| What you see | What it is and what to do |
+|---|---|
+| `The token '&&' is not a valid statement separator` | PowerShell 5. Run the two commands on two lines. |
+| The app: *iOS is not letting this app reach the local network* | iPhone Settings, Privacy & Security, Local Network, VividHome on. |
+| The app: *Nothing answered at that address* | Window A not running, phone not on the home Wi-Fi, or Windows Firewall blocked Python: Windows Security, Firewall & network protection, Allow an app through firewall, tick Private for the Python under `pipeline\.venv`. |
+| The app: *The PC refused this pairing code* | Retype it from Window A. Dashes and capitals do not matter; a wrong character does. |
+| `is not a session directory or an id` | The id was typed with a placeholder or a typo. List the folders (section 5) and copy the name whole. |
+| `residual ... is above 0.3 m` | A corner paired with the wrong corner, or the capture is not of this plan. Section 5. |
+| Calibrate or align page takes no clicks | The page is from before 2026-10-02. `git pull`, `uv sync`, run the command again. |
+| `received <id>: kept, validation failed` | The capture landed but has a problem the terminal lists. The phone shows it as *on the PC, unchecked* and keeps it. Send the lines to the implementer. |
+| Window A prints `169.254.x.x` addresses | Virtual adapters; ignore them, use the `192.168.x.x` one. Pipelines from 2026-10-02 on leave them out. |

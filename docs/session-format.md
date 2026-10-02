@@ -303,3 +303,15 @@ Produced by the pipeline since 2026-09-30; **no client reads it yet**. The app's
 - Discovery: the server advertises `_vividhome._tcp` over Bonjour with the store folder name as the instance and TXT records `store`, `version` and `path` (`/index.json`).
 - The server refuses every POST when it listens beyond localhost. A reader on the network can fetch anything under the store, raw sessions included, and can change nothing.
 - Readers ignore unknown fields (section 12). Nothing in the index is an instruction: a path is a place to fetch, never something to run.
+
+### 14.1 Uploads (`/upload/`)
+
+Accepted by the pipeline since 2026-10-02 ([ADR-0029](adr/0029-the-pc-is-reached-over-the-owners-tailnet.md)); the app's side is `docs/design/return-path-design.md` §7. Additive: `format_version` stays 3.
+
+The server accepts uploads only when its store holds a pairing code, which `vividhome serve --lan` creates and prints. Every request under `/upload/` carries it as `Authorization: Bearer <code>`; the code is 16 hexadecimal characters, matched without regard to case, spaces or dashes. A missing or wrong code is `401`; a server with no code is `403`. Error bodies are `{"error": "<one sentence>"}`.
+
+- `GET /upload/<session-id>` → `{"session_id": "...", "state": "none" | "partial" | "ingested", "files": {"<path>": <bytes>, ...}}`. `files` is what the inbox holds for this session so far, with each file's size, and is empty for `none` and `ingested`. `ingested` means the store already has the session under any project.
+- `PUT /upload/<session-id>/<path>` with the file's bytes as the body and a `Content-Length`. `<path>` is a session-relative path from section 2 (`manifest.json`, `rgb/000123.jpg`, ...) or `plans/<file>` for the project's plan files of section 13 found beside the session. Rules: one or two segments, each of `A-Za-z0-9_.-` and not starting with `.`; `derived/` is refused; a file is at most 256 MB. A file already in the inbox is replaced. `201` → `{"stored": "<path>", "bytes": <n>}`; `400` for a bad id or path; `409` when the session is already in the store; `413` when too large.
+- `POST /upload/<session-id>/done` → ingest what the inbox holds: the session moves to `sessions/<project>/<session-id>` (the manifest's project), `vividhome validate` runs on it, plans beside it are imported for the levels the store lacks, and the inbox entry is removed. `200` → `{"session_id": "...", "ingested": true, "validated": true | false, "destination": "sessions/<project>/<session-id>", "errors": ["..."], "warnings": <n>, "plans": [{"level": "...", "imported": true | false, "reason": "..."}]}`. A session that fails validation is kept and reported with `validated: false` and up to five `errors`; the index then lists it as validated false. `400` when the inbox holds no readable `manifest.json`; `409` when the session is already in the store.
+
+A session id must match section 1 exactly. The inbox is staging under the store (`.inbox/`), never listed by the index, and the store is written only by `ingest`, as before. The server never executes anything it receives.

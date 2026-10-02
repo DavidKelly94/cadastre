@@ -161,6 +161,26 @@ def _thumbnail(session: Session, relative: str, target_dir: Path, name: str) -> 
     return f"derived/thumbs/{target.name}"
 
 
+def _turn(t_wc: np.ndarray) -> int:
+    """Degrees to turn the stored image clockwise so it displays upright.
+
+    The same rule as the app's ``DisplayOrientation`` (section 3: images are
+    stored in landscape sensor orientation whatever way the phone was held).
+    World up in camera coordinates is the second row of the rotation block,
+    ``up_c = Rᵀ·(0, 1, 0)``. A camera pointed at the floor or the ceiling has no
+    meaningful roll and is shown as stored; otherwise the edge that is really
+    the top is turned to the top. The first walk showed every portrait
+    keyframe on its side in the lightbox, which the app's own Photos screen
+    had already solved.
+    """
+    x, y, z = float(t_wc[1, 0]), float(t_wc[1, 1]), float(t_wc[1, 2])
+    if abs(z) >= abs(x) and abs(z) >= abs(y):
+        return 0
+    if abs(y) >= abs(x):
+        return 0 if y >= 0 else 180
+    return 270 if x > 0 else 90
+
+
 def _heading(
     calibration: PlanCalibration, t_hs: NDArray[np.float64], t_wc: NDArray[np.float64]
 ) -> list[float] | None:
@@ -228,6 +248,7 @@ def _overlay(
             "u": round(pixel[0], 2),
             "v": round(pixel[1], 2),
             "heading": _heading(calibration, t_hs, frame.T_wc),
+            "turn": _turn(frame.T_wc),
             "rgb": f"{session_prefix}/{frame.rgb}",
             "thumb": None,
         }
@@ -251,6 +272,7 @@ def _overlay(
             "u": round(pixel[0], 2),
             "v": round(pixel[1], 2),
             "heading": _heading(calibration, t_hs, still.T_wc),
+            "turn": _turn(still.T_wc),
             "path": f"{session_prefix}/{still.path}",
             "thumb": None,
         }
@@ -385,7 +407,10 @@ def _render(page: LevelPage) -> str:
   #light {{ position: fixed; inset: 0; z-index: 10; background: #000d; display: flex;
             flex-direction: column; align-items: center; justify-content: center; }}
   #light[hidden] {{ display: none; }}
-  #full {{ max-width: 96vw; max-height: 88vh; object-fit: contain; }}
+  /* The frame is the image's displayed size; the image inside is turned to
+     upright, so for a quarter turn the frame is the image's size transposed. */
+  #frame {{ position: relative; flex: none; }}
+  #full {{ position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }}
   #caption {{ color: #eee; padding: 10px; font-size: 13px; text-align: center; }}
   #caption a {{ color: #9cf; }}
   .hit {{ fill: transparent; }}
@@ -411,7 +436,7 @@ The tick shows which way the camera looked. Diamonds are stills.</div></div>
 <div id="stage"><img id="plan" alt="plan"><svg id="overlay"></svg></div>
 <img id="thumb">
 <div id="light" hidden>
-  <img id="full" alt="">
+  <div id="frame"><img id="full" alt=""></div>
   <div id="caption"><span id="what"></span> &middot;
     <a id="open" href="" target="_blank" rel="noopener">open the file</a> &middot;
     <span class="hint-mouse">&larr; &rarr; step &middot; Esc closes</span>
@@ -541,17 +566,41 @@ function hideThumb() {{ thumb.style.display = "none"; }}
 // The lightbox shows the file itself, not a copy: #open is a plain link to the
 // JPEG in the session folder, which is the record.
 const light = document.getElementById("light");
+const frame = document.getElementById("frame");
 const full = document.getElementById("full");
 let current = null;
 function openPhoto(session, at) {{
   const photo = session.photos[at];
   current = {{ session, at }};
   hideThumb();
+  full.dataset.turn = photo.turn || 0;
+  frame.style.width = frame.style.height = "";
   full.src = photo.src;
   document.getElementById("open").href = photo.src;
   document.getElementById("what").textContent = caption(session, photo);
   light.hidden = false;
+  layoutPhoto();
 }}
+// Stored images are landscape whichever way the phone was held (section 3);
+// `turn` says how far to rotate for upright. A CSS rotation leaves the layout
+// box alone, so the frame is sized to the picture as it will be seen, and
+// the image inside is laid out transposed for a quarter turn.
+function layoutPhoto() {{
+  if (!full.naturalWidth) return;
+  const turn = Number(full.dataset.turn || 0);
+  const quarter = turn % 180 !== 0;
+  const seenW = quarter ? full.naturalHeight : full.naturalWidth;
+  const seenH = quarter ? full.naturalWidth : full.naturalHeight;
+  const s = Math.min(innerWidth * 0.96 / seenW, innerHeight * 0.88 / seenH, 1);
+  const w = Math.round(seenW * s), h = Math.round(seenH * s);
+  frame.style.width = w + "px";
+  frame.style.height = h + "px";
+  full.style.width = (quarter ? h : w) + "px";
+  full.style.height = (quarter ? w : h) + "px";
+  full.style.transform = `translate(-50%, -50%) rotate(${{turn}}deg)`;
+}}
+full.addEventListener("load", layoutPhoto);
+addEventListener("resize", layoutPhoto);
 function closePhoto() {{
   light.hidden = true;
   full.removeAttribute("src");

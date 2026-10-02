@@ -77,7 +77,14 @@ final class ServerIndexTests: XCTestCase {
     XCTAssertEqual(
       PCAddress.url(from: "http://pc.local:8765/inspect/main.html")?.absoluteString,
       "http://pc.local:8765", "a pasted page path is dropped")
-    XCTAssertEqual(PCAddress.url(from: "https://pc.example")?.absoluteString, "https://pc.example:8765")
+    XCTAssertEqual(
+      PCAddress.url(from: "https://pc.example")?.absoluteString, "https://pc.example",
+      "https with no port is a tailnet name on 443, not the pipeline's 8765")
+    XCTAssertEqual(
+      PCAddress.url(from: "https://pc.tail1234.ts.net/inspect/main.html")?.absoluteString,
+      "https://pc.tail1234.ts.net")
+    XCTAssertEqual(
+      PCAddress.url(from: "https://pc.example:8443")?.absoluteString, "https://pc.example:8443")
     XCTAssertNil(PCAddress.url(from: ""))
     XCTAssertNil(PCAddress.url(from: "   "))
     XCTAssertNil(PCAddress.url(from: "ftp://pc.local"))

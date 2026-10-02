@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted, 2026-09-30. Decision 3 (LAN only, nothing written over the network) is amended by [ADR-0029](0029-the-pc-is-reached-over-the-owners-tailnet.md); the rest stands. Extends [ADR-0008](0008-offline-processing-on-owner-pc.md) (processing stays on the PC) and [ADR-0011](0011-web-viewer-threejs-spark-sog.md) (the viewer is a browser app). The asks are the owner's; the mechanics are in `docs/design/return-path-design.md` and may change without a new record.
+Accepted, 2026-09-30. Decision 3 (LAN only, nothing written over the network) is amended by [ADR-0029](0029-the-pc-is-reached-over-the-owners-tailnet.md), and decision 2 (rendering stays on the PC) by [ADR-0030](0030-the-phone-owns-the-first-loop.md) for the first loop; the rest stands. Extends [ADR-0008](0008-offline-processing-on-owner-pc.md) (processing stays on the PC) and [ADR-0011](0011-web-viewer-threejs-spark-sog.md) (the viewer is a browser app). The asks are the owner's; the mechanics are in `docs/design/return-path-design.md` and may change without a new record.
 
 ## Context
 

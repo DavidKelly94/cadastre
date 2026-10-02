@@ -7,9 +7,8 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-10-02, after the first full round trip on real hardware:
-a capture sent from the phone, processed on the PC, and opened back on the
-phone.
+Last updated: 2026-10-02, after the first full round trip on real hardware
+and the decision that the phone will do that loop itself (ADR-0030).
 
 ## The short version
 
@@ -80,6 +79,12 @@ it survives one. Owner-side items are things only the owner can do.
    cellular warning, https addresses for the tailnet. Owner-side next: send
    one capture on the home Wi-Fi first, then install Tailscale on both ends,
    `tailscale serve --bg 8765` on the PC, and send one from cellular.
+8. **The first loop on the phone** — the owner's ask of 2026-10-02 after the
+   first round trip: calibrate, align and look, without the PC. ADR-0030 and
+   `docs/design/phone-first-loop-design.md`; nothing built. Order: calibrate
+   on the phone first (it alone takes the PC off the first visit's path),
+   then align with a native level view, then the alignment travelling to the
+   PC with the capture.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the

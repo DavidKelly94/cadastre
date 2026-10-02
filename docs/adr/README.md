@@ -15,7 +15,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0005](0005-short-room-sessions-offline-registration.md) | One room per session, registration offline | Superseded by [ADR-0022](0022-session-is-one-pass-carrying-phases.md) |
 | [ADR-0006](0006-fiducials-and-plan-as-invariant-frame.md) | AprilTag hybrid markers, with the plan as the invariant frame | Superseded by [ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md) |
 | [ADR-0007](0007-per-level-se2-alignment.md) | Per-level SE(2) alignment from tapped landmarks and plan corners | Accepted |
-| [ADR-0008](0008-offline-processing-on-owner-pc.md) | Offline processing on the owner's PC | Accepted |
+| [ADR-0008](0008-offline-processing-on-owner-pc.md) | Offline processing on the owner's PC | Accepted; amended by ADR-0030 (the phone does the first loop) |
 | [ADR-0009](0009-posed-photos-first-splats-later.md) | Posed photos and the LiDAR mesh are the truth; splats are a visual layer | Accepted |
 | [ADR-0010](0010-ai-labeling-assistive.md) | AI labelling is assistive, never automatic | Accepted |
 | [ADR-0011](0011-web-viewer-threejs-spark-sog.md) | Web viewer on three.js and Spark with SOG splats | Accepted |
@@ -35,8 +35,9 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0025](0025-plans-are-a-project-level-asset.md) | The floor plan is a project-level asset the app carries | Accepted |
 | [ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md) | Markers are optional; the plan and tapped landmarks carry the frame | Accepted |
 | [ADR-0027](0027-alignment-quality-not-a-landmark-count.md) | The capture asks for alignment quality, not a landmark count | Accepted |
-| [ADR-0028](0028-results-return-to-the-app.md) | Results return to the app, and the phone reads the record it wrote | Accepted; decision 3 amended by ADR-0029 |
+| [ADR-0028](0028-results-return-to-the-app.md) | Results return to the app, and the phone reads the record it wrote | Accepted; decision 3 amended by ADR-0029, decision 2 by ADR-0030 |
 | [ADR-0029](0029-the-pc-is-reached-over-the-owners-tailnet.md) | The PC is reached over the owner's tailnet, and the app sends captures to it | Accepted |
+| [ADR-0030](0030-the-phone-owns-the-first-loop.md) | The phone owns the record's first loop; the PC is the archive and the heavy compute | Accepted |
 
 ## Adding a new ADR
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted, 2026-09-11.
+Accepted, 2026-09-11. Amended by [ADR-0030](0030-the-phone-owns-the-first-loop.md): the phone also calibrates, aligns and shows a capture on the plan; the PC keeps the archive and the heavy compute.
 
 ## Context
 

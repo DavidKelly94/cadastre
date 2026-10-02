@@ -29,7 +29,7 @@ struct PlanCalibrateView: View {
 
   private static let space = "calibrate-plan"
   private static let loupeSize: CGFloat = 132
-  private static let steps = [
+  private static let stepTitles = [
     "One end of a printed dimension",
     "The other end of it",
     "The point that is house origin (0, 0)",
@@ -139,11 +139,11 @@ struct PlanCalibrateView: View {
 
   private var steps: some View {
     VStack(alignment: .leading, spacing: 3) {
-      ForEach(Self.steps.indices, id: \.self) { index in
+      ForEach(Self.stepTitles.indices, id: \.self) { index in
         HStack(spacing: 8) {
           Image(systemName: index < points.count ? "checkmark.circle.fill" : "circle")
             .foregroundStyle(index < points.count ? Color.green : Color.secondary)
-          Text("\(index + 1). \(Self.steps[index])")
+          Text("\(index + 1). \(Self.stepTitles[index])")
             .font(index == points.count ? .footnote.weight(.semibold) : .footnote)
             .foregroundStyle(index == points.count ? Color.primary : Color.secondary)
         }

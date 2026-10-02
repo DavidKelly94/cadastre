@@ -19,7 +19,9 @@
   #status { margin-top: 12px; min-height: 3em; }
   .err { color: #c0392b; }
   .ok { color: #218c5a; }
-  svg { position: absolute; top: 0; left: 0; }
+  /* The marks sit over the image; without this they also swallow the clicks
+     meant for it, and nothing happens. */
+  svg { position: absolute; top: 0; left: 0; pointer-events: none; }
   img { display: block; }
 </style>
 <div id="panel">

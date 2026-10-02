@@ -277,6 +277,19 @@ not on a network" with Wi-Fi lit: iOS reports a Local Network permission
 that is off as offline, and Bonjour finds nothing for the same reason. The
 message now names the setting, and the setup guide's table has the row.
 
+**The first real send worked**: Test green with the pairing code accepted, one
+capture sent at 53 MB with its plan, "On the PC and validated; plan for
+level-1 imported", and the *on the PC* chip afterwards. Then `plan calibrate
+--web` took no clicks at all: the SVG that draws the marks sat over the plan
+image and swallowed them, and the align page had the same overlay drawn below
+the image instead of on it. Both pages were only ever exercised through their
+CLI flags before. Fixed with `pointer-events: none` on the overlays and
+checked in headless Chromium: a click puts a mark at the clicked pixel on
+both pages, and the old page puts none. Two things seen and left for later:
+the Bonjour entry stuck at *resolving* (likely the link-local addresses the
+advert carried until this change), and the send sheet saying 49 MB then
+sending 53 MB because the plan files count only in the second figure.
+
 **Fixed on the way.** `ingest` never wrote `derived/validate.json`; only
 `validate --json` did. So after the documented flow (`ingest`, then `align`
 and `inspect`) the index reported every session as `validated: null` and the

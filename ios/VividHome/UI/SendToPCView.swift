@@ -15,9 +15,14 @@ struct SendToPCView: View {
 
   @StateObject private var uploader = SessionUploader()
   @State private var expensive: Bool?
+  /// What will actually go over the wire: the captures plus the plan files
+  /// beside them, listed the way the send lists them. Until that is counted,
+  /// the rows' own sizes stand in. The first walk showed 49 MB and then sent
+  /// 53 MB because only the second figure counted the plan.
+  @State private var exactBytes: Int?
   @Environment(\.dismiss) private var dismiss
 
-  private var totalBytes: Int { rows.reduce(0) { $0 + $1.bytes } }
+  private var totalBytes: Int { exactBytes ?? rows.reduce(0) { $0 + $1.bytes } }
 
   var body: some View {
     NavigationStack {
@@ -79,6 +84,15 @@ struct SendToPCView: View {
         }
       }
       .task { expensive = await SessionUploader.pathIsExpensive() }
+      .task {
+        let jobs = jobs
+        exactBytes = await Task.detached {
+          jobs.reduce(0) { total, job in
+            let files = (try? SessionUpload.files(of: job.layout, plans: job.plans)) ?? []
+            return total + SessionUpload.totalBytes(files)
+          }
+        }.value
+      }
       .interactiveDismissDisabled(uploader.running)
     }
   }

@@ -15,14 +15,19 @@ struct RenderingView: View {
   var body: some View {
     NavigationStack {
       WebPage(url: url)
-        .ignoresSafeArea(edges: .bottom)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
           ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
-          ToolbarItem(placement: .bottomBar) {
-            Text(age).font(.footnote).foregroundStyle(.secondary)
-          }
+        }
+        // A footer rather than a bottom-bar item: the bar squeezed the text
+        // into a pill that read "Fro..." on the first walk.
+        .safeAreaInset(edge: .bottom) {
+          Text(age)
+            .font(.footnote).foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(.bar)
         }
     }
   }

@@ -317,6 +317,11 @@ private struct PlanCard: View {
   let coverage: [String: (done: Int, total: Int)]
 
   @State private var image: UIImage?
+  /// The stored raster's pixel size. Room pins are stored in those pixels
+  /// (§13), and the card draws a shrunk copy, so the pins must be scaled from
+  /// this and never from the copy: the first walk had every pin pushed off the
+  /// bottom-right of the card by exactly that mistake.
+  @State private var rasterSize: CGSize = .zero
 
   /// Tall enough to read a floor, short enough that the rooms stay on screen.
   private static let height: CGFloat = 230
@@ -324,12 +329,12 @@ private struct PlanCard: View {
   var body: some View {
     ZStack(alignment: .topLeading) {
       Color(.secondarySystemBackground)
-      if let image {
+      if let image, rasterSize.width > 0 {
         GeometryReader { outer in
-          let fitted = PlanCoverageView.fit(image.size, into: outer.size)
+          let fitted = PlanCoverageView.fit(rasterSize, into: outer.size)
           let originX = (outer.size.width - fitted.width) / 2
           let originY = (outer.size.height - fitted.height) / 2
-          let scale = image.size.width == 0 ? 1 : fitted.width / image.size.width
+          let scale = fitted.width / rasterSize.width
 
           ZStack(alignment: .topLeading) {
             Image(uiImage: image)
@@ -365,9 +370,12 @@ private struct PlanCard: View {
       // hundred points wide. Decode and shrink off the main thread.
       let plans = plans
       let plan = plan
-      image = await Task.detached(priority: .userInitiated) {
-        plans.image(for: plan).map { PlanStore.downsampled($0, maxEdge: 1200) }
+      let loaded = await Task.detached(priority: .userInitiated) { () -> (UIImage, CGSize)? in
+        guard let full = plans.image(for: plan) else { return nil }
+        return (PlanStore.downsampled(full, maxEdge: 1200), full.size)
       }.value
+      image = loaded?.0
+      rasterSize = loaded?.1 ?? .zero
     }
   }
 

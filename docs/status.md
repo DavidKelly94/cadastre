@@ -7,16 +7,19 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-10-02, after the PC side of sending captures over the
-tailnet landed (ADR-0029).
+Last updated: 2026-10-02, after the first full round trip on real hardware:
+a capture sent from the phone, processed on the PC, and opened back on the
+phone.
 
 ## The short version
 
-**The whole chain works on real data.** A room captured on an iPhone reaches the
-PC, validates, gets a plan, calibrates, aligns and renders on an inspection page
-that shows the room outline, the tapped landmarks and the walk path, and opens
-any keyframe or still at full resolution from the spot it was taken. That is the
-product's spine, and it is no longer hypothetical.
+**The whole chain works on real data, and the phone is on both ends of it.**
+A room captured on an iPhone is sent to the PC from the app, validates, gets a
+plan, calibrates, aligns and renders on an inspection page that shows the room
+outline, the tapped landmarks and the walk path, opens any keyframe or still at
+full resolution from the spot it was taken, and that page opens in the app
+(2026-10-02, over the home Wi-Fi). That is the product's spine, and it is no
+longer hypothetical.
 
 The pipeline and the Swift core are complete and tested. The capture app runs on
 device and its screens exist: setup, capture HUD, session review, past captures,
@@ -288,7 +291,26 @@ checked in headless Chromium: a click puts a mark at the clicked pixel on
 both pages, and the old page puts none. Two things seen and left for later:
 the Bonjour entry stuck at *resolving* (likely the link-local addresses the
 advert carried until this change), and the send sheet saying 49 MB then
-sending 53 MB because the plan files count only in the second figure.
+sending 53 MB because the plan files count only in the second figure. The
+sheet now counts the files the way the send does, so the two agree.
+
+**Then the rest of the chain, by hand on the PC.** Calibrate, align (with
+`--force`: the capture is of the owner's current bedroom and the plan is the
+new house, so a 49 cm fit is the honest answer), inspect, and *Rendering on
+the PC* on the phone showed the plan with the walk, the corners and the photo
+marks, and a tap opened a keyframe. Three things seen there and fixed:
+
+- The house screen's plan card had every room pin pushed off its bottom-right
+  corner: the pins are stored in the raster's pixels (§13) and the card
+  scaled them by the shrunk copy it draws. It scales by the raster now.
+- A portrait keyframe opened on its side in the lightbox. The app's Photos
+  screen already turns images upright from the pose; the page now carries
+  the same `turn` per photo, computed by the same rule in `inspector.py`
+  and tested against it, and lays the picture out at its displayed size so a
+  quarter turn fits the phone's width. Checked in headless Chromium at phone
+  width.
+- The rendering's "From the PC, <time>" line was squeezed into a pill that
+  read "Fro...". It is a footer now.
 
 **Fixed on the way.** `ingest` never wrote `derived/validate.json`; only
 `validate --json` did. So after the documented flow (`ingest`, then `align`

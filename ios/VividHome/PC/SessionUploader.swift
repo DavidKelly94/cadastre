@@ -306,7 +306,9 @@ final class SessionUploader: ObservableObject {
         + "and is this phone on the home Wi-Fi or connected to the tailnet? "
         + "Sending again picks up where this left off."
     case .notConnectedToInternet:
-      return "This phone is not on a network. Sending again picks up where this left off."
+      return "iOS is not letting this app reach the local network, or the phone is offline. "
+        + "Check Settings → Privacy & Security → Local Network. Sending again picks up "
+        + "where this left off."
     default:
       return error.localizedDescription
     }

@@ -141,6 +141,8 @@ They are worth it in two cases: a level whose plan you suspect does not match wh
 | Build shows Expired in TestFlight | Builds last 90 days. Install a newer build or run the workflow again. |
 | App Store Connect rejects the app name | It is taken; add or change the qualifier, for example `VividHome: Site Record`. Never change the bundle ID to work around a name clash. |
 | Phone cannot see the SMB share | Same Wi-Fi network, Windows file sharing on, use the IP address not the PC name. |
+| App says "not letting this app reach the local network", or finds no PC | iOS Local Network permission is off for VividHome: Settings, Privacy & Security, Local Network, turn it on. iOS reports a denied local connection as "offline" even with Wi-Fi connected. |
+| App says nothing answered at the PC's address | Windows Firewall blocked Python when `serve --lan` first started: Windows Security, Firewall & network protection, Allow an app through firewall, tick Private for the Python under `pipeline\.venv`. |
 | `vividhome validate` fails | Paste the output to the implementer. Do not delete the session from the phone. |
 
 ## 12. Fallback capture if the app is not ready

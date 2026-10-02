@@ -272,7 +272,10 @@ cover it, including a full synthetic capture sent file by file and ingested.
 its pairing code; it also printed five `169.254.x.x` addresses from virtual
 adapters around the one that works, and said nothing while a capture arrived.
 Link-local addresses are left out now, and a landed capture prints one line
-with its verdict and destination.
+with its verdict and destination. On the phone, Test answered "This phone is
+not on a network" with Wi-Fi lit: iOS reports a Local Network permission
+that is off as offline, and Bonjour finds nothing for the same reason. The
+message now names the setting, and the setup guide's table has the row.
 
 **Fixed on the way.** `ingest` never wrote `derived/validate.json`; only
 `validate --json` did. So after the documented flow (`ingest`, then `align`

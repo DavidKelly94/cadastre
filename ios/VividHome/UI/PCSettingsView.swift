@@ -16,7 +16,8 @@ struct PCSettingsView: View {
         Section {
           if link.discovered.isEmpty {
             Text("Looking on this network. The PC has to be on, on this Wi-Fi, and running "
-              + "`vividhome serve --lan`.")
+              + "`vividhome serve --lan`; and iOS has to allow this app on the local network "
+              + "(Settings → Privacy & Security → Local Network).")
               .font(.footnote).foregroundStyle(.secondary)
           }
           ForEach(link.discovered) { item in
@@ -37,7 +38,9 @@ struct PCSettingsView: View {
         }
 
         Section {
-          TextField("192.168.1.20, or https://pc.tailnet.ts.net", text: $link.addressText)
+          // No URL in the placeholder: iOS styles one as a link, which the
+          // first walk read as something to tap.
+          TextField("PC address", text: $link.addressText)
             .keyboardType(.URL)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()

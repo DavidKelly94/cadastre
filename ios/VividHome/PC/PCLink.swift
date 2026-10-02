@@ -224,7 +224,11 @@ final class PCLink: ObservableObject {
         + "devices looks the same as a PC that is off; on a tailnet name, Tailscale "
         + "has to be connected on both the phone and the PC."
     case .notConnectedToInternet:
-      return "This phone is not on a network."
+      // iOS reports a Local Network permission that is off as "offline", with
+      // the Wi-Fi icon lit. The first walk hit exactly this.
+      return "iOS is not letting this app reach the local network, or the phone is "
+        + "offline. Check Settings → Privacy & Security → Local Network, and turn "
+        + "VividHome on."
     default:
       return error.localizedDescription
     }

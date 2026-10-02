@@ -23,9 +23,17 @@ from pathlib import Path
 
 from .plan import plan_paths
 from .session import Session, SessionError
-from .validate import Report, validate_session
+from .validate import Report, validate_session, write_report
 
-__all__ = ["IngestBatch", "IngestError", "IngestResult", "PlanImport", "ingest", "ingest_many"]
+__all__ = [
+    "IngestBatch",
+    "IngestError",
+    "IngestResult",
+    "PlanImport",
+    "ingest",
+    "ingest_inbox",
+    "ingest_many",
+]
 
 
 class IngestError(Exception):
@@ -323,6 +331,36 @@ def ingest_many(
     return batch
 
 
+def ingest_inbox(store: str | Path, entry: str | Path) -> IngestResult:
+    """Take a session the app uploaded (section 14.1) into the store, by moving it.
+
+    ``entry`` is one inbox entry: the session under its own name and, beside
+    it, any ``plans/`` the app sent, which is the project-folder shape the other
+    entry points take. It is staging, so the session moves rather than copies,
+    and the entry is removed afterwards whatever happened to it. A session that
+    fails validation is kept: the phone still has the capture and the owner
+    decides at the PC, where the report is, rather than the upload silently
+    producing nothing.
+    """
+    store_root = _prepare_store(store)
+    entry = Path(entry)
+    try:
+        session_root = _find_session_root(entry)
+        result = _ingest_root(
+            store_root,
+            session_root,
+            session_root.name,
+            None,
+            staging=entry,
+            force=False,
+            keep_going=True,
+        )
+        result.plans = _import_plans(store_root, session_root)
+    finally:
+        shutil.rmtree(entry, ignore_errors=True)
+    return result
+
+
 def _prepare_store(store: str | Path) -> Path:
     """Create the store up front, so an unusable path fails here with something
     readable instead of five frames down inside pathlib's recursive mkdir.
@@ -402,7 +440,8 @@ def _ingest_root(
     else:
         shutil.copytree(session_root, destination)
 
-    report = validate_session(Session.load(destination))
+    stored = Session.load(destination)
+    report = validate_session(stored)
     if not report.ok and not keep_going:
         shutil.rmtree(destination)
         raise IngestError(
@@ -410,6 +449,10 @@ def _ingest_root(
             + "\n".join(f"  {finding}" for finding in report.errors[:5])
             + "\nPass --keep-going to ingest it anyway."
         )
+    # The report is the PC's word on the capture: the index serves it to the
+    # phone (section 14) and inspect reads it, so it is written here, where the
+    # check ran, rather than only when 'validate --json' is run by hand.
+    write_report(stored, report)
 
     return IngestResult(
         session_id=session_id,

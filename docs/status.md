@@ -7,8 +7,8 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-10-01, after the owner walked build 47 and the first fixes
-from that walk landed.
+Last updated: 2026-10-02, after the PC side of sending captures over the
+tailnet landed (ADR-0029).
 
 ## The short version
 
@@ -68,6 +68,13 @@ it survives one. Owner-side items are things only the owner can do.
    is imported again, and nothing reads it meanwhile.
 6. **Corner candidates on the phone** (roadmap item 5, room side), once item 4
    says the offline number earns the screen time.
+7. **Captures sent from the app, from anywhere** — the owner's ask of
+   2026-10-02, ADR-0029. **PC side built 2026-10-02** (`/upload/`, the pairing
+   code, the inbox, `done` → ingest), tested against a synthetic capture. The
+   app side is next: the pairing code in settings, *Send to the PC* from
+   Captures, resume from the inbox listing, https addresses for the tailnet.
+   Owner-side afterwards: install Tailscale on both ends, `tailscale serve
+   --bg 8765` on the PC, and send one real capture from cellular.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -85,12 +92,12 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `plan` | done | `add`, `calibrate`; parses `12' 6"` |
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
-| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session |
-| `serve` | done | Local server for the browser pages; `--lan` serves the store read-only to the phone with `/index.json` and Bonjour (ADR-0028) |
+| `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session; writes `derived/validate.json` so the index can say what passed |
+| `serve` | done | Local server for the browser pages; `--lan` serves the store to the phone with `/index.json` and Bonjour (ADR-0028), and takes captures under `/upload/` with the pairing code into an inbox (ADR-0029). **Not yet tried from a phone** |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-18 modules, **323 tests passing**, ruff clean.
+19 modules, **335 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -234,6 +241,41 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The PC takes captures from the app, 2026-10-02
+
+The owner captures on site and is not on the home network; the captures have
+to reach the PC, be processed, and come back to the phone, without the Files
+app and without being home. ADR-0029 decides it: phone and PC on the owner's
+own tailnet, with `tailscale serve` giving the PC an HTTPS name the app can
+use without an App Transport Security exception, and the app sending captures
+to `vividhome serve --lan` behind a pairing code. The question of whether that
+is safe in a public repository was asked and answered the same day: the code
+holds nothing secret, the pairing code is generated on the PC and never
+committed, and the design assumes the handler's code is read.
+
+**Built, PC side.** `/upload/` (section 14.1 of the format): one `PUT` per
+file into `<store>/.inbox/<session-id>/`, a `GET` that lists what is there so a
+dropped send resumes, and `POST done` that hands the entry to `ingest`, which
+moves the session into the store, validates it, imports any `plans/` beside
+it and removes the inbox entry. Paths are checked as text and as paths, two
+plain segments at most, `derived/` refused, a file capped at 256 MB, a short
+body left under a temporary name and discarded, a session already in the
+store refused. The pairing code is 16 hex characters from `secrets`, printed
+by `serve --lan`, compared in constant time. The handler now speaks HTTP/1.1
+with keep-alive because a capture is thousands of small requests. Twelve tests
+cover it, including a full synthetic capture sent file by file and ingested.
+
+**Fixed on the way.** `ingest` never wrote `derived/validate.json`; only
+`validate --json` did. So after the documented flow (`ingest`, then `align`
+and `inspect`) the index reported every session as `validated: null` and the
+phone said *on the PC, unchecked* about captures the PC had in fact checked.
+Ingest writes the report now, where the check ran.
+
+**Not yet.** The app side (next PR), and nothing here has been reached from a
+phone or through Tailscale. `serve` without `--lan` still has the
+unauthenticated `/save` for the calibrate and align pages, so the setup doc
+says to run `--lan` behind `tailscale serve`, never plain `serve`.
 
 ## One command per visit, not per room, 2026-10-01
 

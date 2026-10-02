@@ -35,7 +35,8 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0025](0025-plans-are-a-project-level-asset.md) | The floor plan is a project-level asset the app carries | Accepted |
 | [ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md) | Markers are optional; the plan and tapped landmarks carry the frame | Accepted |
 | [ADR-0027](0027-alignment-quality-not-a-landmark-count.md) | The capture asks for alignment quality, not a landmark count | Accepted |
-| [ADR-0028](0028-results-return-to-the-app.md) | Results return to the app, and the phone reads the record it wrote | Accepted |
+| [ADR-0028](0028-results-return-to-the-app.md) | Results return to the app, and the phone reads the record it wrote | Accepted; decision 3 amended by ADR-0029 |
+| [ADR-0029](0029-the-pc-is-reached-over-the-owners-tailnet.md) | The PC is reached over the owner's tailnet, and the app sends captures to it | Accepted |
 
 ## Adding a new ADR
 

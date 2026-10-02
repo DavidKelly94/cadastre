@@ -26,7 +26,8 @@ pipeline/
     markers.py              marker PDF + PNG generator
     synth.py                synthetic sessions for tests
     web/                    static HTML/JS for calibrate, align, inspect (no build step)
-    serve.py                tiny http.server: GET static files, POST /save → JSON on disk; --lan serves read-only to the phone
+    serve.py                tiny http.server: GET static files, POST /save → JSON on disk; --lan serves to the phone, /upload/ takes captures
+    upload.py               the inbox under the store that /upload/ fills, the pairing code, and the hand-off to ingest
     index.py                GET /index.json: what the store holds, for a client that cannot list directories (§14 of the format)
   tests/
     test_transforms.py test_validate.py test_apriltag.py test_align.py test_plan.py test_markers.py
@@ -127,7 +128,7 @@ Generates `inspect/<level>.html`: the plan raster as background, each aligned se
 
 ## 12. `serve`
 
-`serve [--port 8765] [--lan] [--open <path>]`: the same `http.server` the calibrate, align and inspect flows use, as a command of its own. On localhost it serves the store and accepts `POST /save` for the pages that click points. With `--lan` ([ADR-0028](../adr/0028-results-return-to-the-app.md)) it binds every interface, prints the addresses it is reachable on, answers `GET /index.json` (`index.py`, section 14 of the format) and `GET /_vividhome/ping`, advertises `_vividhome._tcp` over Bonjour (`zeroconf`) so the app can find the PC, and **refuses every POST**: a writable endpoint on the home network would be a way to put files on the owner's PC from any device on it. Until the app reads the index, Safari on the phone can already open the served inspect pages by address.
+`serve [--port 8765] [--lan] [--open <path>]`: the same `http.server` the calibrate, align and inspect flows use, as a command of its own. On localhost it serves the store and accepts `POST /save` for the pages that click points. With `--lan` ([ADR-0028](../adr/0028-results-return-to-the-app.md)) it binds every interface, prints the addresses it is reachable on, answers `GET /index.json` (`index.py`, section 14 of the format) and `GET /_vividhome/ping`, advertises `_vividhome._tcp` over Bonjour (`zeroconf`) so the app can find the PC, and refuses `/save`: a writable endpoint on the home network would be a way to put files on the owner's PC from any device on it. The one write it takes is a capture, under `/upload/` (section 14.1 of the format, [ADR-0029](../adr/0029-the-pc-is-reached-over-the-owners-tailnet.md)), and only with the store's pairing code, which `--lan` issues into `<store>/.pairing-code` and prints. `upload.py` stages each file under `<store>/.inbox/<session-id>/` (written to a temporary name and renamed, so the inbox never holds a half file under its final name), lists what is there so a dropped send resumes, and on `done` hands the entry to `ingest_inbox`, which moves the session into the store, validates it, imports any `plans/` beside it, and writes `derived/validate.json` so the index can say so. Behind `tailscale serve` the same server is reachable from wherever the owner is. The handler speaks HTTP/1.1 with keep-alive, because a capture is thousands of small PUTs.
 
 ## 13. Later (weeks 3+, own design docs when started)
 

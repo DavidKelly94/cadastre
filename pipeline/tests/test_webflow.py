@@ -123,6 +123,24 @@ def test_collect_removes_the_staging_directory_after_success(tmp_path: Path):
     assert not task.directory.exists()
 
 
+def test_a_busy_port_is_stepped_around(tmp_path: Path, capsys):
+    """serve --lan holds 8765 in the other window; the click pages must not
+    fail with a traceback over it."""
+    from vividhome.webflow import bind
+
+    holder = bind(tmp_path, 0)
+    taken = holder.server_address[1]
+    try:
+        server = bind(tmp_path, taken)
+        try:
+            assert server.server_address[1] != taken
+            assert f"port {taken} is in use" in capsys.readouterr().out
+        finally:
+            server.server_close()
+    finally:
+        holder.server_close()
+
+
 def test_the_served_page_is_reachable(tmp_path: Path):
     """The URL the command prints has to actually serve the page."""
     task = stage(tmp_path, "align.html", {"level": "main"})

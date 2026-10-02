@@ -92,33 +92,22 @@ Every build carries its own test plan: open Settings in the app, then Test plan 
 
 ## 8. Getting sessions to the PC
 
-The way that needs no Files app, from home or from anywhere (ADR-0029): the app sends captures straight to `vividhome serve --lan` on the PC.
+The app sends them: [runbook.md](runbook.md) sections 1 to 3. The PC runs `vividhome serve --lan`, the phone is paired to it once with the code it prints, and Captures has a *Send to the PC* button. Nothing else is needed on the home Wi-Fi, and section 8 of the runbook covers reaching the PC from elsewhere over your own tailnet (ADR-0029).
 
-1. On the PC, run `uv run vividhome --store <your-store> serve --lan` (step 9 installs it). It prints a **pairing code** like `3f9a-1c2b-7e4d-0a61` and keeps it in `<your-store>\.pairing-code`; delete that file to issue a new one. Never commit or paste the code anywhere.
-2. On the phone, project screen, PC: type the PC's address (the one `serve --lan` printed, on the home Wi-Fi) and the pairing code, tap Test.
-3. Captures, *Send to the PC*: the captures the PC does not have go across one file at a time, the PC ingests and validates each as it completes, and the row gains its *on the PC* mark. A send that drops resumes where it stopped.
+Two older routes still work and need nothing on the PC but a folder, for a phone that cannot be paired:
 
-To reach the PC from outside the house, put the phone and the PC on your own tailnet (free for personal use, <https://tailscale.com/kb/1017/install>): install Tailscale on both, sign in with the same account, then on the PC enable HTTPS certificates for the tailnet in the Tailscale admin console (<https://tailscale.com/kb/1153/enabling-https>) and run `tailscale serve --bg 8765`. That publishes `https://<pc-name>.<tailnet>.ts.net`, reachable only from your own devices, and forwards it to `serve --lan` on the PC. Type that `https://` name as the address in the app. Never use `tailscale funnel`, which opens the same thing to the public internet. The PC has to be on and `serve --lan` running; a Tailscale outage looks the same as a PC that is off.
+- Over Wi-Fi (SMB): on the PC, right-click a folder such as `C:\Users\<you>\vividhome-inbox`, Properties, Sharing, Share, add your Windows user, and note the PC's IP address (`ipconfig`). On the phone, in Files tap the three dots, Connect to Server, enter `smb://<pc-ip>`, sign in as a registered user; the share appears under Shared. Long-press the session folder, Copy, open the share, Paste. Then `uv run vividhome --store <your-store> ingest <that folder>` on the PC.
+- Over USB: install Apple Devices from the Microsoft Store, plug the phone in, tap Trust on the phone, select the iPhone, open Files, expand VividHome and drag session folders to the PC. Then `ingest` as above.
 
-The two older routes still work and need nothing on the PC but a folder:
-
-Sessions live in the Files app: On My iPhone, VividHome, `sessions`, a project folder, then one folder per session named like `20260926-101500_L1_kitchen_framing_a1b2c3`. A 5-minute room is about 800 MB.
-
-Over Wi-Fi (SMB): on the PC, right-click a folder such as `C:\Users\<you>\vividhome-inbox`, Properties, Sharing, Share, add your Windows user, and note the PC's IP address (`ipconfig`). On the phone, in Files tap the three dots, Connect to Server, enter `smb://<pc-ip>`, sign in as a registered user; the share appears under Shared. Long-press the session folder, Copy, open the share, Paste. Use the 5 GHz network.
-
-Over USB: install Apple Devices from the Microsoft Store, plug the phone in, tap Trust on the phone, select the iPhone, open Files, expand VividHome and drag session folders to the PC.
-
-Delete a session from the phone only after `vividhome validate` (step 9) has passed on the PC copy: Session review, Delete, or delete the folder in Files. Deleting the app deletes every session still on the phone.
+Sessions live in the Files app under On My iPhone, VividHome, `sessions`, a project folder, then one folder per session. Delete a session from the phone only once the app marks it *on the PC*; deleting the app deletes every session still on the phone.
 
 ## 9. The PC pipeline
 
 1. Install uv: in PowerShell run `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`. Install Git for Windows if `git` is missing.
 2. `git clone https://github.com/DavidKelly94/cadastre`, then `cd cadastre\pipeline` and `uv sync`. That installs a Python and every dependency from the lockfile; nothing needs to be installed first. `pyproject.toml` asks for **3.12 or newer** and uv takes the newest it has, so the version it reports may be higher than 3.12 and that is expected.
-3. `uv run vividhome --help` lists the commands.
-4. After every visit: `uv run vividhome --store <your-store> ingest <the project folder, a session folder, or a .zip of either>` copies every session it finds into the project store **and validates each** — one command does both, for the whole visit at once, and a session that fails is reported beside the ones that landed rather than stopping them. Point it at the project folder (`sessions/<project>/` as copied off the phone) and the plan imported in the app comes across with the captures. `--store` goes before the command. Paste the full output to the implementer, even when it passes. The session lands at `<store>/sessions/<project>/<session-id>`, under the project its own manifest names; `--project` overrides that and is only for re-filing one deliberately.
-5. As they land: `uv run vividhome apriltag`, `plan calibrate`, `align` and `inspect` (serves a page at http://localhost:8000). To look at the result on the phone, `uv run vividhome serve --lan` prints the address to open in Safari, or the app's Rendering entry opens it once the PC is set up (step 8); nothing on the network can change the store except the app sending captures with the pairing code, and it stops with Ctrl+C. `plan add` is only for a plan that was never imported in the app: when the session is ingested from inside its project folder (or from a zip of that folder), `ingest` copies the app's `plans/` across and says so, and only calibration is left to do. Run `git pull` and `uv sync` first to pick up new commands.
-
-Keep the project store outside the git checkout and back it up after each visit. `--store` takes any path you can write to — `C:\Users\<you>\vividhome-data` is fine, and a second drive is not assumed. A drive letter that does not exist is refused with a message saying so.
+3. `uv run vividhome --help` lists the commands. Every command takes `--store <folder>` before its name; keep that folder outside the git checkout (`C:\Users\<you>\vividhome-data` is fine) and back it up after each visit. A drive letter that does not exist is refused with a message saying so.
+4. The visit itself, send, calibrate, align, inspect, is [runbook.md](runbook.md). To pick up new commands first: `git pull`, then `uv sync`.
+5. Only when a session arrived by SMB or USB rather than from the app: `uv run vividhome --store <your-store> ingest <the project folder, a session folder, or a .zip of either>` copies every session it finds into the store and validates each; point it at the project folder and the plan imported in the app comes across too. `plan add` is only for a plan that was never imported in the app.
 
 ## 10. Printing markers (optional)
 
@@ -144,6 +133,8 @@ They are worth it in two cases: a level whose plan you suspect does not match wh
 | App says "not letting this app reach the local network", or finds no PC | iOS Local Network permission is off for VividHome: Settings, Privacy & Security, Local Network, turn it on. iOS reports a denied local connection as "offline" even with Wi-Fi connected. |
 | App says nothing answered at the PC's address | Windows Firewall blocked Python when `serve --lan` first started: Windows Security, Firewall & network protection, Allow an app through firewall, tick Private for the Python under `pipeline\.venv`. |
 | `vividhome validate` fails | Paste the output to the implementer. Do not delete the session from the phone. |
+| `residual ... is above 0.3 m` from `align` | A tapped corner paired with the wrong plan corner, or a capture that is not of this plan. Runbook section 5. |
+| The calibrate or align page takes no clicks | The page is from before 2026-10-02: `git pull`, `uv sync`, run the command again. |
 
 ## 12. Fallback capture if the app is not ready
 

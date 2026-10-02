@@ -312,6 +312,14 @@ marks, and a tap opened a keyframe. Three things seen there and fixed:
 - The rendering's "From the PC, <time>" line was squeezed into a pill that
   read "Fro...". It is a footer now.
 
+**And the owner fumbled**, which is the finding that matters most: `&&` in
+PowerShell, a placeholder typed as a path, a placeholder typed as a session
+id, the click pages on the port `serve --lan` holds. `docs/runbook.md` is the
+result, written from that walk: two windows, a `$store` variable, every
+command as typed, what each prints, what to click and why, and a table of
+what went wrong. The click pages now step around a busy port by themselves.
+README points at the runbook first.
+
 **Fixed on the way.** `ingest` never wrote `derived/validate.json`; only
 `validate --json` did. So after the documented flow (`ingest`, then `align`
 and `inspect`) the index reported every session as `validated: null` and the

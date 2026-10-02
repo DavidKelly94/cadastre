@@ -25,7 +25,7 @@ from pathlib import Path
 
 from .serve import make_server
 
-__all__ = ["WebTask", "collect", "stage", "web_dir"]
+__all__ = ["WebTask", "bind", "collect", "stage", "web_dir"]
 
 #: Where task and result files live while a page is open. Inside the store so the
 #: server can reach them, dot-prefixed so it is obviously not part of the record.
@@ -87,7 +87,7 @@ def collect(
     directory is removed either way: a stale result file left behind would be
     picked up by the next run as though it had just been clicked.
     """
-    server = make_server(store, port=port)
+    server = bind(store, port)
     address = f"http://127.0.0.1:{server.server_address[1]}/{WEB_DIRNAME}/{task.page}"
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -121,6 +121,23 @@ def collect(
         shutil.rmtree(task.directory, ignore_errors=True)
 
     return result
+
+
+def bind(store: str | Path, port: int):
+    """A server on ``port``, or on any free port when that one is taken.
+
+    The owner keeps ``serve --lan`` running on 8765 in one window while
+    calibrating or aligning in another, and both defaulted to the same port.
+    The page's address is printed either way, so which port it is does not
+    matter; failing with a traceback did.
+    """
+    try:
+        return make_server(store, port=port)
+    except OSError:
+        server = make_server(store, port=0)
+        actual = server.server_address[1]
+        print(f"port {port} is in use (serve --lan, probably); using {actual} for this page")
+        return server
 
 
 class _suppressed:

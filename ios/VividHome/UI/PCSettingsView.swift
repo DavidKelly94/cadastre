@@ -37,7 +37,7 @@ struct PCSettingsView: View {
         }
 
         Section {
-          TextField("192.168.1.20 or 192.168.1.20:8765", text: $link.addressText)
+          TextField("192.168.1.20, or https://pc.tailnet.ts.net", text: $link.addressText)
             .keyboardType(.URL)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
@@ -54,7 +54,24 @@ struct PCSettingsView: View {
         } header: {
           Text("Address")
         } footer: {
-          Text("`vividhome serve --lan` prints this on the PC. The port is 8765 unless it was changed.")
+          Text(
+            "`vividhome serve --lan` prints this on the PC; the port is 8765 unless it was changed. "
+              + "Away from home, the PC's tailnet name (`https://<pc>.<tailnet>.ts.net`, from "
+              + "`tailscale serve`) works from anywhere Tailscale is connected.")
+        }
+
+        Section {
+          TextField("3f9a-1c2b-7e4d-0a61", text: $link.pairingCode)
+            .font(.body.monospaced())
+            .keyboardType(.asciiCapable)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+        } header: {
+          Text("Pairing code")
+        } footer: {
+          Text(
+            "Printed by `vividhome serve --lan` on the PC. Needed only to send captures there; "
+              + "reading the rendering needs nothing. Test checks it along with the address.")
         }
 
         Section("Result") {
@@ -74,15 +91,23 @@ struct PCSettingsView: View {
                 + "pipeline \(index.vividhome).")
                 .font(.footnote).foregroundStyle(.secondary)
             }
+            if let pairingProblem = link.pairingProblem {
+              Label(pairingProblem, systemImage: "key.slash")
+                .foregroundStyle(.orange).font(.footnote)
+            } else if link.hasPairingCode {
+              Label("Pairing code accepted; captures can be sent.", systemImage: "key.fill")
+                .foregroundStyle(.green).font(.footnote)
+            }
           } else {
             Text("Not tested yet.").font(.footnote).foregroundStyle(.secondary)
           }
         }
 
         Section {
-          Text("Everything the PC serves is readable by anyone on this network while "
-            + "`serve --lan` is running, and nothing on the network can change it. "
-            + "The app only ever reads.")
+          Text("Everything the PC serves is readable by anyone who can reach it: this network "
+            + "while `serve --lan` runs, or your own devices on the tailnet. Nothing can change "
+            + "the store except captures sent with the pairing code, and those land in an inbox "
+            + "the PC checks before it keeps them. The app never deletes anything on the PC.")
             .font(.footnote).foregroundStyle(.secondary)
         }
       }

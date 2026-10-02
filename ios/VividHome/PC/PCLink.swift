@@ -3,15 +3,13 @@ import Foundation
 import Network
 import VividHomeCore
 
-/// The PC on the home network that holds the rendering (ADR-0028).
+/// The PC that holds the rendering (ADR-0028), on the home network or, since
+/// ADR-0029, on the owner's tailnet.
 ///
 /// Finds it over Bonjour, or takes an address the owner typed; fetches
-/// `/index.json` to say what it holds and how old that is; and turns a
-/// project level into the URL of its rendered page. Nothing here writes to
-/// the PC, and the PC refuses writes on the network anyway.
-///
-/// Read-only and LAN-only on purpose: the design carries the plaintext server
-/// knowingly, and the app's side of that bargain is to send nothing.
+/// `/index.json` to say what it holds and how old that is; turns a project
+/// level into the URL of its rendered page; and keeps the pairing code that
+/// lets `SessionUploader` send captures. Nothing else here writes to the PC.
 ///
 /// Not `@MainActor`, like the app's other observable objects: it is created in
 /// a view's property initialiser. Every published value is still set on the
@@ -22,10 +20,18 @@ final class PCLink: ObservableObject {
   @Published var addressText: String {
     didSet { UserDefaults.standard.set(addressText, forKey: Self.addressKey) }
   }
+  /// The store's pairing code (ADR-0029), from the Keychain; empty when none.
+  /// Read nothing needs it; sending a capture does.
+  @Published var pairingCode: String {
+    didSet { PairingCode.write(pairingCode) }
+  }
   @Published private(set) var discovered: [Discovered] = []
   @Published private(set) var index: ServerIndex?
   @Published private(set) var checkedAt: Date?
   @Published private(set) var problem: String?
+  /// What the PC said about the pairing code on the last test: nil when it
+  /// was accepted or there was none to try.
+  @Published private(set) var pairingProblem: String?
   @Published private(set) var testing = false
 
   struct Discovered: Identifiable, Equatable {
@@ -44,10 +50,16 @@ final class PCLink: ObservableObject {
 
   init() {
     addressText = UserDefaults.standard.string(forKey: Self.addressKey) ?? ""
+    pairingCode = PairingCode.read() ?? ""
   }
 
   var baseURL: URL? { PCAddress.url(from: addressText) }
   var isConfigured: Bool { baseURL != nil }
+  var hasPairingCode: Bool {
+    !pairingCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+  }
+  /// An address and a code: what a send needs before it can start.
+  var canSend: Bool { isConfigured && hasPairingCode }
 
   // MARK: - Discovery
 
@@ -149,9 +161,43 @@ final class PCLink: ObservableObject {
       }
       index = try JSONDecoder().decode(ServerIndex.self, from: data)
       checkedAt = Date()
+      if hasPairingCode {
+        pairingProblem = await Self.checkPairing(base: base, code: pairingCode)
+      } else {
+        pairingProblem = nil
+      }
     } catch {
       index = nil
       problem = Self.describe(error)
+    }
+  }
+
+  /// Ask the PC whether it takes this pairing code, by listing an inbox entry
+  /// that cannot exist: a well-formed id (section 1) nothing ever records
+  /// under. 200 means the code is accepted; 401 and 403 say what is wrong.
+  private static func checkPairing(base: URL, code: String) async -> String? {
+    guard let url = URL(string: base.absoluteString + "/upload/00000101-000000_probe_probe_aaaaaa")
+    else { return nil }
+    var request = URLRequest(url: url)
+    request.timeoutInterval = 6
+    request.setValue(
+      "Bearer \(code.trimmingCharacters(in: .whitespacesAndNewlines))",
+      forHTTPHeaderField: "Authorization")
+    do {
+      let (_, response) = try await URLSession.shared.data(for: request)
+      switch (response as? HTTPURLResponse)?.statusCode ?? 0 {
+      case 200:
+        return nil
+      case 401:
+        return "The PC refused this pairing code. `vividhome serve --lan` prints the right one."
+      case 403:
+        return "The PC has no pairing code yet. Run `vividhome serve --lan` there once; "
+          + "it prints the code."
+      case let status:
+        return "The PC answered the pairing check with HTTP \(status)."
+      }
+    } catch {
+      return "The pairing check did not get an answer: \(error.localizedDescription)"
     }
   }
 
@@ -173,9 +219,10 @@ final class PCLink: ObservableObject {
     }
     switch code {
     case .timedOut, .cannotConnectToHost, .cannotFindHost, .networkConnectionLost:
-      return "Nothing answered at that address. Is the PC on, on this Wi-Fi, "
-        + "and running `vividhome serve --lan`? A guest network that isolates "
-        + "devices looks the same as a PC that is off."
+      return "Nothing answered at that address. Is the PC on and running "
+        + "`vividhome serve --lan`? On the home Wi-Fi, a guest network that isolates "
+        + "devices looks the same as a PC that is off; on a tailnet name, Tailscale "
+        + "has to be connected on both the phone and the PC."
     case .notConnectedToInternet:
       return "This phone is not on a network."
     default:

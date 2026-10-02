@@ -70,11 +70,13 @@ it survives one. Owner-side items are things only the owner can do.
    says the offline number earns the screen time.
 7. **Captures sent from the app, from anywhere** — the owner's ask of
    2026-10-02, ADR-0029. **PC side built 2026-10-02** (`/upload/`, the pairing
-   code, the inbox, `done` → ingest), tested against a synthetic capture. The
-   app side is next: the pairing code in settings, *Send to the PC* from
-   Captures, resume from the inbox listing, https addresses for the tailnet.
-   Owner-side afterwards: install Tailscale on both ends, `tailscale serve
-   --bg 8765` on the PC, and send one real capture from cellular.
+   code, the inbox, `done` → ingest), tested against a synthetic capture.
+   **App side written the same day, not walked**: the pairing code under PC
+   (Keychain), Test checks it, *Send to the PC* from Captures and from a
+   capture, three files in flight, resume from the inbox listing, the
+   cellular warning, https addresses for the tailnet. Owner-side next: send
+   one capture on the home Wi-Fi first, then install Tailscale on both ends,
+   `tailscale serve --bg 8765` on the PC, and send one from cellular.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -101,7 +103,7 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
-13 modules, 11 test files, all Linux-tested. `Transform`, `SessionID`,
+Every module Linux-tested, `SessionUpload` and `ServerIndex` included. `Transform`, `SessionID`,
 `Records`, `Coding`, `KeyframePolicy`, `HealthPolicy`, `JSONLWriter`,
 `RowPacker`, `SessionLayout`, `SessionLifecycle`, `BoundedWriteQueue`,
 `SessionStore`, plus the `vividhome-fixture` binary the contract job runs.
@@ -272,10 +274,25 @@ and `inspect`) the index reported every session as `validated: null` and the
 phone said *on the PC, unchecked* about captures the PC had in fact checked.
 Ingest writes the report now, where the check ran.
 
-**Not yet.** The app side (next PR), and nothing here has been reached from a
-phone or through Tailscale. `serve` without `--lan` still has the
-unauthenticated `/save` for the calibrate and align pages, so the setup doc
-says to run `--lan` behind `tailscale serve`, never plain `serve`.
+**Written, app side, the same day.** `SessionUpload` in the core package lists
+a capture's files the way the server accepts them (never `derived/`, never a
+dotted name, the project's `plans/` beside it), works out what is left to send
+from the PC's listing, and decodes the two answers; tested on Linux against the
+documented examples. In the app, `PCLink` keeps the pairing code in the
+Keychain and Test asks the PC whether it takes it, by listing an inbox entry
+that cannot exist. `SessionUploader` sends three files at a time with two
+retries on a network error, stops the whole send on a refused code, and hands
+`done`'s one-line verdict to the row. Captures gains *Send N captures to the
+PC* for the ones the PC does not list, each capture gains *Send this capture*,
+and the sheet says the size and asks before sending on cellular. `PCAddress`
+treats `https://` with no port as 443, so a tailnet name types as a browser
+would. None of it has run: no send has reached a PC from a phone, and nothing
+has been tried through Tailscale.
+
+**Not yet.** `serve` without `--lan` still has the unauthenticated `/save` for
+the calibrate and align pages, so the setup doc says to run `--lan` behind
+`tailscale serve`, never plain `serve`. Backgrounding the app pauses a send;
+the resume covers it, a background session does not exist yet.
 
 ## One command per visit, not per room, 2026-10-01
 

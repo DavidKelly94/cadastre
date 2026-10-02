@@ -146,8 +146,13 @@ public enum PCAddress {
   public static let defaultPort = 8765
 
   /// A base URL from a typed address: `192.168.1.20`, `192.168.1.20:9000`,
-  /// `pc.local`, `http://pc.local:8765/`. Only the scheme, host and port
-  /// survive; a pasted page path is dropped. Nil when there is no host.
+  /// `pc.local`, `http://pc.local:8765/`, `https://pc.tailnet.ts.net`. Only the
+  /// scheme, host and port survive; a pasted page path is dropped. Nil when
+  /// there is no host.
+  ///
+  /// With no port typed, plain HTTP is the pipeline's own server on 8765, and
+  /// HTTPS is a tailnet name fronted by `tailscale serve` on 443 (ADR-0029),
+  /// which is left implicit as a browser would.
   public static func url(from text: String, defaultPort: Int = defaultPort) -> URL? {
     var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
     guard !trimmed.isEmpty else { return nil }
@@ -159,7 +164,10 @@ public enum PCAddress {
     else { return nil }
     let scheme = components.scheme?.lowercased() ?? "http"
     guard scheme == "http" || scheme == "https" else { return nil }
-    let port = components.port ?? defaultPort
-    return URL(string: "\(scheme)://\(host):\(port)")
+    if let port = components.port {
+      return URL(string: "\(scheme)://\(host):\(port)")
+    }
+    return scheme == "https"
+      ? URL(string: "https://\(host)") : URL(string: "http://\(host):\(defaultPort)")
   }
 }

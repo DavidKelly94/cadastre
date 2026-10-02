@@ -21,7 +21,14 @@ struct SessionListView: View {
   @State private var selected: Set<String> = []
   @State private var confirmingDelete = false
   @State private var confirmingValidatedDelete = false
+  @State private var sending: SendBatch?
   @Environment(\.editMode) private var editMode
+
+  /// The captures a send sheet was opened for.
+  struct SendBatch: Identifiable {
+    let id = UUID()
+    var rows: [Row]
+  }
 
   /// A session as the list shows it. Read once when the list appears rather
   /// than held live: these are finished sessions and their numbers are final.
@@ -55,6 +62,20 @@ struct SessionListView: View {
 
   private var validatedBytes: Int { validatedOnPC.reduce(0) { $0 + $1.bytes } }
 
+  /// The captures the PC does not say it has. With no answer from the PC yet,
+  /// that is all of them; the send asks the PC per capture and skips what it
+  /// already holds.
+  private var notOnPC: [Row] {
+    rows.filter { row in
+      switch link.index?.holding(of: row.id) {
+      case .validated?, .held?: return false
+      case .absent?, nil: return true
+      }
+    }
+  }
+
+  private var notOnPCBytes: Int { notOnPC.reduce(0) { $0 + $1.bytes } }
+
   var body: some View {
     NavigationStack {
       Group {
@@ -64,6 +85,20 @@ struct SessionListView: View {
             description: Text("Recorded rooms show up here, and stay until you delete them."))
         } else {
           List(selection: $selected) {
+            if !notOnPC.isEmpty {
+              Section {
+                Button {
+                  sending = SendBatch(rows: notOnPC)
+                } label: {
+                  Label(
+                    "Send \(notOnPC.count) capture\(notOnPC.count == 1 ? "" : "s") to the PC "
+                      + "(\(Self.bytes(notOnPCBytes)))",
+                    systemImage: "arrow.up.to.line")
+                }
+              } footer: {
+                Text(sendFooter)
+              }
+            }
             if !validatedOnPC.isEmpty {
               Section {
                 Button(role: .destructive) {
@@ -81,7 +116,10 @@ struct SessionListView: View {
             Section {
               ForEach(rows) { row in
                 NavigationLink {
-                  SessionDetailView(row: row, onPC: link.index?.holding(of: row.id)) {
+                  SessionDetailView(
+                    row: row, onPC: link.index?.holding(of: row.id),
+                    onSend: { sending = SendBatch(rows: [row]) }
+                  ) {
                     delete([row])
                   }
                 } label: {
@@ -131,6 +169,12 @@ struct SessionListView: View {
       }
       .onAppear(perform: reload)
       .task { await link.refreshIfStale() }
+      .sheet(item: $sending) { batch in
+        SendToPCView(rows: batch.rows, link: link) {
+          // The PC's word changed: ask again so the marks follow.
+          Task { await link.test() }
+        }
+      }
       .alert("Could not delete", isPresented: .constant(failure != nil)) {
         Button("OK") { failure = nil }
       } message: {
@@ -205,6 +249,19 @@ struct SessionListView: View {
     }
     .padding(.horizontal, 16).padding(.vertical, 10)
     .background(.bar)
+  }
+
+  private var sendFooter: String {
+    if link.canSend {
+      return "Each goes straight to `vividhome serve --lan` on the PC, which ingests and "
+        + "validates it. The Files app is not needed."
+    }
+    if link.isConfigured {
+      return "Sending needs the pairing code `vividhome serve --lan` prints; type it under PC "
+        + "on the project screen."
+    }
+    return "Set the PC's address and pairing code under PC on the project screen to send "
+      + "captures without the Files app."
   }
 
   private var pcFooter: String {
@@ -334,6 +391,7 @@ struct SessionDetailView: View {
   let row: SessionListView.Row
   /// The PC's word on this capture, when it has been asked.
   let onPC: ServerIndex.Holding?
+  let onSend: () -> Void
   let onDelete: () -> Void
 
   @Environment(\.dismiss) private var dismiss
@@ -374,11 +432,20 @@ struct SessionDetailView: View {
         } label: {
           Label("Photos", systemImage: "photo.on.rectangle")
         }
+        if onPC != .validated && onPC != .held {
+          Button(action: onSend) {
+            Label("Send this capture to the PC", systemImage: "arrow.up.to.line")
+          }
+        }
         ShareLink(item: row.layout.root) {
           Label("Share this capture", systemImage: "square.and.arrow.up")
         }
       } footer: {
-        Text("Also reachable in the Files app under On My iPhone → VividHome → sessions.")
+        Text(
+          (onPC == .validated || onPC == .held
+            ? "The PC already has this capture. "
+            : "Send goes straight to `vividhome serve --lan` on the PC. ")
+            + "Also reachable in the Files app under On My iPhone → VividHome → sessions.")
       }
 
       Section {
@@ -413,9 +480,9 @@ struct SessionDetailView: View {
     case .held?:
       return "The PC has this capture but has not validated it. Keep it until it does."
     case .absent?:
-      return "The PC does not have this capture. Share it first; deleting here is the only copy gone."
+      return "The PC does not have this capture. Send it first; deleting here is the only copy gone."
     case nil:
-      return "Whether the PC has this capture is unknown. Share it first unless you are sure. "
+      return "Whether the PC has this capture is unknown. Send it first unless you are sure. "
         + "This cannot be undone."
     }
   }

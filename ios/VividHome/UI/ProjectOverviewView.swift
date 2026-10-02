@@ -352,9 +352,7 @@ private struct PlanCard: View {
       }
       HStack(spacing: 6) {
         Image(systemName: "map").font(.caption2)
-        Text(plan.rooms.isEmpty
-          ? "No rooms placed yet"
-          : "\(plan.rooms.count) room\(plan.rooms.count == 1 ? "" : "s") placed")
+        Text(cardLabel)
         Spacer()
         Text("Open").foregroundStyle(Color.accentColor)
       }
@@ -377,6 +375,14 @@ private struct PlanCard: View {
       image = loaded?.0
       rasterSize = loaded?.1 ?? .zero
     }
+  }
+
+  /// Rooms placed, and whether the drawing has a scale yet (ADR-0030).
+  private var cardLabel: String {
+    let rooms = plan.rooms.isEmpty
+      ? "No rooms placed yet"
+      : "\(plan.rooms.count) room\(plan.rooms.count == 1 ? "" : "s") placed"
+    return plan.isCalibrated ? rooms : rooms + " · no scale yet"
   }
 
   private func pin(_ room: PlanRoom, at point: CGPoint) -> some View {

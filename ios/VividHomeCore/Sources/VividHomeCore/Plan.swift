@@ -30,8 +30,9 @@ public struct PlanFile: Codable, Equatable, Sendable {
   /// Calibration is the presence of both numbers, never a stored flag.
   ///
   /// A boolean beside them could disagree with them, and then nothing says which
-  /// is right. The app never sets these: it solves nothing, so every plan it
-  /// writes is uncalibrated and `vividhome plan calibrate` is what fills them in.
+  /// is right. Either side may fill them in: `vividhome plan calibrate` on the
+  /// PC, or the phone through ``calibrated(scaleFrom:to:distanceMetres:origin:rotationDegrees:floorHeight:)``
+  /// (ADR-0030), with the same meaning and the same numbers.
   public var isCalibrated: Bool { metresPerPixel != nil && originPx != nil }
 
   /// Half-calibrated is a defect, not a state: `house_to_plan` raises on it far

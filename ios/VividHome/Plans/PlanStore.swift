@@ -14,6 +14,8 @@ final class PlanStore: ObservableObject {
     case couldNotRead
     case couldNotRasterize
     case tooLarge
+    case noPlan
+    case badCalibration
 
     var errorDescription: String? {
       switch self {
@@ -21,6 +23,9 @@ final class PlanStore: ObservableObject {
       case .couldNotRead: return "That file could not be opened."
       case .couldNotRasterize: return "That page could not be turned into an image."
       case .tooLarge: return "That image is too large to store."
+      case .noPlan: return "This level has no plan to calibrate."
+      case .badCalibration:
+        return "The two scale points are the same spot, or the distance is not positive."
       }
     }
   }
@@ -147,6 +152,23 @@ final class PlanStore: ObservableObject {
     // An accepted candidate stops being a candidate.
     candidates[level]?.removeAll { $0.slug == room }
     try save(plan)
+  }
+
+  /// Set the level's scale and origin from three points the owner placed
+  /// (ADR-0030). The maths is the core package's, pinned to the pipeline's.
+  func calibrate(
+    level: String, scaleFrom a: CGPoint, to b: CGPoint, distanceMetres: Double,
+    origin: CGPoint, rotationDegrees: Double, floorHeight: Double
+  ) throws {
+    guard let plan = plans[level] else { throw Failure.noPlan }
+    guard
+      let calibrated = plan.calibrated(
+        scaleFrom: (Double(a.x), Double(a.y)), to: (Double(b.x), Double(b.y)),
+        distanceMetres: distanceMetres, origin: (Double(origin.x), Double(origin.y)),
+        rotationDegrees: rotationDegrees, floorHeight: floorHeight)
+    else { throw Failure.badCalibration }
+    plans[level] = calibrated
+    try save(calibrated)
   }
 
   func unplace(room: String, on level: String) throws {

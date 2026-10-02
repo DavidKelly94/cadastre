@@ -81,9 +81,10 @@ it survives one. Owner-side items are things only the owner can do.
    `tailscale serve --bg 8765` on the PC, and send one from cellular.
 8. **The first loop on the phone** — the owner's ask of 2026-10-02 after the
    first round trip: calibrate, align and look, without the PC. ADR-0030 and
-   `docs/design/phone-first-loop-design.md`; nothing built. Order: calibrate
-   on the phone first (it alone takes the PC off the first visit's path),
-   then align with a native level view, then the alignment travelling to the
+   `docs/design/phone-first-loop-design.md`. **Calibrate on the phone written
+   2026-10-02, not walked**: the Scale screen with the loupe, the maths in the
+   core package pinned to the Python's numbers, `ingest` adopting the result.
+   Next: align with a native level view, then the alignment travelling to the
    PC with the capture.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
@@ -107,7 +108,7 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **335 tests passing**, ruff clean.
+19 modules, **348 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -251,6 +252,33 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Calibrate on the phone, written blind, 2026-10-02
+
+The first step of ADR-0030. The plan screen gains *Scale* (top left): tap one
+end of a printed dimension, drag the ring under a loupe until the crosshair is
+on the tick, the other end, the origin, type the printed length, Save. The
+line under the fields shows the scale and the drawing's width in metres before
+anything is written, which is the sanity check the runbook asked the owner to
+do in their head. The result goes into `plans/<level>.json`, the same four
+fields `plan calibrate` writes, and travels to the PC with the next capture;
+`ingest` adopts it when the store's copy has no scale and no alignments, and
+otherwise leaves the store's alone, with tests for all three cases.
+
+The maths is in the core package (`PlanFile.calibrated`, `houseToPlan`,
+`planToHouse`, `PlanDistance`) and its tests are pinned to numbers the Python
+produced for the same inputs, to 1e-9, which is the first half of the design's
+"keep the two honest" rule; the contract-job round trip comes with align.
+
+**Found on the way:** `parse_distance` read `11'-6"`, the way every architect
+prints feet and inches, as eleven feet *minus* six inches, silently, and could
+not read `6 1/2"` at all. Fixed on both sides with the same cases. The owner
+typed a dimension on the PC's page today; it is worth checking which form.
+
+**Not walked.** The loupe, the zoomed tap positions and the pinch are the
+parts no test covers: at zoom, a tap must still land on the pixel under the
+finger, which depends on SwiftUI reporting gesture locations in the view's
+own space under `scaleEffect`. That is the first thing to check on a device.
 
 ## The PC takes captures from the app, 2026-10-02
 

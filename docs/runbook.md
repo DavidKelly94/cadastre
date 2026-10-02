@@ -87,7 +87,15 @@ another and print the address, so there is nothing to configure.
 
 ## 4. Calibrate the plan, once per level
 
-The app carried the drawing across; the PC still needs its scale and origin.
+The drawing needs a scale and an origin before captures can be placed on it. Do it **on the phone**, in the room, with nothing else running:
+
+1. Project screen, tap the plan card, then **Scale** at the top left.
+2. Tap one end of a printed dimension line, then drag the ring under the loupe until the crosshair sits on the tick. Pinch to zoom first if the ticks are small.
+3. The other end of the same dimension line, the same way.
+4. The house origin: a point you can identify precisely that exists in the built house, such as the outside corner of the foundation at the bottom-left. Use the same point for every level.
+5. Type the printed length as written, `25' 0"` or `11'-6 1/2"` or `7.62m`. The line under the fields turns into the scale and the drawing's width in metres; a house is tens of metres across. Save.
+
+The scale travels to the PC with the next capture you send, and the PC adopts it. Or do it on the PC instead:
 
 ```
 uv run vividhome --store $store plan calibrate --level level-1 --web
@@ -167,7 +175,7 @@ made it.
 |---|---|
 | Window A | `serve --lan` running |
 | Phone | Captures, Send N captures to the PC |
-| Window B, once per level | `plan calibrate --level <level> --web` |
+| Phone, once per level | Plan card, Scale: three points and the printed distance (or `plan calibrate --level <level> --web` in Window B) |
 | Window B, per capture | `align <session-id> --level <level> --web` |
 | Window B | `inspect --level <level>` |
 | Phone | Rendering on the PC |

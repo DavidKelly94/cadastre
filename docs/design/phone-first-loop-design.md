@@ -10,6 +10,8 @@ Non-goals: validation on the phone beyond what the app already counts (the PC's 
 
 ## 2. Calibrate on the phone
 
+**Built 2026-10-02, walked by nobody.** `PlanCalibrateView`, reached from the plan screen's *Scale* button; the maths in `PlanFile.calibrated` and `PlanDistance`, pinned to the Python's numbers; `ingest` adopts the result. Differences from the sketch below: a tap places a point and dragging it shows the loupe, rather than a loupe during a press, so a pan and a placement cannot be confused.
+
 **Where.** The level's plan screen, which already places room pins (`PlanCoverageView`). A *Scale and origin* mode with the same three taps as the PC's page:
 
 1. one end of a printed dimension line;

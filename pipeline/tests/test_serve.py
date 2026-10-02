@@ -268,6 +268,15 @@ def send_session(base: str, capture: Path) -> list[str]:
     return sent
 
 
+def test_link_local_and_loopback_addresses_are_not_offered():
+    from vividhome.serve import is_reachable_address
+
+    assert is_reachable_address("192.168.1.20")
+    assert is_reachable_address("10.0.0.7")
+    assert not is_reachable_address("127.0.0.1")
+    assert not is_reachable_address("169.254.11.106")
+
+
 def test_the_pairing_code_is_issued_once_and_read_forgivingly(tmp_path: Path):
     assert read_pairing_code(tmp_path) is None
     code = ensure_pairing_code(tmp_path)

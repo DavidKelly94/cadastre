@@ -168,7 +168,9 @@ class StoreHandler(SimpleHTTPRequestHandler):
                 stored = self._inbox.store_file(session_id, rest, self.rfile, length)
                 self._send_json({"stored": rest, "bytes": stored}, status=201)
             elif method == "POST" and rest == "done":
-                self._send_json(self._inbox.finish(session_id))
+                receipt = self._inbox.finish(session_id)
+                self._announce(receipt)
+                self._send_json(receipt)
             else:
                 raise UploadError(
                     404,
@@ -179,6 +181,17 @@ class StoreHandler(SimpleHTTPRequestHandler):
             # The body, if any, is unread; the connection goes with the answer.
             self.close_connection = True
             self._send_json({"error": error.message}, status=error.status)
+
+    @staticmethod
+    def _announce(receipt: dict) -> None:
+        """One line on the PC when a capture lands: the server is otherwise
+        silent, and the owner watching the console should see the send arrive."""
+        verdict = "validated" if receipt.get("validated") else "kept, validation failed"
+        print(f"received {receipt.get('session_id')}: {verdict} -> {receipt.get('destination')}")
+        for error in receipt.get("errors") or []:
+            print(f"  {error}")
+        for plan in receipt.get("plans") or []:
+            print(f"  plan {plan.get('level')}: {plan.get('reason')}")
 
     def _authorise(self) -> None:
         header = self.headers.get("Authorization", "")
@@ -241,22 +254,30 @@ def make_server(
     return StoreServer((host, port), handler)
 
 
+def is_reachable_address(address: str) -> bool:
+    """Whether a phone could plausibly use this address: not loopback, and not
+    link-local. A Windows PC with Hyper-V or a VPN client has several
+    169.254.x.x adapters, and listing them buried the one address that works."""
+    return not address.startswith("127.") and not address.startswith("169.254.")
+
+
 def lan_addresses() -> list[str]:
-    """The IPv4 addresses this machine has on its networks, loopback excluded."""
+    """The IPv4 addresses this machine has on its networks, loopback and
+    link-local excluded."""
     found: set[str] = set()
     try:
         import ifaddr
 
         for adapter in ifaddr.get_adapters():
             for ip in adapter.ips:
-                if ip.is_IPv4 and not str(ip.ip).startswith("127."):
+                if ip.is_IPv4 and is_reachable_address(str(ip.ip)):
                     found.add(str(ip.ip))
     except ImportError:  # pragma: no cover - ifaddr comes with zeroconf
         pass
     if not found:
         try:
             for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
-                if not info[4][0].startswith("127."):
+                if is_reachable_address(info[4][0]):
                     found.add(info[4][0])
         except socket.gaierror:
             pass

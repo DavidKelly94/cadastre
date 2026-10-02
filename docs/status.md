@@ -268,6 +268,12 @@ by `serve --lan`, compared in constant time. The handler now speaks HTTP/1.1
 with keep-alive because a capture is thousands of small requests. Twelve tests
 cover it, including a full synthetic capture sent file by file and ingested.
 
+**First run on the owner's PC, 2026-10-02.** `serve --lan` started and printed
+its pairing code; it also printed five `169.254.x.x` addresses from virtual
+adapters around the one that works, and said nothing while a capture arrived.
+Link-local addresses are left out now, and a landed capture prints one line
+with its verdict and destination.
+
 **Fixed on the way.** `ingest` never wrote `derived/validate.json`; only
 `validate --json` did. So after the documented flow (`ingest`, then `align`
 and `inspect`) the index reported every session as `validated: null` and the

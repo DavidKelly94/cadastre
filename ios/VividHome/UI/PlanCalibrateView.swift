@@ -48,7 +48,7 @@ struct PlanCalibrateView: View {
         VStack(spacing: 0) {
           steps
           PlanPointCanvas(
-            image: image, points: $points, maxPoints: 3, shape: .segment,
+            image: image, points: $points, maxPoints: 3, figure: .segment,
             colour: { $0 == 2 ? .blue : .orange }, labels: [])
           fields(plan: plan, image: image)
         }

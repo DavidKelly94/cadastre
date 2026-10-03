@@ -100,7 +100,7 @@ final class RoomOutlineTests: XCTestCase {
         scaleFrom: (100, 100), to: (500, 100), distanceMetres: 4, origin: (100, 400)))
     plan.outline(room: "kitchen", points: box, in: size)
     let corners = try XCTUnwrap(plan.houseCorners(of: "kitchen"))
-    XCTAssertEqual(corners.map(\.label), ["corner-nw", "corner-ne", "corner-se", "corner-sw"])
+    XCTAssertEqual(corners.map { $0.label }, ["corner-nw", "corner-ne", "corner-se", "corner-sw"])
     // 0.01 m per pixel, origin at the south-west corner: the north-east corner
     // is 4 m east and 3 m up the page, which is negative v, hence negative z.
     XCTAssertEqual(corners[1].x, 4, accuracy: 1e-9)

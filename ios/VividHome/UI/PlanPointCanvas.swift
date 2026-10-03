@@ -10,7 +10,8 @@ import VividHomeCore
 /// plan pixels throughout; the zoom and pan apply to the whole drawing, so a
 /// point's position is a pixel times one scale whatever the zoom.
 struct PlanPointCanvas: View {
-  enum Shape {
+  /// Not `Shape`: that name is SwiftUI's.
+  enum Figure {
     /// A line between the first two points (a known distance).
     case segment
     /// Lines between consecutive points, closed once there are three (a room).
@@ -21,7 +22,7 @@ struct PlanPointCanvas: View {
   @Binding var points: [CGPoint]
   /// Nil for as many as the owner taps.
   let maxPoints: Int?
-  let shape: Shape
+  let figure: Figure
   let colour: (Int) -> Color
   /// A label beside each point, by index; shorter than `points` is fine.
   let labels: [String]
@@ -99,7 +100,7 @@ struct PlanPointCanvas: View {
 
   @ViewBuilder
   private func lines(scale: CGFloat) -> some View {
-    switch shape {
+    switch figure {
     case .segment:
       if points.count >= 2 {
         Path { path in

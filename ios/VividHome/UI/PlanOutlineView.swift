@@ -35,7 +35,7 @@ struct PlanOutlineView: View {
         VStack(spacing: 0) {
           header
           PlanPointCanvas(
-            image: image, points: $points, maxPoints: nil, shape: .polygon,
+            image: image, points: $points, maxPoints: nil, figure: .polygon,
             colour: { _ in .blue }, labels: names.map(Self.short))
           footer
         }

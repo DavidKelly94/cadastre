@@ -66,8 +66,8 @@ final class PlanTests: XCTestCase {
     XCTAssertFalse(plan.isHalfCalibrated)
   }
 
-  func testTheAppNeverWritesCalibration() {
-    // The app solves nothing, so everything it writes is uncalibrated.
+  func testPlacingARoomDoesNotCalibrate() {
+    // Placement is a fingertip on a drawing; only the Scale screen writes a scale.
     var plan = PlanFile(level: "main", image: "main.png")
     plan.place(room: "kitchen", x: 1, y: 1, in: size)
     XCTAssertNil(plan.metresPerPixel)

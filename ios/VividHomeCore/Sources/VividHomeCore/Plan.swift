@@ -98,8 +98,12 @@ public struct PlanFile: Codable, Equatable, Sendable {
   ) -> Bool {
     guard SessionID.slug(room) == room else { return false }
     guard x >= 0, y >= 0, x <= Double(size.width), y <= Double(size.height) else { return false }
-    let entry = PlanRoom(room: room, x: x, y: y, placedAt: PlanRoom.iso8601(date))
+    var entry = PlanRoom(room: room, x: x, y: y, placedAt: PlanRoom.iso8601(date))
     if let index = rooms.firstIndex(where: { $0.room == room }) {
+      // The pin is the label's position; the outline is the walls'. Moving
+      // one does not unsay the other.
+      entry.outline = rooms[index].outline
+      entry.outlinedAt = rooms[index].outlinedAt
       rooms[index] = entry
     } else {
       rooms.append(entry)
@@ -169,12 +173,21 @@ public struct PlanRoom: Codable, Equatable, Sendable {
   public var x: Double
   public var y: Double
   public var placedAt: String
+  /// The room's corners on the drawing, in order, as `[u, v]` plan pixels
+  /// (ADR-0031). Nil until the owner outlines the room; see ``RoomOutline``.
+  public var outline: [[Double]]?
+  public var outlinedAt: String?
 
-  public init(room: String, x: Double, y: Double, placedAt: String) {
+  public init(
+    room: String, x: Double, y: Double, placedAt: String,
+    outline: [[Double]]? = nil, outlinedAt: String? = nil
+  ) {
     self.room = room
     self.x = x
     self.y = y
     self.placedAt = placedAt
+    self.outline = outline
+    self.outlinedAt = outlinedAt
   }
 
   enum CodingKeys: String, CodingKey {
@@ -182,6 +195,8 @@ public struct PlanRoom: Codable, Equatable, Sendable {
     case x
     case y
     case placedAt = "placed_at"
+    case outline
+    case outlinedAt = "outlined_at"
   }
 
   public static func iso8601(_ date: Date) -> String {

@@ -125,6 +125,12 @@ a house about 30 m across in an image about 1,500 pixels wide is around 20 mm
 per pixel. If the number is wildly different, the two dimension clicks were not
 on the same line.
 
+## 4b. Outline the rooms, once per room, at home
+
+The capture will ask you to tap each corner of the room by name, and place the capture on the plan before you leave. For that it needs to know where the corners are on the drawing. On the phone: project screen, the plan card, then the row of rooms under *Outline the corners*. Tap a room, tap its inside corners in order around the room, drag any under the loupe, Save. The footer names them: NW, NE, SE, SW. Three corners minimum; an L-shaped room has six.
+
+Do this at home with the plan in front of you. A room without an outline still captures, unguided, and is placed on the PC afterwards.
+
 ## 5. Align each capture to the plan
 
 Find the capture's id. It is the folder name under the project:
@@ -176,6 +182,7 @@ made it.
 | Window A | `serve --lan` running |
 | Phone | Captures, Send N captures to the PC |
 | Phone, once per level | Plan card, Scale: three points and the printed distance (or `plan calibrate --level <level> --web` in Window B) |
+| Phone, once per room | Plan card, the room under *Outline the corners*: tap its corners in order |
 | Window B, per capture | `align <session-id> --level <level> --web` |
 | Window B | `inspect --level <level>` |
 | Phone | Rendering on the PC |

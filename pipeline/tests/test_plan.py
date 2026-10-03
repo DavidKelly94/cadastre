@@ -362,3 +362,29 @@ def test_extra_fields_never_shadow_the_modelled_ones():
     # `extra` is carried, not compared: two readings of one file are equal
     # whatever a later client appended.
     assert loaded == PlanCalibration(level="main", image="main.png")
+
+
+def test_calibrating_on_the_pc_keeps_the_rooms_outlines(store: Path):
+    """ADR-0031: the outline is the app's field inside rooms[]; the pipeline
+    writes back every field it does not model, so calibrate must not lose it."""
+    add_plan(store, make_png(store.parent / "plan.png"), "main")
+    _, json_path = plan_paths(store, "main")
+    raw = json.loads(json_path.read_text(encoding="utf-8"))
+    raw["rooms"] = [
+        {
+            "room": "kitchen",
+            "x": 200,
+            "y": 150,
+            "placed_at": "2026-10-03T10:00:00Z",
+            "outline": [[100, 100], [300, 100], [300, 200], [100, 200]],
+            "outlined_at": "2026-10-03T10:05:00Z",
+        }
+    ]
+    json_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    calibrate(store, "main", point_a=(0, 0), point_b=(100, 0), distance_m=2.0, origin_px=(5, 5))
+
+    after = json.loads(json_path.read_text(encoding="utf-8"))
+    assert after["rooms"][0]["outline"] == [[100, 100], [300, 100], [300, 200], [100, 200]]
+    assert after["rooms"][0]["outlined_at"] == "2026-10-03T10:05:00Z"
+    assert after["metres_per_pixel"] == pytest.approx(0.02)

@@ -90,8 +90,9 @@ it survives one. Owner-side items are things only the owner can do.
    guided corner taps with a live placement and residual, walls shading as
    they are photographed, a per-phase stills checklist, a leave check, and
    free capture and top-ups kept as they are. Design in
-   `docs/design/field-proof-design.md`; nothing built. Order: outlines and
-   guided taps first.
+   `docs/design/field-proof-design.md`. **Outlines built 2026-10-03, not
+   walked**: the Outline screen, corner naming, the house-corner projection,
+   the project validator's rule 7. Next: the guided taps and the live solve.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -114,7 +115,7 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **348 tests passing**, ruff clean.
+19 modules, **352 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -258,6 +259,22 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Rooms outlined on the plan, written blind, 2026-10-03
+
+The first piece of ADR-0031. The plan screen's tray gains a row of the placed
+rooms; each opens an Outline screen on the same canvas the Scale screen uses
+(now `PlanPointCanvas`, shared): tap the inside corners in order around the
+room, drag under the loupe, Save. Corners are named from where they sit, not
+typed: NW, NE, SE, SW by bearing from the outline's centre, with a suffix for
+a second corner in a quadrant, so an L-shaped room reads NW, NE, NE2, SE, SE2,
+SW. The names are what the guided taps will ask for and what
+`landmarks.jsonl` already records, so no new vocabulary enters the format.
+`outline` and `outlined_at` are additive fields on a room pin (§13, rule 7);
+moving the pin keeps the outline. `PlanFile.houseCorners(of:)` turns an
+outline into house metres through the calibration, which is the input the
+live solve needs next. On the PC, `validate --project` checks an outline and
+`plan calibrate` keeps it, both tested.
 
 ## Calibrate on the phone, written blind, 2026-10-02
 

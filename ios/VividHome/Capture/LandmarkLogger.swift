@@ -63,7 +63,7 @@ final class LandmarkLogger {
           label: landmark.label,
           kind: landmark.kind,
           position: landmark.position,
-          method: "raycast_estimated_plane"))
+          method: landmark.method))
     }
   }
 }
@@ -79,6 +79,15 @@ struct PlacedLandmark: Identifiable, Equatable {
   /// corrected position does not make it a different observation.
   let time: Double
   let keyframeIndex: Int
+  /// `landmarks.jsonl`'s `method`: the raycast, or the mesh corner the tap
+  /// snapped to (ADR-0031).
+  var method: String = PlacedLandmark.raycastMethod
+  /// Where the finger put it before a snap moved it, so the snap can be undone.
+  var tapped: Vector3?
+
+  static let raycastMethod = "raycast_estimated_plane"
+
+  var isSnapped: Bool { method == CornerSnap.method }
 
   init(
     id: UUID = UUID(), label: String, kind: LandmarkKind, position: Vector3, time: Double,

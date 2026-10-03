@@ -146,6 +146,10 @@ struct CaptureHUDView: View {
         .font(.footnote.weight(.semibold)).foregroundStyle(Tokens.ink)
         .lineLimit(1)
       Spacer()
+      if selected?.isSnapped == true {
+        Button("Unsnap") { coordinator.unsnapSelectedLandmark() }
+          .font(.footnote).foregroundStyle(Tokens.accentCool)
+      }
       Button("Rename") { renaming = true }
         .font(.footnote).foregroundStyle(Tokens.accentCool)
       Button("Delete") { coordinator.deleteSelectedLandmark() }
@@ -300,6 +304,8 @@ struct CaptureHUDView: View {
     switch coordinator.handleTap(at: point, kind: landmarkKind) {
     case .placed(let label):
       show("Marked \(label)")
+    case .snapped(let label, let moved):
+      show("Marked \(label) · snapped to the corner, \(Int((moved * 100).rounded())) cm")
     case .selected(let label):
       show("\(label) selected — tap where it should be")
     case .moved(let label):

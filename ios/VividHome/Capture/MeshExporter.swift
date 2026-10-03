@@ -121,13 +121,13 @@ enum MeshExporter {
   /// ARKit does not promise tightly packed vertices, and assuming it does is the
   /// classic way to get a mesh that looks almost right — sheared, or scaled along
   /// one axis — rather than obviously broken.
-  private static func vertex(_ source: ARGeometrySource, at index: Int) -> SIMD3<Float> {
+  static func vertex(_ source: ARGeometrySource, at index: Int) -> SIMD3<Float> {
     let pointer = source.buffer.contents()
       .advanced(by: source.offset + source.stride * index)
     return pointer.assumingMemoryBound(to: SIMD3<Float>.self).pointee
   }
 
-  private static func face(_ element: ARGeometryElement, at index: Int)
+  static func face(_ element: ARGeometryElement, at index: Int)
     -> (UInt32, UInt32, UInt32)
   {
     let perFace = element.indexCountPerPrimitive
@@ -137,7 +137,7 @@ enum MeshExporter {
     return (pointer[0], pointer[1], pointer[2])
   }
 
-  private static func classification(_ source: ARGeometrySource, at index: Int) -> UInt8 {
+  static func classification(_ source: ARGeometrySource, at index: Int) -> UInt8 {
     source.buffer.contents()
       .advanced(by: source.offset + source.stride * index)
       .assumingMemoryBound(to: UInt8.self).pointee

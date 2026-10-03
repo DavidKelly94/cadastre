@@ -30,7 +30,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Write a session with VividHomeCore
         run: |
-          swift run --package-path ios/VividHomeCore vividhome-fixture "$PWD/fixture-session"
+          swift run --package-path ios/VividHomeCore vividhome-fixture \
+            "$PWD/fixture-session" "$PWD/fixture-contract.json"
       - name: Validate it with the pipeline
         # Warnings fail this job as well as errors. On a synthetic session every
         # rule should pass outright, so a warning here means something drifted.
@@ -42,3 +43,12 @@ jobs:
             echo "::error::the fixture session should validate with no warnings"
             exit 1
           fi
+      - name: Hold the phone's field maths against the pipeline's
+        # The corner snap and the live wall coverage on the phone are ports of
+        # corners.py and coverage.py. The fixture ran both on the room it wrote;
+        # the pipeline runs its own here and the answers have to agree.
+        env:
+          VIVIDHOME_CONTRACT_SESSION: ${{ github.workspace }}/fixture-session
+          VIVIDHOME_CONTRACT_JSON: ${{ github.workspace }}/fixture-contract.json
+        run: |
+          uv run --project pipeline pytest pipeline/tests/test_contract.py -q -rs

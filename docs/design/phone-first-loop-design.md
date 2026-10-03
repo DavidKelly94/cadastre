@@ -26,7 +26,7 @@ Rotation and floor height are fields with defaults of 0, as on the PC. Each tap 
 
 ## 3. Align on the phone
 
-**Superseded in shape by [ADR-0031](../adr/0031-the-capture-proves-itself-before-you-leave.md) and `field-proof-design.md`, 2026-10-03:** the pairing moves into the capture, guided by a room outline on the plan, and solves live. The screen below is kept for free captures that have no outline.
+**Superseded in shape by [ADR-0031](../adr/0031-the-capture-proves-itself-before-you-leave.md) and `field-proof-design.md`, 2026-10-03:** the pairing moves into the capture, guided by a room outline on the plan, and solves live. The screen below is kept for free captures that have no outline, and was built that day as `PlanPlacementView` (`field-proof-design.md` §6): reached from a past capture, writing `method: paired`.
 
 **When.** First as a screen reached from a capture (Captures, the capture, *Place on the plan*), and later offered right after Stop, when the corners are fresh. The pairing is the PC page's, natively: the plan on top, a top-down plot of the walk with the tapped corners below, tap a corner, tap its place on the plan, two pairs minimum. The plan taps use the magnifier.
 

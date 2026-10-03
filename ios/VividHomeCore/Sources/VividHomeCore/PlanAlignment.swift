@@ -165,7 +165,9 @@ public enum Umeyama2D {
 }
 
 /// `alignments/<session-id>.json` as the app writes it (ADR-0030, ADR-0031):
-/// the PC's own shape plus `source` and a `method` the PC does not produce.
+/// the PC's own shape plus `source` and a `method` the PC does not produce:
+/// `guided` for corners asked for by name during capture, `paired` for a free
+/// capture whose landmarks were paired with the drawing afterwards.
 public struct AlignmentFile: Codable, Equatable, Sendable {
   public struct Correspondence: Codable, Equatable, Sendable {
     public var label: String
@@ -235,5 +237,12 @@ public struct AlignmentFile: Codable, Equatable, Sendable {
     try FileManager.default.createDirectory(
       at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
     try encoder.encode(self).write(to: url, options: .atomic)
+  }
+
+  /// The file at `url`, or nil when there is none or it does not decode:
+  /// a capture with no placement yet reads the same as one never written.
+  public static func read(at url: URL) -> AlignmentFile? {
+    guard let data = try? Data(contentsOf: url) else { return nil }
+    return try? JSONDecoder().decode(AlignmentFile.self, from: data)
   }
 }

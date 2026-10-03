@@ -16,6 +16,9 @@ struct PlanPlacementView: View {
   let layout: SessionLayout
   let manifest: Manifest?
   let project: String
+  /// Told what was written, so the screen underneath shows it at once rather
+  /// than on its next read.
+  var onPlaced: (AlignmentFile) -> Void = { _ in }
 
   @State private var landmarks: [LandmarkRecord] = []
   /// Plan pixels, one per pair, in pairing order; `pairLabels` says whose.
@@ -239,6 +242,8 @@ struct PlanPlacementView: View {
     let file = AlignmentFile(sessionID: sessionID, level: level, solution: solution, method: "paired")
     do {
       try file.write(to: AlignmentFile.url(projectDirectory: projectDirectory, sessionID: sessionID))
+      existing = file
+      onPlaced(file)
       dismiss()
     } catch {
       failure = error.localizedDescription

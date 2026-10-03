@@ -133,7 +133,9 @@ on the same line.
 
 ## 4b. Outline the rooms, once per room, at home
 
-The capture will ask you to tap each corner of the room by name, and place the capture on the plan before you leave. For that it needs to know where the corners are on the drawing. On the phone: project screen, the plan card, then the row of rooms under *Outline the corners*. Tap a room, tap its inside corners in order around the room, drag any under the loupe, Save. The footer names them: NW, NE, SE, SW. Three corners minimum; an L-shaped room has six.
+The capture will ask you to tap each corner of the room by name, and align the capture to the plan before you leave. For that it needs to know where the corners are on the drawing. On the phone: project screen, the plan card, then tap the room's pin and choose *Outline the corners* (the row of rooms under *Outline the corners* does the same). Tap its inside corners in order around the room, drag any under the loupe, Save. The footer names them: NW, NE, SE, SW. Three corners minimum; an L-shaped room has six. The capture setup screen also links here when the room you picked has no outline yet.
+
+Two words that are easy to mix up: a room is *pinned* on the plan (the dot that says which room is which), and a capture is *aligned* to it (its walk put on the drawing). A pinned room with no outline records a free capture, which the capture's detail screen says under *Alignment*, with the way to align it afterwards.
 
 Do this at home with the plan in front of you. A room without an outline still captures, unguided, and is placed on the PC afterwards.
 

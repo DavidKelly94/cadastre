@@ -105,4 +105,24 @@ final class ServerIndexTests: XCTestCase {
     XCTAssertEqual(failed.holding(of: "20261103-141502_main_kitchen_k3x7qa"), .held)
     XCTAssertEqual(failed.validatedSessionIDs, [])
   }
+
+  func testTheAlignmentSourceIsReadWhenThePCSendsItAndASessionIsFoundByID() throws {
+    let json = """
+      {"vividhome": "0.1.0", "generated_at": "2026-10-03T18:00:00Z", "store": "vividhome-data",
+       "projects": [{"slug": "our-house", "levels": [], "sessions": [
+         {"session_id": "20261103-141502_main_kitchen_k3x7qa", "path": "sessions/our-house/20261103-141502_main_kitchen_k3x7qa",
+          "level": "main", "aligned": true, "validated": true, "alignment_source": "pc"},
+         {"session_id": "20261103-151502_main_kitchen_aaaaaa", "path": "sessions/our-house/20261103-151502_main_kitchen_aaaaaa",
+          "level": "main", "aligned": false, "validated": null}
+       ]}]}
+      """
+    let index = try JSONDecoder().decode(ServerIndex.self, from: Data(json.utf8))
+    let aligned = try XCTUnwrap(index.session("20261103-141502_main_kitchen_k3x7qa"))
+    XCTAssertTrue(aligned.aligned)
+    XCTAssertEqual(aligned.alignmentSource, "pc")
+    let other = try XCTUnwrap(index.session("20261103-151502_main_kitchen_aaaaaa"))
+    XCTAssertFalse(other.aligned)
+    XCTAssertNil(other.alignmentSource, "an older PC, or an unaligned session, sends none")
+    XCTAssertNil(index.session("20261103-161502_main_kitchen_bbbbbb"))
+  }
 }

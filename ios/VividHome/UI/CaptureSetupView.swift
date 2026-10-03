@@ -94,6 +94,21 @@ struct CaptureSetupView: View {
               }
             }
           }
+
+          // The one thing that decides whether this capture guides itself,
+          // reachable from where the decision is felt (build 71 found out at
+          // Stop that the room had no outline).
+          if let plan = plans.plans[levelSlug], roomIsPlaced, plan.placement(of: room.slug)?.outline == nil {
+            NavigationLink {
+              PlanOutlineView(store: plans, level: levelSlug, room: room.slug)
+            } label: {
+              Label {
+                Text("Outline \(room.name) first, so this capture aligns itself")
+              } icon: {
+                Image(systemName: "square.dashed").foregroundStyle(.orange)
+              }
+            }
+          }
         } header: {
           Text("Plan")
         } footer: {
@@ -102,9 +117,10 @@ struct CaptureSetupView: View {
           Text(plans.plans[levelSlug] == nil
             ? "You can record without one, but nothing can be placed on the record until a plan exists for this level."
             : (guide != nil
-              ? "This room is outlined: the capture will ask for each corner and place itself on the plan before you stop."
-              : "Tap to see which rooms are captured, and to drag this room to where it actually is. "
-                + "Set the scale and outline this room there to be placed on the plan before you leave."))
+              ? "This room is outlined: the capture will ask for each corner and align itself to the plan before you stop."
+              : (plans.plans[levelSlug]?.isCalibrated == true
+                ? "Without an outline this is a free capture: it records the same, and is aligned afterwards by pairing its landmarks, or on the PC."
+                : "Set the plan's scale (Plan, then Scale) and outline this room, and the capture aligns itself before you leave.")))
         }
 
         Section("Notes") {

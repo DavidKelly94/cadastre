@@ -133,6 +133,9 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   private weak var arView: ARSCNView?
   private var landmarkNodes: [UUID: SCNNode] = [:]
   private var markerNodes: [UUID: SCNNode] = [:]
+  /// The reconstruction mesh drawn as wireframe, one node per anchor, while
+  /// the HUD's mesh toggle is on.
+  private var meshNodes: [UUID: SCNNode] = [:]
 
   private var level = LevelRef(slug: "l1", name: "Level 1", index: 1)
   private var room = SlugRef(slug: "room", name: "Room")
@@ -160,7 +163,35 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
 
   func setShowMesh(_ on: Bool) {
     showMesh = on
-    arView?.debugOptions = on ? [.showWireframe] : []
+    // The reconstruction mesh is ARKit's, not a SceneKit node, so SceneKit's
+    // wireframe option drew nothing (build 71), and ARSCNView has no option
+    // that draws it. Each mesh anchor becomes a wireframe node instead,
+    // refreshed as ARKit updates it; off removes them all.
+    guard on else {
+      meshNodes.values.forEach { $0.removeFromParentNode() }
+      meshNodes = [:]
+      return
+    }
+    if let anchors = controller.session.currentFrame?.anchors {
+      showMeshNodes(for: anchors)
+    }
+  }
+
+  /// Wireframe nodes for the mesh anchors in `anchors`, made or refreshed.
+  private func showMeshNodes(for anchors: [ARAnchor]) {
+    guard showMesh, let arView else { return }
+    for case let mesh as ARMeshAnchor in anchors {
+      let node: SCNNode
+      if let existing = meshNodes[mesh.identifier] {
+        node = existing
+      } else {
+        node = SCNNode()
+        meshNodes[mesh.identifier] = node
+        arView.scene.rootNode.addChildNode(node)
+      }
+      node.geometry = SCNGeometry.wireframe(from: mesh.geometry)
+      node.simdTransform = mesh.transform
+    }
   }
 
   // MARK: - Start
@@ -613,6 +644,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     // session time, from the same zero as every keyframe.
     markerLogger?.session(didObserve: anchors, time: recorder.sessionTime(for: time))
     guard let arView else { return }
+    showMeshNodes(for: anchors)
 
     for case let image as ARImageAnchor in anchors {
       guard let name = image.referenceImage.name else { continue }
@@ -682,6 +714,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     let seen = markerLogger?.seen.sorted() ?? []
     markerNodes.values.forEach { $0.removeFromParentNode() }
     markerNodes = [:]
+    meshNodes.values.forEach { $0.removeFromParentNode() }
+    meshNodes = [:]
 
     // The only moment landmarks reach disk. The statistics follow the same
     // path: the recorder is told once per landmark that survived editing, so a

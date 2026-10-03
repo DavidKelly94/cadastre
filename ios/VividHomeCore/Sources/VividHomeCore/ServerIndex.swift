@@ -50,13 +50,20 @@ public struct ServerIndex: Codable, Equatable, Sendable {
     public var aligned: Bool
     /// True or false from the PC's validate report; nil when none was written.
     public var validated: Bool?
+    /// Who aligned it (section 14): `pc` for the pipeline's own, `app` for a
+    /// placement the phone made; nil when unaligned or from an older PC.
+    public var alignmentSource: String?
 
-    public init(sessionID: String, path: String, level: String?, aligned: Bool, validated: Bool?) {
+    public init(
+      sessionID: String, path: String, level: String?, aligned: Bool, validated: Bool?,
+      alignmentSource: String? = nil
+    ) {
       self.sessionID = sessionID
       self.path = path
       self.level = level
       self.aligned = aligned
       self.validated = validated
+      self.alignmentSource = alignmentSource
     }
 
     enum CodingKeys: String, CodingKey {
@@ -65,6 +72,7 @@ public struct ServerIndex: Codable, Equatable, Sendable {
       case level
       case aligned
       case validated
+      case alignmentSource = "alignment_source"
     }
   }
 
@@ -117,6 +125,16 @@ public struct ServerIndex: Codable, Equatable, Sendable {
       }
     }
     return .absent
+  }
+
+  /// The PC's entry for one session, by id, across every project.
+  public func session(_ sessionID: String) -> Session? {
+    for project in projects {
+      if let session = project.sessions.first(where: { $0.sessionID == sessionID }) {
+        return session
+      }
+    }
+    return nil
   }
 
   public enum Holding: Equatable, Sendable {

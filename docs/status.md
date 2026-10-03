@@ -107,13 +107,15 @@ it survives one. Owner-side items are things only the owner can do.
 
 Owner-side, the morning of 2026-10-04: everything written overnight on
 2026-10-03 (ADR-0031, every step, plus the leave check on the inspect page) is
-on TestFlight as builds 62 to 71, none of it walked. Walk the latest build on
-the real house plan, in this order, and write what breaks into this file:
+on TestFlight as builds 62 to 71. Build 71 was walked on 2026-10-03 (see the
+entry below); the fixes from it are in the next build. Walk that one on the
+real house plan, in this order, and write what breaks into this file:
 
 1. Plan card → *Scale*: three points and the printed distance (walked once on
    build 56; confirm it still fits).
-2. The room under *Outline the corners*: tap its corners in order, Save; the
-   footer names them NW, NE, SE, SW.
+2. Tap the room's pin → *Outline the corners*: tap its corners in order, Save;
+   the footer names them NW, NE, SE, SW. (The capture setup screen links here
+   too when the room has no outline.)
 3. A guided capture in that room: the chips name the next corner; a tap near
    a corner should slide to it and say by how many centimetres (*Unsnap* on
    the mark puts it back); after two corners the FIT readout shows the
@@ -295,6 +297,41 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Build 71 walked, 2026-10-03
+
+The owner walked the night's work on the real house. The corner snap worked.
+Five findings, two of them real bugs:
+
+- **The mesh button did nothing.** It set SceneKit's wireframe option, which
+  draws nothing for ARKit's reconstruction mesh, and `ARSCNView` has no option that
+  does (that is RealityKit's). Each mesh anchor is now drawn as a wireframe node.
+- **"No markers seen" with a printed marker in frame.** The AR session starts
+  when the view attaches, before the sixty marker images finish loading, and
+  nothing re-ran it with them: the first capture after every launch had no
+  detection images at all. The images are now handed to the running session
+  when they load, without a tracking reset. Low light will still beat it; the
+  bathroom frame in the screenshot was nearly black.
+- **"Not placed" on a capture of a placed room.** Two meanings of one word:
+  the room's pin on the plan, and the capture's walk aligned to the drawing.
+  The capture detail now says *Alignment*, gives the capture's own reason from
+  its leave check (*Not placed yet: no outline for this room*), says *Aligned
+  on the PC* when the PC's index has an alignment the phone did not write, and
+  explains the pin in the footer. The index entry's `alignment_source` is read.
+- **"STILLS 0/4" after a still was taken.** The row counts list items ticked,
+  not stills; 4 was the Finish trade's list. The camera button takes an
+  unlabelled still that ticks nothing, by design, and now says so. The row is
+  labelled LIST; the STILL count in the strip is the stills.
+- **Finding the outline was janky.** Tapping a room's pin now offers *Outline
+  the corners* (or *Redo the outline*) and *Remove from the plan*; the capture
+  setup screen links straight to the outline when the room is pinned but not
+  outlined, instead of saying so at Stop.
+
+Also: the HUD strip no longer says *no markers seen* all capture long, since
+printed markers are optional; it says how many marks are placed. The second
+"Capture saved" screen in the walk, with no landmarks and tracking limited,
+was the top-up started by *Capture more* and stopped at once, which is what it
+should say for a capture with nothing in it.
 
 ## The PC says what the review screen said, 2026-10-03
 

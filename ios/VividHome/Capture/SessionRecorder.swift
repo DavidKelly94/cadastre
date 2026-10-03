@@ -51,6 +51,10 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
   /// mid-line. Sharing one serial queue makes that impossible rather than
   /// unlikely. Nil whenever `state` is `.idle`.
   var frameWriter: FrameWriter? { writer }
+  /// Called with every keyframe kept, on ARKit's delegate queue, so the HUD
+  /// can draw the walk and the walls' coverage as they happen (ADR-0031). Set
+  /// by the coordinator; nil costs nothing.
+  var onKeyframe: ((FrameRecord) -> Void)?
 
   private var manifest: Manifest?
   private var writer: FrameWriter?
@@ -238,6 +242,7 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
       [weak self] outcome in
       self?.record(outcome)
     }
+    onKeyframe?(record)
   }
 
   /// Fold a writer outcome into the statistics.

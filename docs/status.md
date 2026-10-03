@@ -94,8 +94,9 @@ it survives one. Owner-side items are things only the owner can do.
    2026-10-03, not walked**: the Outline screen and corner naming; then the
    HUD asking for corners by name, the live fit with its residual, the
    placement file written at Stop, sent with the capture and adopted by the
-   PC; and the snap of a corner tap to where two mesh walls meet. Next:
-   the plan inset, live coverage.
+   PC; the snap of a corner tap to where two mesh walls meet; the plan
+   inset in the HUD with the walk on it; and the walls shading as the
+   keyframes photograph them. Next: the stills checklist and the leave check.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -262,6 +263,32 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The walls shade as they are photographed, written blind, 2026-10-03
+
+ADR-0031's third step. `WallCoverage` in the core package is the photographed
+half of `vividhome coverage`, live: each wall of the outline in 10 cm cells, a
+cell photographed when a keyframe was within 4 m, had it inside the footprint
+its image corners make on the floor, and had no other wall between. The
+recorder hands every kept keyframe over; one is tested against the walls as it
+arrives, and the whole set is redone when the placement moves. The inset's
+walls go grey, amber and green at 30% and 70%, with a *walls 3/4* caption.
+Six core tests, including an L-shaped room where the notch hides the far
+wall. **Decided without the owner:** the 4 m range (the offline default) over
+the 2 m the design first said; the 30% and 70% bands; no band drawn in the
+camera picture yet. Not pinned to the Python on a real capture, not walked.
+
+## The walk on the plan, in the room, written blind, 2026-10-03
+
+ADR-0031's second step and the first level view. While a guided room is
+captured the HUD shows a small plan inset under the marker strip: the room's
+outline from the start, its corners ticked or lit as the chips are, and once
+two corners are tapped the keyframe path, the tapped corners and the camera's
+own dot, all moved into the house frame by the live fit. Fold it away with
+the chevron when it is in the way of the picture. The walk comes from a hook
+the recorder calls per kept keyframe; the fitting maths is `InsetFit` in the
+core package, tested on Linux. Nothing is written by this; it is the owner's
+view of what the fit says while they can still do something about it.
 
 ## Corner taps snap to the mesh, written blind, 2026-10-03
 

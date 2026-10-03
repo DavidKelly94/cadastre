@@ -12,6 +12,8 @@ import VividHomeCore
 struct SessionListView: View {
   let project: String
   @ObservedObject var link: PCLink
+  /// For placing a free capture on its level's plan after the fact.
+  @ObservedObject var plans: PlanStore
   let onDone: () -> Void
 
   @State private var rows: [Row] = []
@@ -117,7 +119,7 @@ struct SessionListView: View {
               ForEach(rows) { row in
                 NavigationLink {
                   SessionDetailView(
-                    row: row, onPC: link.index?.holding(of: row.id),
+                    row: row, onPC: link.index?.holding(of: row.id), plans: plans, project: project,
                     onSend: { sending = SendBatch(rows: [row]) }
                   ) {
                     delete([row])
@@ -391,11 +393,16 @@ struct SessionDetailView: View {
   let row: SessionListView.Row
   /// The PC's word on this capture, when it has been asked.
   let onPC: ServerIndex.Holding?
+  @ObservedObject var plans: PlanStore
+  let project: String
   let onSend: () -> Void
   let onDelete: () -> Void
 
   @Environment(\.dismiss) private var dismiss
   @State private var confirming = false
+  /// The placement beside the plans, read each time this appears so a
+  /// placement just made on the next screen shows on the way back.
+  @State private var placement: AlignmentFile?
 
   var body: some View {
     List {
@@ -424,6 +431,26 @@ struct SessionDetailView: View {
             + "`vividhome validate` on the PC will say what is wrong.")
             .font(.footnote).foregroundStyle(.secondary)
         }
+      }
+
+      Section {
+        // Where the capture sits on the plan (ADR-0031). A guided capture
+        // placed itself at Stop; a free one is placed here, afterwards.
+        HStack {
+          Text("Placement").foregroundStyle(.secondary)
+          Spacer()
+          Text(placementText).multilineTextAlignment(.trailing)
+        }
+        .font(.footnote)
+        NavigationLink {
+          PlanPlacementView(plans: plans, layout: row.layout, manifest: row.manifest, project: project)
+        } label: {
+          Label(placement == nil ? "Place on the plan" : "Adjust the placement", systemImage: "scope")
+        }
+      } header: {
+        Text("On the plan")
+      } footer: {
+        Text(placementFooter)
       }
 
       Section {
@@ -460,6 +487,12 @@ struct SessionDetailView: View {
     }
     .navigationTitle(row.manifest?.room.name ?? "Capture")
     .navigationBarTitleDisplayMode(.inline)
+    .onAppear {
+      let project = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("sessions", isDirectory: true)
+        .appendingPathComponent(project, isDirectory: true)
+      placement = AlignmentFile.read(at: AlignmentFile.url(projectDirectory: project, sessionID: row.id))
+    }
     .confirmationDialog(
       "Delete this capture from the iPhone?", isPresented: $confirming, titleVisibility: .visible
     ) {
@@ -470,6 +503,25 @@ struct SessionDetailView: View {
     } message: {
       Text(deleteFooter)
     }
+  }
+
+  private var placementText: String {
+    guard let placement else { return "Not placed" }
+    let how = placement.method == "guided" ? "during capture" : "paired on the plan"
+    return "Placed \(how), \(Int((placement.rmsM * 100).rounded())) cm"
+  }
+
+  private var placementFooter: String {
+    guard let manifest = row.manifest else { return "Pairing needs the capture's landmarks and a plan with a scale." }
+    guard let plan = plans.plans[manifest.level.slug] else {
+      return "No plan for \(manifest.level.name) yet. Add one on the house screen to place this capture."
+    }
+    if !plan.isCalibrated {
+      return "The plan for \(manifest.level.name) has no scale yet. Set it on the plan screen first."
+    }
+    return placement == nil
+      ? "Pair two or more of the capture's landmarks with their places on the drawing. The PC adopts the result with the capture."
+      : "Adjusting rewrites the placement beside the plans; the PC adopts the newer one when the capture is sent."
   }
 
   private var deleteFooter: String {

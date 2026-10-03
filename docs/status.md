@@ -96,9 +96,9 @@ it survives one. Owner-side items are things only the owner can do.
    placement file written at Stop, sent with the capture and adopted by the
    PC; the snap of a corner tap to where two mesh walls meet; the plan
    inset in the HUD with the walk on it; the walls shading as the
-   keyframes photograph them; and the stills checklist with the leave check
-   and *Capture more*. Next: the pairing screen for free captures, then the
-   server watcher.
+   keyframes photograph them; the stills checklist with the leave check
+   and *Capture more*; and *Place on the plan* for a free capture. Next: the
+   server watcher on the PC, then reading a room's top-ups together.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -265,6 +265,21 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## A free capture is placed on the plan from the phone, written blind, 2026-10-03
+
+ADR-0031's fifth step, the screen `phone-first-loop-design.md` §3 described,
+kept for captures made without an outline. Captures → the capture → *Place on
+the plan*: the capture's landmarks as chips, the drawing on the canvas the
+Scale and Outline screens use, tap a chip then its place, two pairs minimum;
+the fit shows live with the HUD's thresholds and each pair's residual sits on
+its chip. *Place* writes ADR-0030's alignment file with `method: paired`, the
+PC adopts it as it does a guided one, and the detail screen says how the
+capture was placed. An existing placement loads as its pairs to adjust.
+`AlignmentFile.read` and a test in the core package. **Decided without the
+owner:** pairing by landmark label; the landmark floor rule; nothing written
+above the PC's refusal; reached from the capture rather than offered after
+Stop. Not walked.
 
 ## The stills checklist and the leave check, written blind, 2026-10-03
 

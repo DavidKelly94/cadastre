@@ -115,5 +115,19 @@ final class PlanAlignmentTests: XCTestCase {
     XCTAssertEqual(url.deletingLastPathComponent().lastPathComponent, "alignments")
     try file.write(to: url)
     XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+    XCTAssertEqual(AlignmentFile.read(at: url), file)
+    XCTAssertNil(AlignmentFile.read(at: url.appendingPathExtension("missing")))
+  }
+
+  func testAPairedPlacementSaysSo() throws {
+    // The pairing screen for free captures writes the same file with its own method.
+    let solution = try XCTUnwrap(
+      PlanAlignment.solve(pairs: pairs, floorY: 0, floorSource: "assumed-zero", floorHeight: 0))
+    let file = AlignmentFile(
+      sessionID: "20261103-141502_main_kitchen_k3x7qa", level: "main", solution: solution, method: "paired")
+    XCTAssertEqual(file.method, "paired")
+    XCTAssertEqual(file.source, "app")
+    let json = String(decoding: try JSONEncoder().encode(file), as: UTF8.self)
+    XCTAssertTrue(json.contains("\"method\":\"paired\""), json)
   }
 }

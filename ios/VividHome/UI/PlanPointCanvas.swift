@@ -16,6 +16,8 @@ struct PlanPointCanvas: View {
     case segment
     /// Lines between consecutive points, closed once there are three (a room).
     case polygon
+    /// Points only, each standing for something else (a landmark's place).
+    case points
   }
 
   let image: UIImage
@@ -122,6 +124,8 @@ struct PlanPointCanvas: View {
         .stroke(colour(0), style: StrokeStyle(lineWidth: 1.5 / zoom, lineJoin: .round))
         .allowsHitTesting(false)
       }
+    case .points:
+      EmptyView()
     }
   }
 

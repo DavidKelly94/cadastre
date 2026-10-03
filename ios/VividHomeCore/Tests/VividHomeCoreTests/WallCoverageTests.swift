@@ -61,8 +61,10 @@ final class WallCoverageTests: XCTestCase {
   }
 
   func testNothingIsSeenThroughAWall() throws {
-    // An L-shaped room: the camera in the west leg looks east, and the inner
-    // wall of the notch hides the far east wall's upper part.
+    // An L-shaped room: a west leg 3 m wide and an east arm 2 m deep along its
+    // north side. The camera in the west leg's south half looks east, so the
+    // notch wall (se2-se, at x = 3) hides most of the far east wall and only
+    // its north end shows through the arm's opening.
     let ell: [(label: String, x: Double, z: Double)] = [
       ("nw", 0, -4), ("ne", 6, -4), ("ne2", 6, -2), ("se", 3, -2), ("se2", 3, 0), ("sw", 0, 0),
     ]
@@ -70,9 +72,17 @@ final class WallCoverageTests: XCTestCase {
       WallCoverage.Camera(pose: pose(at: 1, -1, lookingX: 1, lookingZ: 0), fx: 1400, fy: 1400, width: 1920, height: 1440))
     let walls = WallCoverage.coverage(outline: ell, cameras: [camera], range: 10)
     let farEast = walls[1]  // ne -> ne2, x = 6, z from -4 to -2
-    XCTAssertEqual(farEast.fraction, 0, "the notch wall se2-se stands between")
+    // The sight line to (6, z) passes x = 3 at z/2.5 - 0.6, inside the notch
+    // wall for z > -3.5: the north 0.5 m of the 2 m wall is all that shows.
+    XCTAssertEqual(farEast.fraction, 0.25, accuracy: 0.06, "only the north end shows past the notch")
+    XCTAssertTrue(farEast.photographed.first == true, "the north end, seen through the opening")
+    XCTAssertTrue(farEast.photographed.last == false, "the south end, behind the notch wall")
     let notch = walls[3]  // se -> se2, x = 3, z from -2 to 0
     XCTAssertGreaterThan(notch.fraction, 0.5)
+    // Without the notch, the same camera sees the far east wall's whole southern half too.
+    let open: [(label: String, x: Double, z: Double)] = [("nw", 0, -4), ("ne", 6, -4), ("se", 6, 0), ("sw", 0, 0)]
+    let unblocked = WallCoverage.coverage(outline: open, cameras: [camera], range: 10)
+    XCTAssertGreaterThan(unblocked[1].fraction, 0.6)
   }
 
   func testAddingCamerasAccumulates() throws {

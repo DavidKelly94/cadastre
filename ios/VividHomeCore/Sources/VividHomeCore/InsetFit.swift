@@ -18,8 +18,13 @@ public struct InsetFit: Equatable, Sendable {
     guard !points.isEmpty, width > 2 * margin, height > 2 * margin else { return nil }
     let minX = points.map { $0.x }.min()!, maxX = points.map { $0.x }.max()!
     let minZ = points.map { $0.z }.min()!, maxZ = points.map { $0.z }.max()!
-    let spanX = max(maxX - minX, 1e-6), spanZ = max(maxZ - minZ, 1e-6)
-    scale = min((width - 2 * margin) / spanX, (height - 2 * margin) / spanZ)
+    let spanX = maxX - minX, spanZ = maxZ - minZ
+    // An axis with no extent sets no scale: a single point, or points on one
+    // line, take the other axis's scale and sit centred on this one.
+    var limits: [Double] = []
+    if spanX > 1e-9 { limits.append((width - 2 * margin) / spanX) }
+    if spanZ > 1e-9 { limits.append((height - 2 * margin) / spanZ) }
+    scale = limits.min() ?? 1
     offsetX = (width - spanX * scale) / 2 - minX * scale
     offsetY = (height - spanZ * scale) / 2 - minZ * scale
   }

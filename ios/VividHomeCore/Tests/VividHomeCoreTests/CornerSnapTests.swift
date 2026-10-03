@@ -74,10 +74,12 @@ final class CornerSnapTests: XCTestCase {
 
   func testClutterCalledWallIsIgnored() throws {
     // A 20 cm box against the wall, every face classified wall: too small to be one.
+    // The tap is 0.35 m from the box's corner at (0.7, 0.2) and 0.38 m from the
+    // room's corner at (0, 0), so the box would win if its faces counted as walls.
     var faces = cornerRoom()
     faces += wallPatch(from: (0.5, 0.2), to: (0.7, 0.2), floorY: -1.4, height: 0.2)
     faces += wallPatch(from: (0.7, 0.2), to: (0.7, 0.4), floorY: -1.4, height: 0.2)
-    let snap = try XCTUnwrap(CornerSnap.snap(tap: Vector3(0.6, -1.3, 0.25), faces: faces))
+    let snap = try XCTUnwrap(CornerSnap.snap(tap: Vector3(0.35, -1.3, 0.15), faces: faces))
     XCTAssertEqual(snap.position.x, 0, accuracy: 1e-9, "the box's corner at (0.7, 0.2) is not a wall corner")
     XCTAssertEqual(snap.position.z, 0, accuracy: 1e-9)
   }

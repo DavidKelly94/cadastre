@@ -253,6 +253,9 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   /// anything else places a new one. Selection is checked first because a
   /// landmark you can see is a landmark you meant to touch.
   enum TapOutcome: Equatable {
+
+    /// Placed, and moved onto the corner two mesh walls make, by this many metres.
+    case snapped(String, Double)
     case selected(String)
     case moved(String)
     case placed(String)
@@ -279,6 +282,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     if let selected = selectedLandmark, let index = landmarks.firstIndex(where: { $0.id == selected })
     {
       landmarks[index].position = position
+      landmarks[index].tapped = nil
+      landmarks[index].method = PlacedLandmark.raycastMethod
       rescoreAlignment()
       resolvePlacement()
       landmarkNodes[selected]?.position = SCNVector3(
@@ -291,17 +296,48 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
 
     // A guided room names the corner; anything else is numbered as before.
     let label = (kind == .corner ? guidance?.next : nil) ?? nextLabel(for: kind)
-    let landmark = PlacedLandmark(
+    var landmark = PlacedLandmark(
       label: label,
       kind: kind,
       position: position,
       time: recorder.sessionTime(for: controller.session.currentFrame?.timestamp ?? 0),
       keyframeIndex: recorder.currentKeyframeIndex)
+    // A corner tap moves to where two mesh walls meet the floor, when they do
+    // within reach (ADR-0031). The finger's point is kept so it can be undone.
+    var snapped: Double?
+    if kind == .corner, let snap = snapCorner(at: position) {
+      landmark.tapped = position
+      landmark.position = snap.position
+      landmark.method = CornerSnap.method
+      snapped = snap.movedBy
+    }
     landmarks.append(landmark)
     draw(landmark, in: arView)
     rescoreAlignment()
     resolvePlacement()
+    if let snapped { return .snapped(label, snapped) }
     return .placed(label)
+  }
+
+  private func snapCorner(at position: Vector3) -> CornerSnap.Snap? {
+    let anchors = controller.session.currentFrame?.anchors.compactMap { $0 as? ARMeshAnchor } ?? []
+    guard !anchors.isEmpty else { return nil }
+    let faces = MeshProbe.faces(near: position, radius: CornerSnap.reachMetres, in: anchors)
+    return CornerSnap.snap(tap: position, faces: faces)
+  }
+
+  /// Put a snapped corner back where the finger was.
+  func unsnapSelectedLandmark() {
+    guard let selected = selectedLandmark,
+      let index = landmarks.firstIndex(where: { $0.id == selected }),
+      let tapped = landmarks[index].tapped
+    else { return }
+    landmarks[index].position = tapped
+    landmarks[index].tapped = nil
+    landmarks[index].method = PlacedLandmark.raycastMethod
+    landmarkNodes[selected]?.position = SCNVector3(Float(tapped.x), Float(tapped.y), Float(tapped.z))
+    rescoreAlignment()
+    resolvePlacement()
   }
 
   func deleteSelectedLandmark() {

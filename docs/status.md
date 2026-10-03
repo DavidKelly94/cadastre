@@ -94,7 +94,8 @@ it survives one. Owner-side items are things only the owner can do.
    2026-10-03, not walked**: the Outline screen and corner naming; then the
    HUD asking for corners by name, the live fit with its residual, the
    placement file written at Stop, sent with the capture and adopted by the
-   PC. Next: the snap to mesh corners, the plan inset, live coverage.
+   PC; and the snap of a corner tap to where two mesh walls meet. Next:
+   the plan inset, live coverage.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -261,6 +262,24 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## Corner taps snap to the mesh, written blind, 2026-10-03
+
+The third piece of ADR-0031's first step. A corner tap lands on ARKit's mesh,
+which rounds corners, so a point could be a few centimetres off. Now the
+faces within half a metre of the tap are gathered (`MeshProbe`, the ARKit
+layer) and the core package clusters the wall faces into vertical planes,
+intersects pairs that actually run to each other, and moves the point to the
+nearest corner within reach, down onto the floor faces (`CornerSnap`, the
+rule `corners.py` runs offline). The HUD says *snapped to the corner, 4 cm*;
+a selected snapped mark offers *Unsnap*; moving a mark by hand also clears
+it. `landmarks.jsonl` records `mesh_corner_snap` or the raycast. Eight core
+tests on synthetic walls, clutter the mesh calls wall, and ghost crossings.
+
+**Decided without the owner:** the snap moves a point at most 0.5 m; a
+cluster under 0.05 m² of wall is furniture; it runs on every corner tap, not
+only guided ones. **Not yet** pinned to the Python on one real mesh, which is
+the contract-job item still open, and not walked.
 
 ## The capture places itself, written blind, 2026-10-03
 

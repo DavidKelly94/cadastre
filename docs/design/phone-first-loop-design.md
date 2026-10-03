@@ -26,6 +26,8 @@ Rotation and floor height are fields with defaults of 0, as on the PC. Each tap 
 
 ## 3. Align on the phone
 
+**Superseded in shape by [ADR-0031](../adr/0031-the-capture-proves-itself-before-you-leave.md) and `field-proof-design.md`, 2026-10-03:** the pairing moves into the capture, guided by a room outline on the plan, and solves live. The screen below is kept for free captures that have no outline.
+
 **When.** First as a screen reached from a capture (Captures, the capture, *Place on the plan*), and later offered right after Stop, when the corners are fresh. The pairing is the PC page's, natively: the plan on top, a top-down plot of the walk with the tapped corners below, tap a corner, tap its place on the plan, two pairs minimum. The plan taps use the magnifier.
 
 **The solver.** Rigid 2D fit (rotation and translation, no scale), the same Umeyama-style closed form as `align.py`, in VividHomeCore as `PlanAlignment.solve(pairs:)`. Inputs are session `(x, z)` for each landmark and house `(x, z)` from the plan tap through `plan_to_house`, which also moves to the core package. Outputs `T_hs`, the per-pair residuals, the RMS and the maximum, with the same 0.3 m refusal and the same wording the PC uses. The floor height comes from the mesh when the session has one, else the lowest landmark, as `floor_y_session` does; port that rule too.

@@ -7,8 +7,8 @@ this says what is true.
 **Update this in the same commit as the work.** A status file that lags is worse
 than none, because it is believed.
 
-Last updated: 2026-10-02, after the first full round trip on real hardware
-and the decision that the phone will do that loop itself (ADR-0030).
+Last updated: 2026-10-03, after the Scale screen was walked on the new
+house's plan and the field-first decision (ADR-0031) was written.
 
 ## The short version
 
@@ -84,8 +84,14 @@ it survives one. Owner-side items are things only the owner can do.
    `docs/design/phone-first-loop-design.md`. **Calibrate on the phone written
    2026-10-02, not walked**: the Scale screen with the loupe, the maths in the
    core package pinned to the Python's numbers, `ingest` adopting the result.
-   Next: align with a native level view, then the alignment travelling to the
-   PC with the capture.
+   Next: see item 9, which reshapes the align step.
+9. **The capture proves itself before you leave the room** — ADR-0031, the
+   owner's field-first ask of 2026-10-03: outline rooms on the plan at home,
+   guided corner taps with a live placement and residual, walls shading as
+   they are photographed, a per-phase stills checklist, a leave check, and
+   free capture and top-ups kept as they are. Design in
+   `docs/design/field-proof-design.md`; nothing built. Order: outlines and
+   guided taps first.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the

@@ -623,6 +623,7 @@ def test_the_phones_placement_is_adopted_with_the_capture(session: Path, tmp_pat
     _phone_alignment(session)
     result = ingest(store, session)
     assert result.alignment is not None and result.alignment.adopted, result.alignment
+    assert result.alignment.level == "main", "the server renders this level after adopting"
     assert "0.021 m" in result.alignment.reason
     stored = json.loads((store / "alignments" / f"{session.name}.json").read_text(encoding="utf-8"))
     assert stored["source"] == "app" and stored["method"] == "guided"

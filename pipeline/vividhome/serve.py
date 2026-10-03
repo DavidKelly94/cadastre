@@ -18,6 +18,13 @@ which ``--lan`` issues and prints. Uploads land in an inbox, never the store;
 ``ingest`` takes them from there. Behind ``tailscale serve`` this is reachable
 from wherever the owner is, which is the point; it is still a tool the owner
 runs on their own PC for their own phone, not a service.
+
+A capture that arrives placed (ADR-0031: the phone wrote its alignment and
+``ingest`` adopted it) renders its level's inspection page in the background,
+so the rendering the phone opens is current without a command being typed on
+the PC. That is the whole of the "server watcher" the design asked for: the
+server already sees every arrival, so it needs no second process watching a
+folder.
 """
 
 from __future__ import annotations
@@ -25,6 +32,8 @@ from __future__ import annotations
 import json
 import socket
 import sys
+import threading
+import time
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -41,7 +50,15 @@ from .upload import (
     read_pairing_code,
 )
 
-__all__ = ["SERVICE_TYPE", "Advertisement", "StoreServer", "make_server", "serve", "service_info"]
+__all__ = [
+    "SERVICE_TYPE",
+    "Advertisement",
+    "Renderer",
+    "StoreServer",
+    "make_server",
+    "serve",
+    "service_info",
+]
 
 #: The most a single POST may carry. Generous for a list of clicked points, small
 #: enough that a runaway request cannot fill memory.
@@ -50,6 +67,69 @@ MAX_BODY_BYTES = 4 * 1024 * 1024
 #: The Bonjour service type the app looks for. Matches ``NSBonjourServices`` in
 #: ``ios/project.yml`` once the app side lands; change both or neither.
 SERVICE_TYPE = "_vividhome._tcp.local."
+
+
+class Renderer:
+    """Renders ``inspect/<level>.html`` in the background when a capture arrives
+    placed (ADR-0031 step 6).
+
+    One worker thread and a queue of levels, each listed once: three captures
+    of one level arriving together render the page once. The upload's reply
+    does not wait, because thumbnails take up to a minute and the phone's
+    uploader would give up; the receipt says the page is queued and the
+    index says when it exists.
+    """
+
+    def __init__(self, store: Path, *, thumbnails: bool = True):
+        self._store = store
+        self._thumbnails = thumbnails
+        self._pending: list[str] = []
+        self._busy = False
+        self._lock = threading.Lock()
+        self._wake = threading.Event()
+        self._thread = threading.Thread(target=self._run, name="vividhome-render", daemon=True)
+        self._thread.start()
+
+    def queue(self, level: str) -> None:
+        with self._lock:
+            if level not in self._pending:
+                self._pending.append(level)
+        self._wake.set()
+
+    @property
+    def idle(self) -> bool:
+        with self._lock:
+            return not self._pending and not self._busy
+
+    def wait(self, timeout: float = 60.0) -> bool:
+        """Block until nothing is queued or rendering, or ``timeout`` passes."""
+        deadline = time.monotonic() + timeout
+        while not self.idle:
+            if time.monotonic() > deadline:
+                return False
+            time.sleep(0.05)
+        return True
+
+    def _run(self) -> None:
+        from .inspector import build_page
+
+        while True:
+            self._wake.wait()
+            while True:
+                with self._lock:
+                    if not self._pending:
+                        self._wake.clear()
+                        break
+                    level = self._pending.pop(0)
+                    self._busy = True
+                try:
+                    path = build_page(self._store, level, thumbnails=self._thumbnails)
+                    print(f"rendered inspect/{path.name}; the phone's rendering is current")
+                except Exception as error:  # noqa: BLE001 - the server must not die for a page
+                    print(f"could not render level {level!r}: {error}", file=sys.stderr)
+                finally:
+                    with self._lock:
+                        self._busy = False
 
 
 class StoreHandler(SimpleHTTPRequestHandler):
@@ -69,12 +149,14 @@ class StoreHandler(SimpleHTTPRequestHandler):
         root: Path,
         writable: bool = True,
         pairing_code: str | None = None,
+        renderer: Renderer | None = None,
         **kwargs,
     ):
         self._root = root
         self._writable = writable
         self._pairing_code = pairing_code
         self._inbox = Inbox(root) if pairing_code else None
+        self._renderer = renderer
         super().__init__(*args, directory=str(root), **kwargs)
 
     def log_message(self, format: str, *args) -> None:
@@ -169,6 +251,7 @@ class StoreHandler(SimpleHTTPRequestHandler):
                 self._send_json({"stored": rest, "bytes": stored}, status=201)
             elif method == "POST" and rest == "done":
                 receipt = self._inbox.finish(session_id)
+                receipt["inspect"] = self._render_after(receipt)
                 self._announce(receipt)
                 self._send_json(receipt)
             else:
@@ -182,6 +265,16 @@ class StoreHandler(SimpleHTTPRequestHandler):
             self.close_connection = True
             self._send_json({"error": error.message}, status=error.status)
 
+    def _render_after(self, receipt: dict) -> dict | None:
+        """Queue the level's page when the capture arrived placed and the
+        placement was adopted (ADR-0031 step 6); what the receipt says about it."""
+        alignment = receipt.get("alignment") or {}
+        level = alignment.get("level")
+        if self._renderer is None or not alignment.get("adopted") or not level:
+            return None
+        self._renderer.queue(str(level))
+        return {"level": level, "page": f"inspect/{level}.html", "status": "queued"}
+
     @staticmethod
     def _announce(receipt: dict) -> None:
         """One line on the PC when a capture lands: the server is otherwise
@@ -192,6 +285,12 @@ class StoreHandler(SimpleHTTPRequestHandler):
             print(f"  {error}")
         for plan in receipt.get("plans") or []:
             print(f"  plan {plan.get('level')}: {plan.get('reason')}")
+        alignment = receipt.get("alignment")
+        if alignment:
+            print(f"  placement: {alignment.get('reason')}")
+        inspect = receipt.get("inspect")
+        if inspect:
+            print(f"  rendering {inspect.get('page')} for the phone")
 
     def _authorise(self) -> None:
         header = self.headers.get("Authorization", "")
@@ -245,13 +344,21 @@ def make_server(
     port: int = 0,
     writable: bool = True,
     pairing_code: str | None = None,
+    render: bool = True,
+    thumbnails: bool = True,
 ):
     """Build a server rooted at the store. Port 0 asks the OS for a free one.
-    Uploads are accepted only when a ``pairing_code`` is given."""
+    Uploads are accepted only when a ``pairing_code`` is given; ``render``
+    (with uploads) draws a level's page after a placed capture arrives."""
     root = Path(store).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    handler = partial(StoreHandler, root=root, writable=writable, pairing_code=pairing_code)
-    return StoreServer((host, port), handler)
+    renderer = Renderer(root, thumbnails=thumbnails) if render and pairing_code else None
+    handler = partial(
+        StoreHandler, root=root, writable=writable, pairing_code=pairing_code, renderer=renderer
+    )
+    server = StoreServer((host, port), handler)
+    server.renderer = renderer
+    return server
 
 
 def is_reachable_address(address: str) -> bool:
@@ -342,7 +449,8 @@ def serve(
         for address in addresses or ["<no network address found>"]:
             print(f"  http://{address}:{actual}/{open_path}")
         print("  anyone on this network can read the store; only the app, with the pairing")
-        print("  code, can send captures in, and those land in an inbox for ingest")
+        print("  code, can send captures in; those are ingested as they land, and a capture")
+        print("  that arrives placed renders its level's page here for the phone")
         print(f"  pairing code {display_code(code or '')}: type it in the app under PC")
         print(f"  (kept in {root / PAIRING_FILE}; delete that file to issue a new one)")
         try:

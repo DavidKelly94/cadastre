@@ -97,8 +97,10 @@ it survives one. Owner-side items are things only the owner can do.
    PC; the snap of a corner tap to where two mesh walls meet; the plan
    inset in the HUD with the walk on it; the walls shading as the
    keyframes photograph them; the stills checklist with the leave check
-   and *Capture more*; and *Place on the plan* for a free capture. Next: the
-   server watcher on the PC, then reading a room's top-ups together.
+   and *Capture more*; *Place on the plan* for a free capture; and the PC
+   redrawing a level's page by itself when a placed capture arrives. **Every
+   step of ADR-0031 is written.** Next: walk builds 56 onward on the real
+   house plan, then reading a room's top-ups together (design §6).
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -117,11 +119,11 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session; writes `derived/validate.json` so the index can say what passed |
-| `serve` | done | Local server for the browser pages; `--lan` serves the store to the phone with `/index.json` and Bonjour (ADR-0028), and takes captures under `/upload/` with the pairing code into an inbox (ADR-0029). **Not yet tried from a phone** |
+| `serve` | done | Local server for the browser pages; `--lan` serves the store to the phone with `/index.json` and Bonjour (ADR-0028), takes captures under `/upload/` with the pairing code into an inbox and ingests them (ADR-0029; tried from a phone 2026-10-02), and redraws a level's page in the background when a capture arrives placed (ADR-0031) |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **363 tests passing**, ruff clean.
+19 modules, **365 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -265,6 +267,22 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The PC draws the page itself when a placed capture arrives, 2026-10-03
+
+ADR-0031's sixth and last step. `serve --lan` already ingests each capture
+when the phone finishes sending it; now, when `ingest` adopts the placement
+the capture arrived with, the server queues that level's inspection page on
+a background thread, one page per level however many captures land together,
+and prints `rendered inspect/<level>.html` when it is done. The upload
+receipt says `inspect: queued` and names the level; the index's `inspect`
+for the level says when the page exists, which is when the app's *Rendering
+on the PC* row is current. `align` on the PC draws the page too when it
+writes, unless `--no-inspect`. The runbook's §6 and §7 shrink accordingly.
+Tested end to end over the upload endpoint on a synthetic capture. **Decided
+without the owner:** inside `serve` rather than a separate `vividhome watch`;
+nothing drawn for a capture that is not placed; the phone's reply does not
+wait for the page. Not yet tried from a phone with a real capture.
 
 ## A free capture is placed on the plan from the phone, written blind, 2026-10-03
 

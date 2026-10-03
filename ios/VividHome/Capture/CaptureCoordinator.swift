@@ -42,6 +42,41 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     var alignment: AlignmentQuality.Report
     var mesh: MeshExporter.Summary?
     var stoppedBecause: String?
+    /// Whether the room had an outline to be placed against (ADR-0031).
+    var guided: Bool = false
+    /// The live placement at Stop, when two or more corners were tapped.
+    var placement: PlanAlignment.Solution? = nil
+    /// Whether that placement was written as the capture's alignment file.
+    var placementWritten: Bool = false
+  }
+
+  /// A room the plan has outlined, for guided taps (ADR-0031): its corners in
+  /// house metres, by the name the HUD asks for, and the level they sit on.
+  struct GuidedRoom: Equatable {
+    struct Corner: Equatable {
+      var label: String
+      var x: Double
+      var z: Double
+    }
+    var level: String
+    var floorHeight: Double
+    var corners: [Corner]
+  }
+
+  /// Which corners the HUD still asks for.
+  struct Guidance: Equatable {
+    /// In outline order.
+    var corners: [String]
+    var placed: Set<String> = []
+    var skipped: Set<String> = []
+    /// A corner the owner picked out of order, because that is where they stand.
+    var chosen: String?
+
+    var next: String? {
+      if let chosen, !placed.contains(chosen), !skipped.contains(chosen) { return chosen }
+      return corners.first { !placed.contains($0) && !skipped.contains($0) }
+    }
+    var remaining: Int { corners.filter { !placed.contains($0) && !skipped.contains($0) }.count }
   }
 
   let controller = ARSessionController()
@@ -59,6 +94,10 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   /// ([ADR-0027]). Geometry, not a count, and not a claim that the owner tapped
   /// what they meant.
   @Published private(set) var alignment = AlignmentQuality.evaluate([])
+  /// The corners still to tap when the room is outlined, else nil (ADR-0031).
+  @Published private(set) var guidance: Guidance?
+  /// The capture placed on the plan, live, from the corners tapped so far.
+  @Published private(set) var placement: PlanAlignment.Solution?
   @Published private(set) var showMesh = false
   @Published private(set) var freeBytes: Int64 = 0
   /// "Kitchen · Electrical + Plumbing", for the HUD strip.
@@ -76,6 +115,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   private var level = LevelRef(slug: "l1", name: "Level 1", index: 1)
   private var room = SlugRef(slug: "room", name: "Room")
   private var phases: [CapturePhase] = []
+  private var guide: GuidedRoom?
 
   /// The one project, until the Projects screen exists. Shared with PlanStore,
   /// which has to find `plans/` beside the same sessions.
@@ -103,10 +143,16 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
 
   // MARK: - Start
 
-  func start(level: LevelRef, room: SlugRef, phases: [CapturePhase], notes: String?) {
+  func start(
+    level: LevelRef, room: SlugRef, phases: [CapturePhase], notes: String?,
+    guide: GuidedRoom? = nil
+  ) {
     self.level = level
     self.room = room
     self.phases = phases
+    self.guide = guide
+    guidance = guide.map { Guidance(corners: $0.corners.map(\.label)) }
+    placement = nil
 
     do {
       try recorder.start(
@@ -234,6 +280,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     {
       landmarks[index].position = position
       rescoreAlignment()
+      resolvePlacement()
       landmarkNodes[selected]?.position = SCNVector3(
         Float(position.x), Float(position.y), Float(position.z))
       let label = landmarks[index].label
@@ -242,7 +289,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       return .moved(label)
     }
 
-    let label = nextLabel(for: kind)
+    // A guided room names the corner; anything else is numbered as before.
+    let label = (kind == .corner ? guidance?.next : nil) ?? nextLabel(for: kind)
     let landmark = PlacedLandmark(
       label: label,
       kind: kind,
@@ -252,6 +300,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     landmarks.append(landmark)
     draw(landmark, in: arView)
     rescoreAlignment()
+    resolvePlacement()
     return .placed(label)
   }
 
@@ -262,6 +311,67 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     landmarks.removeAll { $0.id == selected }
     selectedLandmark = nil
     rescoreAlignment()
+    resolvePlacement()
+  }
+
+  // MARK: - Guided corners (ADR-0031)
+
+  /// The corner hidden behind a stack of drywall: ask for it later, or never.
+  func skipNextCorner() {
+    guard var guidance, let next = guidance.next else { return }
+    guidance.skipped.insert(next)
+    guidance.chosen = nil
+    self.guidance = guidance
+  }
+
+  /// The owner is standing at this corner, not the one asked for. A skipped
+  /// corner tapped here is asked for again.
+  func chooseCorner(_ label: String) {
+    guard var guidance, guidance.corners.contains(label), !guidance.placed.contains(label)
+    else { return }
+    guidance.skipped.remove(label)
+    guidance.chosen = label
+    self.guidance = guidance
+  }
+
+  /// Pair every landmark whose label is one of the room's corners with that
+  /// corner, and fit. Called after every change to the landmarks, so the HUD
+  /// always shows the placement the taps so far would give.
+  private func resolvePlacement() {
+    guard let guide else { return }
+    let corners = Dictionary(guide.corners.map { ($0.label, $0) }, uniquingKeysWith: { first, _ in first })
+    var pairs: [PlanAlignment.Pair] = []
+    var placed: Set<String> = []
+    for landmark in landmarks {
+      guard let corner = corners[landmark.label] else { continue }
+      placed.insert(landmark.label)
+      pairs.append(
+        PlanAlignment.Pair(
+          label: landmark.label,
+          sessionXZ: (landmark.position.x, landmark.position.z),
+          houseXZ: (corner.x, corner.z)))
+    }
+    guidance?.placed = placed
+    let floor = PlanAlignment.floorY(landmarks: landmarks.map { (kind: $0.kind, y: $0.position.y) })
+    placement = PlanAlignment.solve(
+      pairs: pairs, floorY: floor.y, floorSource: floor.source, floorHeight: guide.floorHeight)
+  }
+
+  /// The capture's placement, written beside the plans as the file the PC
+  /// adopts (section 15). Only a fit the PC would accept is written: above
+  /// its refusal the file would only be refused there too.
+  private func writePlacement(sessionID: String) -> Bool {
+    guard let guide, let placement, placement.verdict != .notPlaced else { return false }
+    let file = AlignmentFile(sessionID: sessionID, level: guide.level, solution: placement)
+    let project = documents
+      .appendingPathComponent("sessions", isDirectory: true)
+      .appendingPathComponent(self.project.slug, isDirectory: true)
+    do {
+      try file.write(to: AlignmentFile.url(projectDirectory: project, sessionID: sessionID))
+      return true
+    } catch {
+      return false
+    }
   }
 
   func renameSelectedLandmark(to label: String) {
@@ -275,6 +385,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     {
       text.string = trimmed
     }
+    resolvePlacement()
   }
 
   /// A label that means something on a drawing weeks later.
@@ -465,6 +576,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     let elapsed = recorder.elapsed
     // Read before `stop`, which clears it.
     let sessionID = recorder.sessionID?.stringValue ?? "unknown"
+    let placementWritten = writePlacement(sessionID: sessionID)
 
     do {
       let layout = try recorder.stop { layout in
@@ -487,7 +599,10 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
           landmarkLabels: landmarks.map(\.label),
           alignment: alignment,
           mesh: mesh,
-          stoppedBecause: reason))
+          stoppedBecause: reason,
+          guided: guide != nil,
+          placement: placement,
+          placementWritten: placementWritten))
     } catch {
       phase = .failed("Could not finish the session: \(error.localizedDescription)")
     }

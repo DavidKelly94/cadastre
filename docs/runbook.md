@@ -133,7 +133,9 @@ Do this at home with the plan in front of you. A room without an outline still c
 
 ## 5. Align each capture to the plan
 
-Find the capture's id. It is the folder name under the project:
+If the room was outlined (§4b), the capture placed itself: during capture the HUD asked for each corner by name, showed the fit in centimetres, and wrote the placement beside the plans when you stopped. The review screen says *Placed on the plan, 6 cm*. The next send carries it, the PC adopts it, and this step is done; `vividhome align` on the PC only redoes one deliberately.
+
+A capture with no outline, or one the review screen said was not placed, is aligned on the PC. Find the capture's id. It is the folder name under the project:
 
 ```
 Get-ChildItem $store\sessions -Recurse -Depth 1 -Directory | Select-Object -ExpandProperty Name
@@ -183,7 +185,8 @@ made it.
 | Phone | Captures, Send N captures to the PC |
 | Phone, once per level | Plan card, Scale: three points and the printed distance (or `plan calibrate --level <level> --web` in Window B) |
 | Phone, once per room | Plan card, the room under *Outline the corners*: tap its corners in order |
-| Window B, per capture | `align <session-id> --level <level> --web` |
+| Phone, during capture | Tap each corner the HUD names; stop when it says *placed* |
+| Window B, only for a capture that was not placed | `align <session-id> --level <level> --web` |
 | Window B | `inspect --level <level>` |
 | Phone | Rendering on the PC |
 | Phone, when done | Delete the captures the PC has validated |

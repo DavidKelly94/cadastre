@@ -29,15 +29,19 @@ def _read_json(path: Path) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
-def _alignments(store: Path) -> dict[str, str]:
-    """Session id to the level it was aligned on."""
-    out: dict[str, str] = {}
+def _alignments(store: Path) -> dict[str, dict[str, str]]:
+    """Session id to the level it was aligned on and who solved it: ``pc`` for
+    the pipeline's own, ``app`` when the phone placed it (section 15)."""
+    out: dict[str, dict[str, str]] = {}
     directory = store / "alignments"
     if directory.is_dir():
         for path in sorted(directory.glob("*.json")):
             data = _read_json(path)
             if data and data.get("session_id") and data.get("level"):
-                out[str(data["session_id"])] = str(data["level"])
+                out[str(data["session_id"])] = {
+                    "level": str(data["level"]),
+                    "source": str(data.get("source") or "pc"),
+                }
     return out
 
 
@@ -76,6 +80,7 @@ def _session_entry(store: Path, project: str, session_dir: Path) -> dict[str, An
         "path": f"sessions/{project}/{session_dir.name}",
         "level": level_slug,
         "aligned": False,
+        "alignment_source": None,
         "validated": validated,
     }
 
@@ -97,14 +102,16 @@ def build_index(store: str | Path) -> dict[str, Any]:
                 if not session_dir.is_dir() or not (session_dir / "manifest.json").exists():
                     continue
                 entry = _session_entry(store, project_dir.name, session_dir)
-                entry["aligned"] = entry["session_id"] in alignments
+                placed = alignments.get(entry["session_id"])
+                entry["aligned"] = placed is not None
+                entry["alignment_source"] = placed["source"] if placed else None
                 sessions.append(entry)
 
             # A level belongs to a project through its sessions: the ones recorded
             # on it, and the ones aligned to it. The store's plans/ is not scoped
             # by project (section 13), so this is how the index scopes it.
             level_slugs = {s["level"] for s in sessions if s["level"]}
-            level_slugs |= {alignments[s["session_id"]] for s in sessions if s["aligned"]}
+            level_slugs |= {alignments[s["session_id"]]["level"] for s in sessions if s["aligned"]}
             levels = []
             for slug in sorted(level_slugs & plans.keys()):
                 page = store / "inspect" / f"{slug}.html"
@@ -117,7 +124,7 @@ def build_index(store: str | Path) -> dict[str, Any]:
                         "sessions": [
                             s["session_id"]
                             for s in sessions
-                            if alignments.get(s["session_id"]) == slug
+                            if (alignments.get(s["session_id"]) or {}).get("level") == slug
                         ],
                     }
                 )

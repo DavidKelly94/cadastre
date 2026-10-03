@@ -38,6 +38,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0028](0028-results-return-to-the-app.md) | Results return to the app, and the phone reads the record it wrote | Accepted; decision 3 amended by ADR-0029, decision 2 by ADR-0030 |
 | [ADR-0029](0029-the-pc-is-reached-over-the-owners-tailnet.md) | The PC is reached over the owner's tailnet, and the app sends captures to it | Accepted |
 | [ADR-0030](0030-the-phone-owns-the-first-loop.md) | The phone owns the record's first loop; the PC is the archive and the heavy compute | Accepted |
+| [ADR-0031](0031-the-capture-proves-itself-before-you-leave.md) | The capture proves itself before you leave the room | Accepted |
 
 ## Adding a new ADR
 

@@ -12,16 +12,39 @@ import VividHomeCore
 //
 // It writes no JPEGs. Encoding needs CoreImage, which does not exist on Linux,
 // and the images are not the part at risk — the records are.
+//
+// It also runs the two pieces of field maths the phone ported from the
+// pipeline, the corner snap (corners.py) and the live wall coverage
+// (coverage.py), on the room it just wrote, and leaves their answers in a JSON
+// file beside the session for pipeline/tests/test_contract.py to hold against
+// the Python's own. The ports were written blind; this is what keeps them the
+// same rule.
 
 let arguments = CommandLine.arguments
 guard arguments.count >= 2 else {
-  FileHandle.standardError.write(Data("usage: vividhome-fixture <output-directory>\n".utf8))
+  FileHandle.standardError.write(
+    Data("usage: vividhome-fixture <output-directory> [<contract-json>]\n".utf8))
   exit(2)
 }
 
 let sessionID = SessionID("20261103-141502_main_kitchen_k3x7qa")!
 let layout = SessionLayout(root: URL(fileURLWithPath: arguments[1]))
+let contractPath =
+  arguments.count >= 3
+  ? URL(fileURLWithPath: arguments[2])
+  : URL(fileURLWithPath: arguments[1] + "-contract.json")
 try layout.createDirectories()
+
+// The room: 4 m along x, 5 m along z, 2.4 m high, its north-west floor corner at
+// the origin, as `synth.py` lays its room out. Walls, floor and ceiling as two
+// triangles each, classified as section 9 says (1 wall, 2 floor, 3 ceiling).
+let roomWidth = 4.0
+let roomDepth = 5.0
+let roomHeight = 2.4
+let corners: [(label: String, x: Double, z: Double)] = [
+  ("corner-nw", 0, 0), ("corner-ne", roomWidth, 0), ("corner-se", roomWidth, roomDepth),
+  ("corner-sw", 0, roomDepth),
+]
 
 let colourWidth = 64
 let colourHeight = 48
@@ -31,19 +54,22 @@ let depthHeight = 6
 let intrinsics = Intrinsics(
   fx: 48.4, fy: 48.4, cx: Double(colourWidth) / 2, cy: Double(colourHeight) / 2)
 
-/// A pose translated along +x, with an honest rotation block.
+/// A pose translated along +x, with an honest rotation block: the camera at
+/// chest height in the middle of the room, looking down its own -z, which is
+/// at the north wall.
 func pose(x: Double) -> Transform {
   Transform(elements: [
     1, 0, 0, 0,
     0, 1, 0, 0,
     0, 0, 1, 0,
-    x, 0, 0, 1,
+    x, 1.4, roomDepth / 2, 1,
   ])!
 }
 
 let keyframes = 5
 let framesWriter = try JSONLWriter(url: layout.frames)
 var stats = SessionStats()
+var frames: [FrameRecord] = []
 
 for index in 0..<keyframes {
   // Depth and confidence at exactly the sizes validation rule 3 requires.
@@ -65,7 +91,8 @@ for index in 0..<keyframes {
     // Relative by construction, which is why the contract job never caught
     // the app writing absolute ARFrame timestamps. See SessionTimeline.
     time: Double(index) * 0.5,
-    poseWorldFromCamera: pose(x: Double(index) * 0.25),
+    // Five stops along the room, 0.5 m to 3.5 m, so the north wall is walked.
+    poseWorldFromCamera: pose(x: 0.5 + Double(index) * 0.75),
     intrinsics: intrinsics,
     width: colourWidth,
     height: colourHeight,
@@ -80,6 +107,7 @@ for index in 0..<keyframes {
     depth: paths.depth,
     conf: paths.conf)
   try framesWriter.append(record)
+  frames.append(record)
   stats.recordKeyframe(bytes: depth.count + confidence.count)
 }
 try framesWriter.close()
@@ -107,19 +135,48 @@ try markersWriter.append(
 try markersWriter.close()
 stats.recordMarkerObservation()
 
+// The four corners as a thumb taps them: a few centimetres into the room and
+// a little above the floor, which is what a raycast onto the mesh gives. The
+// snap below should take each back to where the walls meet the floor.
+let taps: [(label: String, position: Vector3)] = [
+  ("corner-nw", Vector3(0.06, 0.02, 0.05)),
+  ("corner-ne", Vector3(roomWidth - 0.05, 0.02, 0.04)),
+  ("corner-se", Vector3(roomWidth - 0.06, 0.02, roomDepth - 0.05)),
+  ("corner-sw", Vector3(0.05, 0.02, roomDepth - 0.04)),
+]
 let landmarksWriter = try JSONLWriter(url: layout.landmarks)
-for (label, x) in [("corner-nw", 0.0), ("corner-ne", 4.0)] {
+for (number, tap) in taps.enumerated() {
   try landmarksWriter.append(
     LandmarkRecord(
-      time: 0.2,
+      time: 0.2 + Double(number) * 0.2,
       index: 0,
-      label: label,
+      label: tap.label,
       kind: .corner,
-      position: Vector3(x, 0, 0),
-      method: "raycast-estimatedPlane"))
+      position: tap.position,
+      method: "raycast_estimated_plane"))
   stats.recordLandmark()
 }
 try landmarksWriter.close()
+
+// The mesh (section 9): vertices 1-4 are the floor corners, 5-8 the same
+// corners at ceiling height.
+let vertices: [Vector3] = corners.map { Vector3($0.x, 0, $0.z) } + corners.map { Vector3($0.x, roomHeight, $0.z) }
+let wallClass: UInt8 = 1, floorClass: UInt8 = 2, ceilingClass: UInt8 = 3
+var faces: [(a: Int, b: Int, c: Int, classification: UInt8)] = []
+for side in 0..<4 {
+  let next = (side + 1) % 4
+  faces.append((side, next, next + 4, wallClass))
+  faces.append((side, next + 4, side + 4, wallClass))
+}
+faces.append((0, 1, 2, floorClass))
+faces.append((0, 2, 3, floorClass))
+faces.append((4, 5, 6, ceilingClass))
+faces.append((4, 6, 7, ceilingClass))
+var obj = "# vividhome-fixture room, metres, session frame\n"
+for vertex in vertices { obj += "v \(vertex.x) \(vertex.y) \(vertex.z)\n" }
+for face in faces { obj += "f \(face.a + 1) \(face.b + 1) \(face.c + 1)\n" }
+try obj.write(to: layout.mesh, atomically: true, encoding: .utf8)
+try Data(faces.map { $0.classification }).write(to: layout.meshClasses)
 
 // stills.jsonl is written empty: the format allows no stills, and an empty file
 // is a case the reader should handle.
@@ -152,3 +209,101 @@ try encoder.encode(finalized).write(to: layout.manifest)
 
 print("wrote \(layout.root.path)")
 print("  \(stats.keyframes) keyframes, \(stats.landmarks) landmarks, \(stats.markerObservations) marker observations")
+
+// --- The field maths, run on this room for the pipeline to check ----------
+
+struct ContractSnap: Codable {
+  var label: String
+  var tap: [Double]
+  var position: [Double]?
+  var movedBy: Double?
+  var floorSource: String?
+
+  enum CodingKeys: String, CodingKey {
+    case label, tap, position
+    case movedBy = "moved_by"
+    case floorSource = "floor_source"
+  }
+}
+
+struct ContractWall: Codable {
+  var start: String
+  var end: String
+  var lengthM: Double
+  var photographedFraction: Double
+  var notPhotographedM: [[Double]]
+
+  enum CodingKeys: String, CodingKey {
+    case start, end
+    case lengthM = "length_m"
+    case photographedFraction = "photographed_fraction"
+    case notPhotographedM = "not_photographed_m"
+  }
+}
+
+struct Contract: Codable {
+  var snaps: [ContractSnap]
+  var coverage: [ContractWall]
+  var rangeM: Double
+  var keyframesUsed: Int
+  var keyframesTotal: Int
+
+  enum CodingKeys: String, CodingKey {
+    case snaps, coverage
+    case rangeM = "range_m"
+    case keyframesUsed = "keyframes_used"
+    case keyframesTotal = "keyframes_total"
+  }
+}
+
+/// The faces the app's MeshProbe would hand the snap: those with a vertex
+/// within half a metre of the tap.
+func facesNear(_ tap: Vector3) -> [CornerSnap.Face] {
+  faces.compactMap { face in
+    let triangle = [vertices[face.a], vertices[face.b], vertices[face.c]]
+    let near = triangle.contains { vertex in
+      let dx = vertex.x - tap.x, dy = vertex.y - tap.y, dz = vertex.z - tap.z
+      return (dx * dx + dy * dy + dz * dz).squareRoot() <= CornerSnap.reachMetres
+    }
+    guard near else { return nil }
+    return CornerSnap.Face(a: triangle[0], b: triangle[1], c: triangle[2], classification: face.classification)
+  }
+}
+
+let snaps = taps.map { tap -> ContractSnap in
+  let snap = CornerSnap.snap(tap: tap.position, faces: facesNear(tap.position))
+  return ContractSnap(
+    label: tap.label, tap: [tap.position.x, tap.position.y, tap.position.z],
+    position: snap.map { [$0.position.x, $0.position.y, $0.position.z] },
+    movedBy: snap?.movedBy, floorSource: snap?.floorSource)
+}
+
+// Coverage against the corners as tapped, in tap order: coverage.py's
+// denominator, so the two measure the same walls.
+let cameras = frames.compactMap { frame in
+  WallCoverage.Camera(
+    pose: frame.poseWorldFromCamera, fx: frame.intrinsics.fx, fy: frame.intrinsics.fy,
+    width: frame.width, height: frame.height)
+}
+let footprint = taps.map { (label: $0.label, x: $0.position.x, z: $0.position.z) }
+let walls = WallCoverage.coverage(outline: footprint, cameras: cameras)
+func hundredths(_ value: Double) -> Double { (value * 100).rounded() / 100 }
+let contract = Contract(
+  snaps: snaps,
+  coverage: walls.map { wall in
+    ContractWall(
+      start: wall.start, end: wall.end, lengthM: wall.length, photographedFraction: wall.fraction,
+      notPhotographedM: wall.gaps.map { [hundredths($0.from), hundredths($0.from + $0.length)] })
+  },
+  rangeM: WallCoverage.rangeMetres, keyframesUsed: cameras.count, keyframesTotal: frames.count)
+let contractEncoder = JSONEncoder()
+contractEncoder.outputFormatting = [.sortedKeys, .prettyPrinted]
+try contractEncoder.encode(contract).write(to: contractPath)
+print("wrote \(contractPath.path)")
+for snap in snaps {
+  let moved = snap.movedBy.map { String(format: "%.3f m", $0) } ?? "no snap"
+  print("  \(snap.label): \(moved)")
+}
+for wall in contract.coverage {
+  print("  \(wall.start) -> \(wall.end): photographed \(Int((wall.photographedFraction * 100).rounded()))%")
+}

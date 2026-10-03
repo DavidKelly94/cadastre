@@ -101,8 +101,9 @@ it survives one. Owner-side items are things only the owner can do.
    redrawing a level's page by itself when a placed capture arrives; and a
    capture reading the room's earlier captures with it, so a top-up closes the
    gaps of the one before. **Every step of ADR-0031 is written.** Next: walk
-   builds 56 onward on the real house plan; then the cross-check of the Swift
-   coverage and snap against the Python on one real capture.
+   builds 56 onward on the real house plan; the snap and the live coverage are
+   now held against the Python in CI on the fixture room, so what remains is
+   the same comparison on one real capture.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -270,6 +271,21 @@ picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
 
+## The phone's field maths held against the pipeline's in CI, 2026-10-03
+
+The contract-job item ADR-0031's first step left open. `vividhome-fixture`
+now writes a classified room mesh (four walls, floor, ceiling, as `synth.py`
+lays its room out), taps the four corners a few centimetres off, and walks
+the north wall; then it runs `CornerSnap` on the faces near each tap and
+`WallCoverage` on the frames against the tapped footprint, and leaves the
+answers in a JSON file beside the session. `tests/test_contract.py`, skipped
+without that file, runs `corners.py` and `coverage.py` on the same session
+and holds the two together: every snap within a centimetre of a Python
+candidate at the Python's floor height, every wall's photographed fraction
+equal, every gap equal to the cell. The `contract` job runs it on every push.
+Still to do: the same comparison on one real capture, where the mesh is not
+twelve clean triangles.
+
 ## A top-up reads the room's earlier captures with it, written blind, 2026-10-03
 
 The last piece of ADR-0031's design §6. When a capture starts, `RoomHistory`
@@ -375,8 +391,8 @@ tests on synthetic walls, clutter the mesh calls wall, and ghost crossings.
 
 **Decided without the owner:** the snap moves a point at most 0.5 m; a
 cluster under 0.05 m² of wall is furniture; it runs on every corner tap, not
-only guided ones. **Not yet** pinned to the Python on one real mesh, which is
-the contract-job item still open, and not walked.
+only guided ones. Pinned to the Python on the fixture room by the `contract`
+job since later on 2026-10-03 (below); not yet on a real mesh, and not walked.
 
 ## The capture places itself, written blind, 2026-10-03
 
@@ -1251,7 +1267,7 @@ source of truth. What each check *covers* is the durable fact:
 |---|---|---|
 | `swift` | every push, Linux | `VividHomeCore` unit tests. Cannot see the app target. |
 | `python` | every push, Linux | ruff and the full pipeline suite. |
-| `contract` | every push, Linux | `VividHomeCore` writes a session, `vividhome validate` reads it. **The only check that puts both implementations in contact.** |
+| `contract` | every push, Linux | `VividHomeCore` writes a session with a classified room mesh, `vividhome validate` reads it, and the phone's corner snap and live wall coverage, run by the fixture on that room, are held against `corners.py` and `coverage.py` on the same session (`tests/test_contract.py`). **The only check that puts both implementations in contact.** |
 | `ios-check` | **pull requests only** | `xcodebuild` of the app target. The only thing that compiles the ARKit layer, and the only check that catches a core change breaking the app. |
 | `ios-testflight` | push to the work branch | No-ops: a Linux preflight gates the macOS build on `ASC_KEY_ID`. |
 | `Claude Review` | pull requests | The shared review rubric. First ran 2026-09-13, having silently failed at startup before that. |

@@ -138,6 +138,46 @@ def test_the_quality_summary_comes_from_the_validate_report(store: Path):
     assert quality["errors"] == 0
 
 
+def test_the_leave_check_is_shown_per_session(store: Path):
+    """The app's field_check (ADR-0031) reaches the page as the three sentences the
+    review screen showed; a capture without one shows the row as before."""
+    manifest_path = store / "sessions" / "synthetic" / SESSION_ID / "manifest.json"
+    original = manifest_path.read_text(encoding="utf-8")
+    manifest = json.loads(original)
+    manifest["field_check"] = {
+        "placement": {"status": "check", "rms_m": 0.18, "corners": 2},
+        "walls": {
+            "photographed": 4,
+            "total": 5,
+            "gaps": [{"wall": "corner-nw->corner-ne", "from_m": 1.9, "length_m": 0.8}],
+        },
+        "stills": {"done": 7, "total": 11, "missing": ["panel", "home-runs", "smoke-co"]},
+        "checked_at": "2026-10-03T18:00:00Z",
+        "together": [],
+    }
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    try:
+        page = build_page(store, "main", thumbnails=False)
+        session = page_data(page)["sessions"][0]
+        assert session["field_check"] == manifest["field_check"]
+        assert [line["text"] for line in session["field_check_lines"]] == [
+            "Check the corners: 18 cm off",
+            "Walls photographed: 4 of 5; NW–NE wall, 0.8 m not photographed from 1.9 m past NW",
+            (
+                "Stills: 7 of 11 on the list; missing Panel with the cover off, Home-run routes, "
+                "Smoke and CO locations"
+            ),
+        ]
+        assert [line["ok"] for line in session["field_check_lines"]] == [False, False, False]
+        assert "field_check_lines" in page.read_text(encoding="utf-8")
+    finally:
+        manifest_path.write_text(original, encoding="utf-8")
+
+    session = page_data(build_page(store, "main", thumbnails=False))["sessions"][0]
+    assert session["field_check"] is None
+    assert session["field_check_lines"] == []
+
+
 def test_thumbnails_are_written_and_referenced(store: Path):
     data = page_data(build_page(store, "main", thumbnails=True, thumbnail_stride=4))
     keyframes = data["sessions"][0]["keyframes"]

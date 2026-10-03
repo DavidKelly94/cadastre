@@ -126,7 +126,7 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **365 tests passing**, ruff clean.
+19 modules, **370 tests passing** (plus 3 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -270,6 +270,18 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The PC says what the review screen said, 2026-10-03
+
+The leave check reaches the inspect page: each session's panel row carries
+the three lines of its `field_check`, green or orange, made from the
+manifest's numbers by `fieldcheck.py`, the Python twin of the core package's
+`FieldCheck.lines`, with the stills checklist's names mirrored beside it.
+The `contract` job holds the twins together: the fixture dumps the checklist
+and five leave checks of every shape with the phone's sentences, and
+`test_contract.py` makes the same sentences in Python. Six Python tests pin
+the strings the Swift tests pin. A capture without a check, or one made
+before the check existed, shows the row as before.
 
 ## The phone's field maths held against the pipeline's in CI, 2026-10-03
 

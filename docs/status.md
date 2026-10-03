@@ -95,8 +95,10 @@ it survives one. Owner-side items are things only the owner can do.
    HUD asking for corners by name, the live fit with its residual, the
    placement file written at Stop, sent with the capture and adopted by the
    PC; the snap of a corner tap to where two mesh walls meet; the plan
-   inset in the HUD with the walk on it; and the walls shading as the
-   keyframes photograph them. Next: the stills checklist and the leave check.
+   inset in the HUD with the walk on it; the walls shading as the
+   keyframes photograph them; and the stills checklist with the leave check
+   and *Capture more*. Next: the pairing screen for free captures, then the
+   server watcher.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -119,7 +121,7 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **361 tests passing**, ruff clean.
+19 modules, **363 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -263,6 +265,26 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The stills checklist and the leave check, written blind, 2026-10-03
+
+ADR-0031's fourth step. The capture protocol's §4 table is now data in the
+core package (`StillsChecklist`): the HUD shows a chip per item for the
+pass's trades, *each wall square-on* first, and a tap on a chip takes a still
+for that item and ticks it once the file is on disk. The camera button still
+takes an unlabelled still. `stills.jsonl` gains `item` (additive). At Stop the
+app makes the leave check (`FieldCheck`): placed or not and how well, walls
+photographed out of the outline's with the worst gap in metres from a named
+corner, stills ticked out of the list with what is missing. The review screen
+shows the three lines at the top, green or orange, and the manifest carries
+them as `field_check` (additive); the PC's index passes it through. *Capture
+more* under the lines starts a top-up of the same room and trades as its own
+session. Pipeline: `Still.item`, `Session.field_check`, the index field, two
+tests. Core: ten tests. **Decided without the owner:** chips instead of a pick
+after the shutter; markers and the dated sheet left off the list; 70% is a
+photographed wall; the `walls` block is omitted rather than guessed when the
+capture is not placed; sentences are made from the numbers on both ends, not
+stored. Not walked; the inspect page does not show the check yet.
 
 ## The walls shade as they are photographed, written blind, 2026-10-03
 

@@ -51,6 +51,7 @@ final class StillCapture {
   func capture(
     stillIndex: Int,
     keyframeIndex: Int,
+    item: String? = nil,
     completion: @escaping (FrameWriter.Outcome) -> Void
   ) {
     guard isReady else { return }
@@ -83,7 +84,8 @@ final class StillCapture {
         tracking: tracking,
         reason: reason,
         thermal: ARKitBridge.thermal(ProcessInfo.processInfo.thermalState),
-        path: StillRecord.path(forStill: stillIndex))
+        path: StillRecord.path(forStill: stillIndex),
+        item: item)
 
       self.writer.write(still: record, colour: frame.capturedImage, completion: completion)
     }

@@ -264,6 +264,9 @@ public struct Manifest: Codable, Equatable, Sendable {
   public var capture: CaptureInfo
   public var coordinateFrame: CoordinateFrame
   public var stats: SessionStats
+  /// The leave check written at Stop (ADR-0031, `FieldCheck`). Additive:
+  /// absent while recording and in captures made before it existed.
+  public var fieldCheck: FieldCheck?
 
   public init(
     formatVersion: Int = VividHomeCore.sessionFormatVersion,
@@ -278,7 +281,8 @@ public struct Manifest: Codable, Equatable, Sendable {
     device: DeviceInfo,
     capture: CaptureInfo,
     coordinateFrame: CoordinateFrame = .arkitSession,
-    stats: SessionStats = SessionStats()
+    stats: SessionStats = SessionStats(),
+    fieldCheck: FieldCheck? = nil
   ) {
     self.formatVersion = formatVersion
     self.sessionID = sessionID
@@ -293,6 +297,7 @@ public struct Manifest: Codable, Equatable, Sendable {
     self.capture = capture
     self.coordinateFrame = coordinateFrame
     self.stats = stats
+    self.fieldCheck = fieldCheck
   }
 
   enum CodingKeys: String, CodingKey {
@@ -309,6 +314,7 @@ public struct Manifest: Codable, Equatable, Sendable {
     case capture
     case coordinateFrame = "coordinate_frame"
     case stats
+    case fieldCheck = "field_check"
   }
 }
 
@@ -417,6 +423,10 @@ public struct StillRecord: Codable, Equatable, Sendable {
   public var reason: TrackingReason
   public var thermal: ThermalState
   public var path: String
+  /// The checklist item this still was taken for (`StillsChecklist`), when
+  /// the owner picked one. Additive (ADR-0031); absent on a still taken with
+  /// no pick and in older captures.
+  public var item: String?
 
   public init(
     stillIndex: Int,
@@ -431,7 +441,8 @@ public struct StillRecord: Codable, Equatable, Sendable {
     tracking: TrackingState,
     reason: TrackingReason,
     thermal: ThermalState,
-    path: String
+    path: String,
+    item: String? = nil
   ) {
     self.stillIndex = stillIndex
     self.index = index
@@ -446,6 +457,7 @@ public struct StillRecord: Codable, Equatable, Sendable {
     self.reason = reason
     self.thermal = thermal
     self.path = path
+    self.item = item
   }
 
   /// The path the app writes for still `index`, zero-padded to 3 digits.
@@ -467,6 +479,7 @@ public struct StillRecord: Codable, Equatable, Sendable {
     case reason
     case thermal
     case path
+    case item
   }
 }
 

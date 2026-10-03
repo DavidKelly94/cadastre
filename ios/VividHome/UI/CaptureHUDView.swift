@@ -215,6 +215,8 @@ struct CaptureHUDView: View {
         }
       }
 
+      if !coordinator.checklist.isEmpty { checklistChips }
+
       HStack(spacing: 20) {
         Button {
           coordinator.setShowMesh(!coordinator.showMesh)
@@ -236,7 +238,7 @@ struct CaptureHUDView: View {
 
         Spacer()
 
-        Button { coordinator.takeStill() } label: {
+        Button { takeStill(item: nil, named: nil) } label: {
           Label("Still", systemImage: "camera").labelStyle(.iconOnly).font(.title3)
         }
         .foregroundStyle(Tokens.ink)
@@ -303,6 +305,46 @@ struct CaptureHUDView: View {
       }
       .foregroundStyle(Tokens.inkSecondary)
       .accessibilityLabel("Other marks")
+    }
+  }
+
+  /// The stills the pass's trades require (ADR-0031, design §5), ticked as
+  /// they are taken. A chip takes a still for that item, one tap, so the list
+  /// is both the reminder and the shutter; the camera button takes a still
+  /// with no label, which ticks nothing.
+  private var checklistChips: some View {
+    let taken = Set(coordinator.stillsTaken.compactMap { $0 })
+    let done = coordinator.checklist.filter { taken.contains($0.id) }.count
+    return HStack(spacing: 8) {
+      Text("STILLS \(done)/\(coordinator.checklist.count)")
+        .font(.caption2.weight(.bold)).foregroundStyle(Tokens.inkSecondary)
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 6) {
+          ForEach(coordinator.checklist) { item in
+            let ticked = taken.contains(item.id)
+            Button {
+              takeStill(item: item.id, named: item.name)
+            } label: {
+              HStack(spacing: 4) {
+                Image(systemName: ticked ? "checkmark" : "camera").font(.caption2.weight(.bold))
+                Text(item.name).font(.caption.weight(.semibold)).lineLimit(1)
+              }
+              .padding(.horizontal, 10).padding(.vertical, 6)
+              .background(ticked ? Tokens.ok.opacity(0.22) : Tokens.raised, in: Capsule())
+              .foregroundStyle(ticked ? Tokens.ok : Tokens.ink)
+            }
+            .buttonStyle(.plain)
+          }
+        }
+      }
+    }
+  }
+
+  private func takeStill(item: String?, named name: String?) {
+    if coordinator.takeStill(item: item) {
+      if let name { show("Still: \(name)") }
+    } else {
+      show("Hold on — the last still is still being written")
     }
   }
 

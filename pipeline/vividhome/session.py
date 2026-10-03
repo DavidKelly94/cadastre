@@ -163,10 +163,14 @@ class Still:
     w: int
     h: int
     path: str
+    #: The checklist item the still was taken for (section 6, additive, ADR-0031);
+    #: None for a still taken with no pick and for captures made before it.
+    item: str | None = None
     raw: dict[str, Any] = field(repr=False, default_factory=dict)
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any], where: str) -> Still:
+        item = raw.get("item")
         return cls(
             s=int(_require(raw, "s", where)),
             i=int(raw.get("i", -1)),
@@ -176,6 +180,7 @@ class Still:
             w=int(_require(raw, "w", where)),
             h=int(_require(raw, "h", where)),
             path=str(_require(raw, "path", where)),
+            item=str(item) if item is not None else None,
             raw=raw,
         )
 
@@ -300,6 +305,17 @@ class Session:
     def expected_markers(self) -> list[str]:
         value = self.manifest.get("expected_markers", [])
         return [str(item) for item in value] if isinstance(value, list) else []
+
+    @property
+    def field_check(self) -> dict[str, Any] | None:
+        """The leave check the app wrote at Stop (section 4, additive), or None.
+
+        Passed through as written: the app made it from numbers it had and the
+        PC cannot, and it is the app's claim about the capture, not this
+        pipeline's. ``validate`` is the pipeline's.
+        """
+        value = self.manifest.get("field_check")
+        return value if isinstance(value, dict) else None
 
     @property
     def duration_s(self) -> float | None:

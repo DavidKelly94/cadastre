@@ -58,6 +58,7 @@ def test_a_fresh_session_is_listed_as_unaligned_and_unvalidated(store: Path):
         "aligned": False,
         "alignment_source": None,
         "validated": None,
+        "field_check": None,
     }
     # The level has a plan but nothing on it yet: listed, uncalibrated, no page.
     [level] = project["levels"]
@@ -146,3 +147,31 @@ def test_the_index_says_who_placed_a_session(store: Path):
     entry = build_index(store)["projects"][0]["sessions"][0]
     assert entry["aligned"] is True
     assert entry["alignment_source"] == "app"
+
+
+def test_the_apps_leave_check_is_passed_through_as_written(store: Path):
+    """The phone writes ``field_check`` at Stop (ADR-0031); the index carries it so
+    the inspect page and the app's own list can show the same three lines."""
+    manifest_path = store / "sessions" / "synthetic" / SESSION_ID / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    check = {
+        "placement": {"status": "placed", "rms_m": 0.06, "corners": 3},
+        "walls": {
+            "photographed": 4,
+            "total": 5,
+            "gaps": [{"wall": "corner-nw->corner-ne", "from_m": 1.9, "length_m": 0.8}],
+        },
+        "stills": {"done": 7, "total": 11, "missing": ["panel", "home-runs", "smoke-co"]},
+        "checked_at": "2026-10-03T18:00:00Z",
+    }
+    manifest["field_check"] = check
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    entry = build_index(store)["projects"][0]["sessions"][0]
+    assert entry["field_check"] == check
+    assert Session.load(manifest_path.parent).field_check == check
+
+    # Anything but an object is not a check.
+    manifest["field_check"] = "placed"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert build_index(store)["projects"][0]["sessions"][0]["field_check"] is None

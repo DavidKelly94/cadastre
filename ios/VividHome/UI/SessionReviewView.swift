@@ -9,6 +9,8 @@ import VividHomeCore
 /// from ADR-0025 to be worth drawing.
 struct SessionReviewView: View {
   let summary: CaptureCoordinator.SessionSummary
+  /// Start a top-up: a second short capture of the same room and trades.
+  let onCaptureMore: () -> Void
   let onDone: () -> Void
 
   var body: some View {
@@ -24,15 +26,25 @@ struct SessionReviewView: View {
         }
 
         Section {
-          placementLine
+          // The leave check (ADR-0031, design §5): the same three lines the
+          // manifest now carries, green or orange, while the wall is still
+          // open and a re-shoot is still possible.
+          if let check = summary.fieldCheck {
+            ForEach(Array(check.lines.enumerated()), id: \.offset) { _, line in
+              Label(line.text, systemImage: line.ok ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                .foregroundStyle(line.ok ? Tokens.ok : Tokens.warn)
+            }
+          } else {
+            placementLine
+          }
+          Button(action: onCaptureMore) {
+            Label("Capture more", systemImage: "camera.badge.ellipsis")
+          }
         } header: {
-          Text("On the plan")
+          Text("Before you leave")
         } footer: {
-          Text(summary.placementWritten
-            ? "Written beside the plans; the PC adopts it with the capture."
-            : (summary.guided
-              ? "Nothing written. Two well-placed corners are the minimum; the PC can place it later."
-              : "Outline this room on the plan and the next capture places itself before you leave."))
+          Text(placementFooter + " Capture more starts a short second capture of this room and these trades, "
+            + "its own session; the PC reads the two together.")
         }
 
         Section("Capture") {
@@ -174,6 +186,12 @@ struct SessionReviewView: View {
       Label("Not placed: no outline for this room", systemImage: "circle.dashed")
         .foregroundStyle(.secondary)
     }
+  }
+
+  private var placementFooter: String {
+    if summary.placementWritten { return "The placement is written beside the plans; the PC adopts it with the capture." }
+    if summary.guided { return "No placement written. Two well-placed corners are the minimum; the PC can place it later." }
+    return "Outline this room on the plan and the next capture places itself before you leave."
   }
 
   private var duration: String {

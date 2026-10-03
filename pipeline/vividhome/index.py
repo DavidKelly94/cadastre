@@ -75,6 +75,7 @@ def _session_entry(store: Path, project: str, session_dir: Path) -> dict[str, An
     report = _read_json(session_dir / "derived" / "validate.json")
     validated = bool(report.get("ok")) if report and "ok" in report else None
 
+    field_check = manifest.get("field_check")
     return {
         "session_id": session_dir.name,
         "path": f"sessions/{project}/{session_dir.name}",
@@ -82,6 +83,9 @@ def _session_entry(store: Path, project: str, session_dir: Path) -> dict[str, An
         "aligned": False,
         "alignment_source": None,
         "validated": validated,
+        # The app's leave check, as written (section 4); None for captures
+        # made before it or stopped without one.
+        "field_check": field_check if isinstance(field_check, dict) else None,
     }
 
 

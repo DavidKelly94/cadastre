@@ -52,13 +52,17 @@ extension Manifest {
         sceneReconstruction: sceneReconstruction))
   }
 
-  /// The manifest rewritten after a clean stop.
-  public func finalized(endedAt: String, duration: Double, stats: SessionStats) -> Manifest {
+  /// The manifest rewritten after a clean stop, with the leave check when the
+  /// app made one (ADR-0031).
+  public func finalized(
+    endedAt: String, duration: Double, stats: SessionStats, fieldCheck: FieldCheck? = nil
+  ) -> Manifest {
     var updated = self
     updated.status = .complete
     updated.capture.endedAt = endedAt
     updated.capture.duration = duration
     updated.stats = stats
+    updated.fieldCheck = fieldCheck
     return updated
   }
 

@@ -104,13 +104,15 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
   "walls": { "photographed": 4, "total": 5,
              "gaps": [ { "wall": "corner-nw->corner-ne", "from_m": 1.9, "length_m": 0.8 } ] },
   "stills": { "done": 7, "total": 11, "missing": ["panel", "home-runs", "smoke-co"] },
-  "checked_at": "2026-11-03T19:19:48Z"
+  "checked_at": "2026-11-03T19:19:48Z",
+  "together": []
 }
 ```
 
 - `placement.status` is `placed`, `check` or `not_placed` from the phone's fit (section 15, the same thresholds), `untapped` when the room was outlined but fewer than two corners were tapped, or `free` when the room had no outline. `rms_m` is present only with a fit; `corners` is the number of corner landmarks tapped.
 - `walls` is present only when the capture was placed: each wall of the room's outline (section 13), counted photographed when at least 70% of its length was in a keyframe's horizontal field of view within 4 m with no other wall between, the live form of `vividhome coverage`'s photographed rule. `gaps` lists the widest unphotographed run of each wall below that bar, worst wall first, in metres from the wall's first corner.
 - `stills` is the per-trade checklist (`capture-protocol.md` §4, carried in the app as data): `missing` holds the ids of items no still was taken for, in list order. The ids are the ones stills carry as `item` (section 6).
+- `together` lists the ids of the earlier complete captures of the same room, level and trades whose keyframes and stills were counted with this one (`field-proof-design.md` §6: a top-up closes the gaps of the capture before it, so its check describes the room). Empty for a first capture. Each of those captures has its own `field_check`.
 - It is the app's claim, made from what it had in the room. `vividhome validate` is the pipeline's, and neither overrides the other.
 
 ## 5. `frames.jsonl`

@@ -15,6 +15,8 @@ struct PlanInsetView: View {
   let placement: PlanAlignment.Solution?
   let coverage: [WallCoverage.Wall]?
   let walk: [(x: Double, z: Double)]
+  /// Earlier captures of the room, already in house metres (design §6).
+  let priorWalks: [[(x: Double, z: Double)]]
   let landmarks: [PlacedLandmark]
   let camera: (x: Double, z: Double)?
 
@@ -55,6 +57,17 @@ struct PlanInsetView: View {
           segment.addLine(to: at(b.x, b.z))
           context.stroke(segment, with: .color(Self.shade(wall.fraction)), lineWidth: 4)
         }
+      }
+
+      // The room's earlier walks, faint: what a top-up is adding to.
+      for prior in priorWalks {
+        var path = Path()
+        for (index, step) in prior.enumerated() {
+          let point = at(step.x, step.z)
+          if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+        }
+        context.stroke(
+          path, with: .color(Tokens.accentWarm.opacity(0.35)), style: StrokeStyle(lineWidth: 1, lineJoin: .round))
       }
 
       if let placement {
@@ -112,7 +125,7 @@ struct PlanInsetView: View {
   }
 
   private var caption: String {
-    guard placement != nil else { return "tap 2 corners" }
+    guard placement != nil else { return priorWalks.isEmpty ? "tap 2 corners" : "top-up · tap 2 corners" }
     guard let coverage, !coverage.isEmpty else { return "" }
     let done = coverage.filter { $0.fraction >= 0.7 }.count
     return "walls \(done)/\(coverage.count)"

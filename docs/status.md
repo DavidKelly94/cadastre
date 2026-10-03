@@ -98,9 +98,11 @@ it survives one. Owner-side items are things only the owner can do.
    inset in the HUD with the walk on it; the walls shading as the
    keyframes photograph them; the stills checklist with the leave check
    and *Capture more*; *Place on the plan* for a free capture; and the PC
-   redrawing a level's page by itself when a placed capture arrives. **Every
-   step of ADR-0031 is written.** Next: walk builds 56 onward on the real
-   house plan, then reading a room's top-ups together (design §6).
+   redrawing a level's page by itself when a placed capture arrives; and a
+   capture reading the room's earlier captures with it, so a top-up closes the
+   gaps of the one before. **Every step of ADR-0031 is written.** Next: walk
+   builds 56 onward on the real house plan; then the cross-check of the Swift
+   coverage and snap against the Python on one real capture.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -267,6 +269,19 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## A top-up reads the room's earlier captures with it, written blind, 2026-10-03
+
+The last piece of ADR-0031's design §6. When a capture starts, `RoomHistory`
+in the core package gathers the complete captures of the same room and level
+that share a trade: their keyframes, moved into the house frame by their own
+placements, shade the inset's walls before the new capture is itself placed;
+their walks draw faintly on the inset; their stills tick the checklist. The
+leave check then describes the room and names those captures in
+`field_check.together` (additive). A capture with no placement contributes
+only its stills. Three core tests on Linux. **Decided without the owner:**
+earlier captures count whatever their own leave check said; the PC's
+`coverage` command still reads one session. Not walked.
 
 ## The PC draws the page itself when a placed capture arrives, 2026-10-03
 

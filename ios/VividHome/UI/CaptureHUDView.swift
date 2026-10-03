@@ -27,6 +27,9 @@ struct CaptureHUDView: View {
   /// In a guided room the corner chips replace the kind picker; this brings
   /// the picker back for a door or a window.
   @State private var otherMarks = false
+  /// The plan inset can be folded away when it is in the way of the picture.
+  @State private var showInset = true
+  @State private var camera: (x: Double, z: Double)?
 
   private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -38,6 +41,26 @@ struct CaptureHUDView: View {
       VStack(spacing: 0) {
         statusStrip
         markerStrip
+        if let room = coordinator.guidedRoom, let guidance = coordinator.guidance {
+          HStack(alignment: .top) {
+            if showInset {
+              PlanInsetView(
+                room: room, guidance: guidance, placement: coordinator.placement,
+                coverage: coordinator.coverage, walk: coordinator.walk,
+                landmarks: coordinator.landmarks, camera: camera)
+            }
+            Button {
+              showInset.toggle()
+            } label: {
+              Image(systemName: showInset ? "chevron.left.circle.fill" : "map.circle.fill")
+                .font(.title3)
+            }
+            .foregroundStyle(Tokens.inkSecondary)
+            .accessibilityLabel(showInset ? "Hide the plan" : "Show the plan")
+            Spacer()
+          }
+          .padding(.horizontal, 12).padding(.top, 8)
+        }
         Spacer()
         if let flash { flashBanner(flash) }
         if case .warn(let message) = recorder.verdict { banner(message, tone: Tokens.warn) }
@@ -45,7 +68,10 @@ struct CaptureHUDView: View {
         controls
       }
     }
-    .onReceive(tick) { _ in coordinator.refreshFreeSpace() }
+    .onReceive(tick) { _ in
+      coordinator.refreshFreeSpace()
+      camera = coordinator.cameraXZ()
+    }
     .onChange(of: recorder.verdict) { _, verdict in
       // The recorder decides to stop; the screen only carries the reason out.
       if case .stop(let reason) = verdict { coordinator.stop(reason: reason) }

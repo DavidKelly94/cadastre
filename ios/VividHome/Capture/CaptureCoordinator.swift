@@ -98,6 +98,15 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   @Published private(set) var guidance: Guidance?
   /// The capture placed on the plan, live, from the corners tapped so far.
   @Published private(set) var placement: PlanAlignment.Solution?
+  /// Where each kept keyframe was, in session metres, for the plan inset.
+  @Published private(set) var walk: [(x: Double, z: Double)] = []
+  /// What the keyframes so far have photographed of each wall, in the house
+  /// frame; nil until the capture is placed (ADR-0031, design §4).
+  @Published private(set) var coverage: [WallCoverage.Wall]?
+  /// The room being guided, for the inset to draw; nil for a free capture.
+  var guidedRoom: GuidedRoom? { guide }
+  /// Every usable keyframe's footprint, in the session frame.
+  private var cameras: [WallCoverage.Camera] = []
   @Published private(set) var showMesh = false
   @Published private(set) var freeBytes: Int64 = 0
   /// "Kitchen · Electrical + Plumbing", for the HUD strip.
@@ -153,6 +162,18 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     self.guide = guide
     guidance = guide.map { Guidance(corners: $0.corners.map(\.label)) }
     placement = nil
+    walk = []
+    cameras = []
+    coverage = nil
+    // ARKit's queue; the published values are touched on the main one.
+    recorder.onKeyframe = { [weak self] record in
+      let pose = record.poseWorldFromCamera
+      let point = (x: pose.elements[12], z: pose.elements[14])
+      let camera = WallCoverage.Camera(
+        pose: pose, fx: record.intrinsics.fx, fy: record.intrinsics.fy,
+        width: record.width, height: record.height)
+      DispatchQueue.main.async { self?.keyframeKept(at: point, camera: camera) }
+    }
 
     do {
       try recorder.start(
@@ -326,6 +347,35 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     return CornerSnap.snap(tap: position, faces: faces)
   }
 
+  private func keyframeKept(at point: (x: Double, z: Double), camera: WallCoverage.Camera?) {
+    walk.append(point)
+    guard let camera else { return }
+    cameras.append(camera)
+    // One camera against the walls is cheap; the whole set is redone only
+    // when the placement moves.
+    if let placement, var walls = coverage {
+      WallCoverage.add(camera.moved(by: placement), to: &walls)
+      coverage = walls
+    }
+  }
+
+  /// Every keyframe so far against the walls, in the house frame the current
+  /// placement gives. Called when the placement changes.
+  private func recomputeCoverage() {
+    guard let guide, let placement else {
+      coverage = nil
+      return
+    }
+    let outline = guide.corners.map { (label: $0.label, x: $0.x, z: $0.z) }
+    coverage = WallCoverage.coverage(outline: outline, cameras: cameras.map { $0.moved(by: placement) })
+  }
+
+  /// Where the camera is right now, in session metres, for the inset's dot.
+  func cameraXZ() -> (x: Double, z: Double)? {
+    guard let transform = controller.session.currentFrame?.camera.transform else { return nil }
+    return (Double(transform.columns.3.x), Double(transform.columns.3.z))
+  }
+
   /// Put a snapped corner back where the finger was.
   func unsnapSelectedLandmark() {
     guard let selected = selectedLandmark,
@@ -391,6 +441,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     let floor = PlanAlignment.floorY(landmarks: landmarks.map { (kind: $0.kind, y: $0.position.y) })
     placement = PlanAlignment.solve(
       pairs: pairs, floorY: floor.y, floorSource: floor.source, floorHeight: guide.floorHeight)
+    recomputeCoverage()
   }
 
   /// The capture's placement, written beside the plans as the file the PC
@@ -644,6 +695,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     }
 
     controller.pause()
+    recorder.onKeyframe = nil
     selectedLandmark = nil
     landmarkNodes.values.forEach { $0.removeFromParentNode() }
     landmarkNodes = [:]

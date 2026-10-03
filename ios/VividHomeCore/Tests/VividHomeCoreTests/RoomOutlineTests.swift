@@ -26,11 +26,14 @@ final class RoomOutlineTests: XCTestCase {
   }
 
   func testASecondCornerInAQuadrantGetsASuffix() {
-    // An L-shaped room: two corners in the north-east.
+    // An L-shaped room. Its centre is at (217, 183), so three of the six
+    // corners sit north-east of it: the quadrant is decided by the centre,
+    // not by which wall a corner is on, and the suffixes count up in
+    // outline order.
     let ell: [[Double]] = [[0, 0], [400, 0], [400, 150], [250, 150], [250, 400], [0, 400]]
     XCTAssertEqual(
       RoomOutline.cornerNames(for: ell),
-      ["corner-nw", "corner-ne", "corner-ne2", "corner-se", "corner-se2", "corner-sw"])
+      ["corner-nw", "corner-ne", "corner-ne2", "corner-ne3", "corner-se", "corner-sw"])
     XCTAssertTrue(Set(RoomOutline.cornerNames(for: ell)).count == 6, "names are unique")
   }
 

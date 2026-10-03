@@ -48,6 +48,8 @@ Stored as `corner-nw`, `door-d3` and so on (`docs/session-format.md`). Use the p
 
 Every phase: markers, thresholds, corners, walls square-on with the tape, dated sheet, loop closed.
 
+The app carries this table as its stills checklist (ADR-0031): the HUD shows a chip per row for the trades of the pass, plus *Each wall square-on with the tape* for every phase, and a tap on a chip takes a still for that item. The review screen then says which rows have no still. Marker stills are not on the list because markers are optional (ADR-0026), and the dated sheet is in the video at the doorway. The table here is the source; the app's list in `StillsChecklist.swift` mirrors it row for row.
+
 | Phase | Stills required | Notes |
 |---|---|---|
 | framing | Headers, king and jack studs, blocking, fire blocking, stair framing, top plates, anchor bolts, hold-downs, odd stud spacing | Easiest tracking. Hang top plate and jamb markers now. |

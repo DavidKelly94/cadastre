@@ -48,6 +48,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     var placement: PlanAlignment.Solution? = nil
     /// Whether that placement was written as the capture's alignment file.
     var placementWritten: Bool = false
+    /// The leave check as written into the manifest (ADR-0031, design §5).
+    var fieldCheck: FieldCheck? = nil
   }
 
   /// A room the plan has outlined, for guided taps (ADR-0031): its corners in
@@ -105,6 +107,12 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   @Published private(set) var coverage: [WallCoverage.Wall]?
   /// The room being guided, for the inset to draw; nil for a free capture.
   var guidedRoom: GuidedRoom? { guide }
+  /// The stills the pass's trades require (ADR-0031, design §5), for the
+  /// HUD's chips; the common items first, then each trade's.
+  @Published private(set) var checklist: [StillsChecklist.Item] = []
+  /// The `item` of every still written so far, nil for one taken with no
+  /// pick, in the order they were written.
+  @Published private(set) var stillsTaken: [String?] = []
   /// Every usable keyframe's footprint, in the session frame.
   private var cameras: [WallCoverage.Camera] = []
   @Published private(set) var showMesh = false
@@ -165,6 +173,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     walk = []
     cameras = []
     coverage = nil
+    checklist = StillsChecklist.items(for: phases)
+    stillsTaken = []
     // ARKit's queue; the published values are touched on the main one.
     recorder.onKeyframe = { [weak self] record in
       let pose = record.poseWorldFromCamera
@@ -250,15 +260,32 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
 
   // MARK: - During
 
-  func takeStill() {
-    guard phase == .recording, let stillCapture, stillCapture.isReady else { return }
+  /// Take a still, for a checklist item or for nothing in particular. False
+  /// when the last one is still being written, so the HUD can say so.
+  @discardableResult
+  func takeStill(item: String? = nil) -> Bool {
+    guard phase == .recording, let stillCapture, stillCapture.isReady else { return false }
     let index = recorder.takeStillIndex()
-    stillCapture.capture(stillIndex: index, keyframeIndex: recorder.currentKeyframeIndex) {
+    stillCapture.capture(stillIndex: index, keyframeIndex: recorder.currentKeyframeIndex, item: item) {
       [weak self] outcome in
       // Runs on the writer queue.
       guard case .written(let bytes) = outcome else { return }
-      DispatchQueue.main.async { self?.recorder.recordStillWritten(bytes: bytes) }
+      DispatchQueue.main.async {
+        self?.recorder.recordStillWritten(bytes: bytes)
+        // Ticked once the file is on disk, which is what the leave check
+        // and the PC will count.
+        self?.stillsTaken.append(item)
+      }
     }
+    return true
+  }
+
+  /// A second, usually short, capture of the same room and trades (ADR-0031,
+  /// design §6): the re-shoot the leave check asked for. Its own session,
+  /// placed again by its own corners; the PC reads the two together.
+  func startTopUp() {
+    guard case .review = phase else { return }
+    start(level: level, room: room, phases: phases, notes: "top-up", guide: guide)
   }
 
   func refreshFreeSpace() {
@@ -664,9 +691,15 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     // Read before `stop`, which clears it.
     let sessionID = recorder.sessionID?.stringValue ?? "unknown"
     let placementWritten = writePlacement(sessionID: sessionID)
+    // The leave check: what the review screen says and what the manifest
+    // carries, made once from the same numbers (ADR-0031, design §5).
+    let fieldCheck = FieldCheck.make(
+      guided: guide != nil, cornersTapped: landmarks.filter { $0.kind == .corner }.count,
+      placement: placement, coverage: coverage, checklist: checklist, taken: stillsTaken,
+      checkedAt: ISO8601DateFormatter().string(from: Date()))
 
     do {
-      let layout = try recorder.stop { layout in
+      let layout = try recorder.stop(fieldCheck: fieldCheck) { layout in
         mesh = try? MeshExporter.export(anchors: anchors, to: layout)
       }
       guard let layout else {
@@ -689,7 +722,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
           stoppedBecause: reason,
           guided: guide != nil,
           placement: placement,
-          placementWritten: placementWritten))
+          placementWritten: placementWritten,
+          fieldCheck: fieldCheck))
     } catch {
       phase = .failed("Could not finish the session: \(error.localizedDescription)")
     }

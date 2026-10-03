@@ -300,7 +300,9 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
   /// The order is the point: the writer is drained first so the statistics in the
   /// manifest describe files that are on disk rather than ones still queued.
   @discardableResult
-  func stop(meshExport: ((SessionLayout) -> Void)? = nil) throws -> SessionLayout? {
+  func stop(fieldCheck: FieldCheck? = nil, meshExport: ((SessionLayout) -> Void)? = nil) throws
+    -> SessionLayout?
+  {
     guard state == .recording, let layout, let manifest, let writer else { return nil }
     state = .finishing
 
@@ -314,7 +316,8 @@ final class SessionRecorder: NSObject, ObservableObject, ARFrameObserver {
     let completed = manifest.finalized(
       endedAt: Self.iso8601(Date()),
       duration: max(0, duration),
-      stats: final)
+      stats: final,
+      fieldCheck: fieldCheck)
     try Self.write(completed, to: layout.manifest)
 
     self.writer = nil

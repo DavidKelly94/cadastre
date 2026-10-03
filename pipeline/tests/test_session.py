@@ -50,6 +50,22 @@ def test_reads_the_other_record_types(session_dir: Path):
     np.testing.assert_allclose(landmarks[0].p_w, [2.31, -1.42, -0.87])
 
 
+def test_a_still_names_its_checklist_item_when_it_has_one(session_dir: Path):
+    """``item`` is additive (ADR-0031): absent on older captures and on a still
+    taken with no pick, a string otherwise."""
+    assert Session.load(session_dir).field_check is None
+    [plain] = Session.load(session_dir).stills()
+    assert plain.item is None
+
+    stills_path = session_dir / "stills.jsonl"
+    line = json.loads(stills_path.read_text(encoding="utf-8").splitlines()[0])
+    line.update({"s": 1, "path": "stills/001.jpg", "item": "panel"})
+    with stills_path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(line) + "\n")
+    stills = list(Session.load(session_dir).stills())
+    assert [still.item for still in stills] == [None, "panel"]
+
+
 def test_trajectory_is_one_row_per_keyframe(session_dir: Path):
     trajectory = Session.load(session_dir).trajectory()
     assert trajectory.shape == (3, 3)

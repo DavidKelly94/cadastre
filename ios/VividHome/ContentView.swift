@@ -74,7 +74,7 @@ struct ContentView: View {
         case .finishing(let message):
           finishing(message)
         case .review(let summary):
-          SessionReviewView(summary: summary) {
+          SessionReviewView(summary: summary, onCaptureMore: { coordinator.startTopUp() }) {
             coordinator.backToSetup()
             // Back to the house rather than to setup with the room still in it:
             // the next room is a different room, and the common case after

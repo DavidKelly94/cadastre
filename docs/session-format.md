@@ -96,6 +96,23 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
 
 `status` is `"incomplete"` while recording, `"complete"` after a clean stop, or `"repaired"` if the app rebuilt the manifest after a crash (stats are then recomputed from the files present).
 
+**`field_check`** (since 2026-10-03, additive, [ADR-0031](adr/0031-the-capture-proves-itself-before-you-leave.md)): the leave check the app made at Stop, as numbers, so a reader can show the same three lines the review screen showed without redoing them. Absent while recording, in captures made before it, and after a repair. Readers that do not know it ignore it.
+
+```json
+"field_check": {
+  "placement": { "status": "placed", "rms_m": 0.06, "corners": 3 },
+  "walls": { "photographed": 4, "total": 5,
+             "gaps": [ { "wall": "corner-nw->corner-ne", "from_m": 1.9, "length_m": 0.8 } ] },
+  "stills": { "done": 7, "total": 11, "missing": ["panel", "home-runs", "smoke-co"] },
+  "checked_at": "2026-11-03T19:19:48Z"
+}
+```
+
+- `placement.status` is `placed`, `check` or `not_placed` from the phone's fit (section 15, the same thresholds), `untapped` when the room was outlined but fewer than two corners were tapped, or `free` when the room had no outline. `rms_m` is present only with a fit; `corners` is the number of corner landmarks tapped.
+- `walls` is present only when the capture was placed: each wall of the room's outline (section 13), counted photographed when at least 70% of its length was in a keyframe's horizontal field of view within 4 m with no other wall between, the live form of `vividhome coverage`'s photographed rule. `gaps` lists the widest unphotographed run of each wall below that bar, worst wall first, in metres from the wall's first corner.
+- `stills` is the per-trade checklist (`capture-protocol.md` §4, carried in the app as data): `missing` holds the ids of items no still was taken for, in list order. The ids are the ones stills carry as `item` (section 6).
+- It is the app's claim, made from what it had in the room. `vividhome validate` is the pipeline's, and neither overrides the other.
+
 ## 5. `frames.jsonl`
 
 One JSON object per line, in keyframe order:
@@ -125,6 +142,8 @@ Depth and confidence files are **tightly packed** row-major arrays (`dh` rows of
 ## 6. `stills.jsonl`
 
 Same fields as a keyframe line plus `s` (still index) and `path` (`stills/000.jpg`); `w`, `h` and `K` describe the still's own resolution (ARKit provides intrinsics for the high-resolution frame). `i` is the index of the most recent keyframe at the time of capture (`-1` if none). Stills have no depth file.
+
+`item` (since 2026-10-03, additive, ADR-0031): the checklist item the still was taken for, as the id the app's stills checklist uses (`panel`, `home-runs`, `wall`, ... from `capture-protocol.md` §4). Absent on a still taken with no pick and in older captures. It says what the owner meant the still to be, not what the image shows.
 
 ## 7. `panos.jsonl` (reserved, optional)
 
@@ -305,7 +324,7 @@ Produced by the pipeline since 2026-09-30; **no client reads it yet**. The app's
 - `generated_at` is when the request was answered, UTC. The index is never stored, so it cannot be stale against the store it describes; a client shows this time as the age of what it fetched.
 - Every path is relative to the server root, which is the store, and is fetched with a plain `GET`.
 - `projects[].levels` are the store's plans that this project has a session recorded on or aligned to — `plans/` itself is store-wide (section 13), and this is how the index scopes it. `inspect` is null until `vividhome inspect` has written the page. `sessions` under a level are the ids aligned onto it.
-- `projects[].sessions[].validated` is true or false from `derived/validate.json`, and null when no report has been written. `aligned` says whether `alignments/<session-id>.json` exists, and `alignment_source` (since 2026-10-03) says who solved it: `pc` for the pipeline's own, `app` for a placement the phone made (section 15), null when unaligned. `level` is the manifest's level slug.
+- `projects[].sessions[].validated` is true or false from `derived/validate.json`, and null when no report has been written. `aligned` says whether `alignments/<session-id>.json` exists, and `alignment_source` (since 2026-10-03) says who solved it: `pc` for the pipeline's own, `app` for a placement the phone made (section 15), null when unaligned. `level` is the manifest's level slug. `field_check` (since 2026-10-03) is the manifest's leave check (section 4) passed through as written, null when the manifest has none.
 - Discovery: the server advertises `_vividhome._tcp` over Bonjour with the store folder name as the instance and TXT records `store`, `version` and `path` (`/index.json`).
 - The server refuses every POST when it listens beyond localhost. A reader on the network can fetch anything under the store, raw sessions included, and can change nothing.
 - Readers ignore unknown fields (section 12). Nothing in the index is an instruction: a path is a place to fetch, never something to run.

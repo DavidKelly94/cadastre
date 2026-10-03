@@ -80,6 +80,23 @@ def test_parse_distance(text: str, metres: float):
     assert parse_distance(text) == pytest.approx(metres, abs=1e-4)
 
 
+@pytest.mark.parametrize(
+    ("text", "metres"),
+    [
+        ("11'-6\"", 3.5052),
+        ("25'-0\"", 7.62),
+        ("11' 6 1/2\"", 3.5179),
+        ("31'-11 5/8\"", 9.744075),
+        ('5/8"', 0.015875),
+        ("12′ 6″", 3.81),
+    ],
+)
+def test_parse_distance_reads_a_dimension_string_as_printed(text: str, metres: float):
+    """Plans print 11'-6" with a dash and inches with fractions; the dash is a
+    separator, not a minus, and 6 1/2 is six and a half inches."""
+    assert parse_distance(text) == pytest.approx(metres, abs=1e-6)
+
+
 def test_parse_distance_rejects_nonsense():
     for bad in ["", "   ", "about three metres", "m"]:
         with pytest.raises((PlanError, ValueError)):

@@ -522,3 +522,58 @@ def test_a_single_session_is_a_batch_of_one(tmp_path: Path, session: Path):
     assert batch.ok
     assert len(batch.results) == 1
     assert batch.results[0].session_id == session.name
+
+
+# ADR-0030: a calibration made on the phone
+
+
+def _second_session(tmp_path: Path, name: str = "20261103-150000_main_hall_bbbbbb") -> Path:
+    return build(tmp_path / "capture" / name, SPEC).root
+
+
+def test_a_calibrated_plan_from_the_phone_replaces_an_uncalibrated_store_copy(
+    session: Path, tmp_path: Path
+):
+    store = tmp_path / "vividhome-data"
+    plan_beside(session)
+    ingest(store, session)
+    assert not load_calibration(store, "main").is_calibrated
+
+    later = _second_session(tmp_path)
+    plan_beside(later, metres_per_pixel=0.01, origin_px=[100.0, 100.0], rotation_deg=0.0)
+    result = ingest(store, later)
+    assert [(p.level, p.imported) for p in result.plans] == [("main", True)]
+    assert "replaced" in result.plans[0].reason
+    assert load_calibration(store, "main").metres_per_pixel == pytest.approx(0.01)
+    assert load_calibration(store, "main").origin_px == (100.0, 100.0)
+
+
+def test_a_calibrated_store_copy_is_not_replaced_by_the_phone(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    plan_beside(session)
+    ingest(store, session)
+    calibrate(store, "main", point_a=(0, 0), point_b=(100, 0), distance_m=2.0, origin_px=(5, 5))
+
+    later = _second_session(tmp_path)
+    plan_beside(later, metres_per_pixel=0.5, origin_px=[1.0, 1.0])
+    result = ingest(store, later)
+    assert result.plans[0].imported is False
+    assert load_calibration(store, "main").metres_per_pixel == pytest.approx(0.02)
+
+
+def test_an_uncalibrated_store_copy_with_alignments_is_not_replaced(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    plan_beside(session)
+    ingest(store, session)
+    alignments = store / "alignments"
+    alignments.mkdir()
+    (alignments / "20261103-141502_main_room_framing_aaaaaa.json").write_text(
+        json.dumps({"session_id": "20261103-141502_main_room_framing_aaaaaa", "level": "main"}),
+        encoding="utf-8",
+    )
+
+    later = _second_session(tmp_path)
+    plan_beside(later, metres_per_pixel=0.01, origin_px=[100.0, 100.0])
+    result = ingest(store, later)
+    assert result.plans[0].imported is False
+    assert not load_calibration(store, "main").is_calibrated

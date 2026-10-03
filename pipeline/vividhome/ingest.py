@@ -21,7 +21,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .plan import plan_paths
+from .plan import PlanCalibration, alignments_using, plan_paths
 from .session import Session, SessionError
 from .validate import Report, validate_session, write_report
 
@@ -180,6 +180,32 @@ def _import_plans(store_root: Path, session_root: Path) -> list[PlanImport]:
             )
             continue
         if target_json.exists():
+            # ADR-0030: the phone may calibrate. A store copy that has no scale
+            # and no alignments depends on nothing, so a calibrated copy from
+            # the phone replaces it; a calibrated store copy is the frame its
+            # alignments were solved in and stays.
+            stored = _stored_calibration(target_json)
+            incoming_calibrated = (
+                raw.get("metres_per_pixel") is not None and raw.get("origin_px") is not None
+            )
+            if (
+                stored is not None
+                and not stored.is_calibrated
+                and incoming_calibrated
+                and not alignments_using(store_root, level)
+            ):
+                shutil.copyfile(source_image, image_path)
+                shutil.copyfile(json_path, target_json)
+                results.append(
+                    PlanImport(
+                        level,
+                        True,
+                        "the store's copy had no scale; replaced by the calibrated one from "
+                        "the phone (ADR-0030)",
+                        [image_path.name, target_json.name],
+                    )
+                )
+                continue
             results.append(
                 PlanImport(
                     level,
@@ -221,6 +247,13 @@ def _import_plans(store_root: Path, session_root: Path) -> list[PlanImport]:
             )
         )
     return results
+
+
+def _stored_calibration(json_path: Path) -> PlanCalibration | None:
+    try:
+        return PlanCalibration.from_dict(json.loads(json_path.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        return None
 
 
 def manifest_project(session: Session) -> str | None:

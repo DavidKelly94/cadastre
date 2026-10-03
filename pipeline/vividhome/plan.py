@@ -118,7 +118,14 @@ def parse_distance(value: str) -> float:
     as ``3.81m``. A bare number is metres, because the rest of the system is
     metric and a silent unit change would be worse than a rejected input.
     """
-    text = value.strip().lower().replace("’", "'").replace("”", '"').replace("″", '"')
+    text = (
+        value.strip()
+        .lower()
+        .replace("’", "'")
+        .replace("′", "'")
+        .replace("”", '"')
+        .replace("″", '"')
+    )
     if not text:
         raise PlanError("empty distance")
 
@@ -131,19 +138,33 @@ def parse_distance(value: str) -> float:
 
     if "'" in text or '"' in text:
         feet = 0.0
-        inches = 0.0
+        rest = text
         if "'" in text:
-            head, _, text = text.partition("'")
+            head, _, rest = text.partition("'")
             feet = float(head) if head.strip() else 0.0
-        rest = text.replace('"', "").strip()
-        if rest:
-            inches = float(rest)
+        # Architects print feet and inches as 11'-6": the dash separates, it does
+        # not negate, and reading it as minus six inches was a silent error.
+        rest = rest.replace('"', "").strip().lstrip("-").strip()
+        inches = _inches(rest) if rest else 0.0
         return feet * 0.3048 + inches * 0.0254
 
     try:
         return float(text)
     except ValueError as error:
         raise PlanError(f"cannot read {value!r} as a distance") from error
+
+
+def _inches(text: str) -> float:
+    """``6``, ``6 1/2`` or ``5/8``: a whole part, a fraction, or both, as a
+    dimension string prints them."""
+    total = 0.0
+    for part in text.split():
+        if "/" in part:
+            numerator, _, denominator = part.partition("/")
+            total += float(numerator) / float(denominator)
+        else:
+            total += float(part)
+    return total
 
 
 def add_plan(
@@ -215,7 +236,7 @@ def save_calibration(store: str | Path, calibration: PlanCalibration) -> Path:
     return json_path
 
 
-def _alignments_using(store: str | Path, level: str) -> list[Path]:
+def alignments_using(store: str | Path, level: str) -> list[Path]:
     """Alignment files that were solved against this level."""
     directory = Path(store) / "alignments"
     if not directory.is_dir():
@@ -261,7 +282,7 @@ def calibrate(
 
     existing = load_calibration(store, level)
     if existing.is_calibrated and not force:
-        blocked = _alignments_using(store, level)
+        blocked = alignments_using(store, level)
         if blocked:
             names = ", ".join(path.stem for path in blocked)
             raise PlanError(

@@ -67,7 +67,18 @@ struct PlanCoverageView: View {
       }
       .navigationTitle(plan?.level.capitalized ?? "Level")
       .navigationBarTitleDisplayMode(.inline)
-      .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) } }
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          if plan != nil {
+            NavigationLink {
+              PlanCalibrateView(store: store, level: level)
+            } label: {
+              Label("Scale", systemImage: "ruler")
+            }
+          }
+        }
+        ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
+      }
       .alert("Name the room", isPresented: $naming) {
         TextField("Kitchen", text: $draftRoom)
         Button("Cancel", role: .cancel) {}
@@ -248,10 +259,22 @@ struct PlanCoverageView: View {
         ? "Drag a room to correct it. A placement says which room is which — it is never used to align a capture."
         : "Pick a room above, then tap where it is. Drag any pin to correct it.")
         .font(.footnote).foregroundStyle(.secondary)
+      Text(scaleLine)
+        .font(.footnote)
+        .foregroundStyle(plan?.isCalibrated == true ? Color.secondary : Color.orange)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(16)
     .background(.bar)
+  }
+
+  /// Whether captures can be placed on this drawing yet (ADR-0030).
+  private var scaleLine: String {
+    guard let plan else { return "" }
+    if let mpp = plan.metresPerPixel {
+      return String(format: "Scale set: %.1f mm per pixel. Scale, top left, changes it.", mpp * 1000)
+    }
+    return "No scale yet: tap Scale, top left, so captures can be placed on this drawing."
   }
 
   private func legend(_ text: String, _ fill: Color, _ ring: Color) -> some View {

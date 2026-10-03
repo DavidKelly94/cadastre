@@ -107,7 +107,7 @@ it survives one. Owner-side items are things only the owner can do.
 
 Owner-side, the morning of 2026-10-04: everything written overnight on
 2026-10-03 (ADR-0031, every step, plus the leave check on the inspect page) is
-on TestFlight as builds 62 to 70, none of it walked. Walk the latest build on
+on TestFlight as builds 62 to 71, none of it walked. Walk the latest build on
 the real house plan, in this order, and write what breaks into this file:
 
 1. Plan card → *Scale*: three points and the printed distance (walked once on

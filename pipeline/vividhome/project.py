@@ -120,6 +120,31 @@ def _captured_rooms(project_dir: Path) -> tuple[set[tuple[str, str]], int]:
     return pairs, count
 
 
+def _outline_problem(outline: object, width: int, height: int) -> str | None:
+    """Why an outline is not one, or None when it is (section 13, rule 7)."""
+    if not isinstance(outline, list):
+        return "is not a list of points"
+    if len(outline) < 3:
+        return f"has {len(outline)} point(s); a room needs at least three"
+    previous = None
+    for index, point in enumerate(outline):
+        if not (isinstance(point, list) and len(point) == 2):
+            return f"point {index} is not [u, v]"
+        try:
+            u, v = float(point[0]), float(point[1])
+        except (TypeError, ValueError):
+            return f"point {index} is not numeric"
+        if not (0 <= u <= width and 0 <= v <= height):
+            return f"point {index} at ({u:.0f}, {v:.0f}) is outside the {width}x{height} raster"
+        if previous == (u, v):
+            return f"point {index} repeats the one before it"
+        previous = (u, v)
+    first = (float(outline[0][0]), float(outline[0][1]))
+    if previous == first:
+        return "ends where it starts; leave the closing corner out"
+    return None
+
+
 def validate_project(project_dir: str | Path) -> ProjectReport:
     """Check one project directory against section 13."""
     root = Path(project_dir)
@@ -219,6 +244,14 @@ def validate_project(project_dir: str | Path) -> ProjectReport:
 
             report.placements += 1
             placed.add((level, room))
+
+            # Rule 7 (ADR-0031): an outline, when present, is at least three
+            # corners, every one on the raster, none doubled, not closed by hand.
+            outline = entry.get("outline")
+            if outline is not None:
+                problem = _outline_problem(outline, width, height)
+                if problem:
+                    report.add(ERROR, 7, f"{json_path.name}: room {room!r} outline {problem}")
 
     # Rule 6: both directions are warnings. A room placed before it is captured
     # is the normal order of work, and a room captured before anyone placed it

@@ -210,3 +210,50 @@ def test_sessions_are_counted_and_plans_dir_is_not_one(tmp_path):
     write_plan(project / "plans", "main")
     report = validate_project(project)
     assert report.sessions == 2
+
+
+# ADR-0031: room outlines
+
+
+def _outlined(points):
+    return [
+        {
+            "room": "kitchen",
+            "x": 300,
+            "y": 250,
+            "outline": points,
+            "outlined_at": "2026-10-03T10:00:00Z",
+        }
+    ]
+
+
+def test_a_room_outline_on_the_raster_passes(tmp_path):
+    project = tmp_path / "our-house"
+    write_plan(
+        project / "plans", "main", rooms=_outlined([[100, 100], [500, 100], [500, 400], [100, 400]])
+    )
+    report = validate_project(project)
+    assert not report.errors, report.errors
+    assert report.placements == 1
+
+
+def test_a_bad_outline_is_an_error_that_names_the_problem(tmp_path):
+    project = tmp_path / "our-house"
+    cases = {
+        "needs at least three": [[100, 100], [500, 100]],
+        "outside the 800x600 raster": [[100, 100], [900, 100], [500, 400]],
+        "repeats the one before it": [[100, 100], [100, 100], [500, 400]],
+        "ends where it starts": [[100, 100], [500, 100], [500, 400], [100, 100]],
+        "is not [u, v]": [[100, 100], [500], [500, 400]],
+        "is not a list": "nope",
+    }
+    for wording, outline in cases.items():
+        write_plan(project / "plans", "main", rooms=_outlined(outline))
+        report = validate_project(project)
+        assert any(wording in str(error) for error in report.errors), (wording, report.errors)
+
+
+def test_a_room_without_an_outline_is_still_fine(tmp_path):
+    project = tmp_path / "our-house"
+    write_plan(project / "plans", "main", rooms=[{"room": "kitchen", "x": 300, "y": 250}])
+    assert not validate_project(project).errors

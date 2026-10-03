@@ -10,6 +10,8 @@ Non-goals: markers (optional, ADR-0026); identifying elements in stills (roadmap
 
 ## 2. Room outlines on the plan
 
+**Built 2026-10-03, walked by nobody.** `PlanOutlineView` from the plan screen's room chips, on the same `PlanPointCanvas` the Scale screen uses; `RoomOutline` in the core names the corners and `PlanFile.houseCorners(of:)` projects them for the solve; `validate --project` checks an outline (rule 7); `plan calibrate` on the PC keeps it.
+
 **Where.** The plan screen, where rooms are placed as pins today. A placed room gains *Outline*: tap its corners on the drawing in order, with the loupe from the Scale screen, and close the shape. Three corners minimum; the usual room is four to eight.
 
 **What it writes.** `rooms[].outline` in `plans/<level>.json`, a list of `[u, v]` plan pixels in order, plus `outlined_at`. Additive to §13; a reader that does not know `outline` ignores it. The pin stays what it is: the room's label position. The outline is the plan's statement of where the corners are, and the house-frame position of each corner follows from the calibration through `plan_to_house`.

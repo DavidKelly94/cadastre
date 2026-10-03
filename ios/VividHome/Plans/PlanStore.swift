@@ -16,6 +16,7 @@ final class PlanStore: ObservableObject {
     case tooLarge
     case noPlan
     case badCalibration
+    case badOutline
 
     var errorDescription: String? {
       switch self {
@@ -26,6 +27,8 @@ final class PlanStore: ObservableObject {
       case .noPlan: return "This level has no plan to calibrate."
       case .badCalibration:
         return "The two scale points are the same spot, or the distance is not positive."
+      case .badOutline:
+        return "An outline needs at least three corners, all on the drawing, and the room has to be placed first."
       }
     }
   }
@@ -169,6 +172,15 @@ final class PlanStore: ObservableObject {
     else { throw Failure.badCalibration }
     plans[level] = calibrated
     try save(calibrated)
+  }
+
+  /// Record where a placed room's corners are on the drawing (ADR-0031).
+  func outline(room: String, on level: String, points: [[Double]], size: CGSize) throws {
+    guard var plan = plans[level] else { throw Failure.noPlan }
+    guard plan.outline(room: room, points: points, in: (width: Int(size.width), height: Int(size.height)))
+    else { throw Failure.badOutline }
+    plans[level] = plan
+    try save(plan)
   }
 
   func unplace(room: String, on level: String) throws {

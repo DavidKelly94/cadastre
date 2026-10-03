@@ -240,7 +240,9 @@ Documents/sessions/<project-slug>/
   "floor_height_m": 0.0,
   "source": { "file": "main.source.pdf", "kind": "pdf", "page": 2 },
   "rooms": [
-    { "room": "kitchen", "x": 1840, "y": 990, "placed_at": "2026-11-03T14:02:11Z" }
+    { "room": "kitchen", "x": 1840, "y": 990, "placed_at": "2026-11-03T14:02:11Z",
+      "outline": [[1702, 905], [1980, 905], [1980, 1088], [1702, 1088]],
+      "outlined_at": "2026-11-03T14:06:40Z" }
   ]
 }
 ```
@@ -248,6 +250,7 @@ Documents/sessions/<project-slug>/
 - **Calibration is not a flag.** A level is calibrated when `metres_per_pixel` and `origin_px` are both non-null, and not otherwise; there is no separate boolean to disagree with them. `plan add` writes the stub with both null, as does the app at import; the app fills them in when the owner calibrates on the phone (ADR-0030).
 - `rooms[].x`, `rooms[].y` are **pixel coordinates in `image`**, origin top-left, x right, y down. Not metres and not plan units: an uncalibrated raster has no metric meaning, which is the point.
 - `rooms[].room` is the `<room>` slug used in session ids, and is how a placement finds its captures.
+- `rooms[].outline` (optional, since 2026-10-03, [ADR-0031](adr/0031-the-capture-proves-itself-before-you-leave.md)) is the room's corners on the drawing, in order around the room, as `[u, v]` pixels like `x`, `y`; `outlined_at` says when. At least three, none repeated, not closed by hand. Corners are named from the outline's geometry, never stored: the compass label the capture protocol uses (`corner-nw`, `corner-ne`, `corner-se`, `corner-sw`, with `2`, `3` suffixes for a second corner in a quadrant), by each corner's bearing from the outline's centre with north up the page. That name is what the app asks the owner to tap in the field and what `landmarks.jsonl` records, so a landmark label is a key into the outline. The outline is the plan's statement of where the corners are; the pin stays the label's position, and moving the pin does not change the outline.
 - `source` is omitted when the original was not retained. `kind` is `pdf`, `jpeg` or `heic`; `page` appears only for `pdf`.
 - Readers ignore unknown fields (section 12), so a plan file written by an older `plan add` — with no `source` and no `rooms` — is valid.
 
@@ -261,6 +264,7 @@ Validation, run by `vividhome validate --project <project-dir>` rather than per 
 4. `rooms[].room` slugs are unique within a level and each matches `^[a-z0-9-]{1,24}$`.
 5. If `metres_per_pixel` is present it is positive, and `origin_px` is present too — a half-calibrated plan is an error, not a warning, because `house_to_plan` would raise on it much later.
 6. A room slug with no session, or a session whose room has no placement, is a **warning**: both are normal mid-capture.
+7. `rooms[].outline`, when present, has at least three `[u, v]` points, each within the raster, none equal to the one before it, and the last not equal to the first.
 
 A project with no `plans/` directory is valid. Plans are optional, and everything in sections 1 to 12 works without one.
 

@@ -242,10 +242,51 @@ struct PlanCoverageView: View {
         .padding(.horizontal, 16)
       }
       .frame(height: 38)
+
+      if let plan, !plan.rooms.isEmpty {
+        outlines(plan)
+      }
     }
     .padding(.top, 12)
     .frame(maxWidth: .infinity, alignment: .leading)
     .background(.bar)
+  }
+
+  /// Which placed rooms have their corners marked (ADR-0031), and the way to
+  /// mark them. Done at home: the outline is what the capture asks for in the
+  /// field, so a room without one captures unguided.
+  private func outlines(_ plan: PlanFile) -> some View {
+    VStack(alignment: .leading, spacing: 8) {
+      Text(plan.rooms.allSatisfy { $0.outline != nil }
+        ? "Every placed room is outlined"
+        : "Outline the corners — the capture asks for them by name")
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(Color.secondary)
+        .padding(.horizontal, 16)
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 8) {
+          ForEach(plan.rooms, id: \.room) { room in
+            NavigationLink {
+              PlanOutlineView(store: store, level: level, room: room.room)
+            } label: {
+              HStack(spacing: 5) {
+                Image(systemName: room.outline == nil ? "square.dashed" : "checkmark.square.fill")
+                  .font(.caption2)
+                Text(room.outline == nil ? room.room : "\(room.room) · \(room.outline?.count ?? 0)")
+              }
+              .font(.footnote.weight(.semibold))
+              .padding(.horizontal, 12).padding(.vertical, 8)
+              .background(Color(.tertiarySystemFill), in: Capsule())
+              .foregroundStyle(room.outline == nil ? Color.accentColor : Color.primary)
+            }
+            .buttonStyle(.plain)
+          }
+        }
+        .padding(.horizontal, 16)
+      }
+      .frame(height: 38)
+    }
+    .padding(.top, 10)
   }
 
   private var footer: some View {

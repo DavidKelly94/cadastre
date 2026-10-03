@@ -28,6 +28,11 @@ struct PlanCoverageView: View {
   @State private var dragPoint: CGPoint = .zero
   /// The room the next tap on the plan will place.
   @State private var arming: String?
+  /// A pin that was tapped: what to do with the room (build 71 found the chip
+  /// row the only way to an outline, and easy to miss).
+  @State private var picked: String?
+  /// The room whose outline screen is open.
+  @State private var outlining: String?
   @State private var naming = false
   @State private var draftRoom = ""
 
@@ -78,6 +83,25 @@ struct PlanCoverageView: View {
           }
         }
         ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
+      }
+      .confirmationDialog(
+        picked ?? "", isPresented: Binding(get: { picked != nil }, set: { if !$0 { picked = nil } }),
+        titleVisibility: .visible
+      ) {
+        Button(plan?.placement(of: picked ?? "")?.outline == nil ? "Outline the corners" : "Redo the outline") {
+          outlining = picked
+          picked = nil
+        }
+        Button("Remove from the plan", role: .destructive) {
+          if let picked { try? store.unplace(room: picked, on: level) }
+          picked = nil
+        }
+        Button("Cancel", role: .cancel) { picked = nil }
+      } message: {
+        Text("Drag the pin to move the room. The outline is what a capture asks for, corner by corner, to align itself.")
+      }
+      .navigationDestination(item: $outlining) { room in
+        PlanOutlineView(store: store, level: level, room: room)
       }
       .alert("Name the room", isPresented: $naming) {
         TextField("Kitchen", text: $draftRoom)
@@ -156,6 +180,7 @@ struct PlanCoverageView: View {
     .frame(width: 44, height: 44)
     .contentShape(Rectangle())
     .position(shown)
+    .onTapGesture { picked = room.room }
     .gesture(
       // Named space, so the drag reports where the finger is on the plan rather
       // than inside the pin it started on.
@@ -259,7 +284,7 @@ struct PlanCoverageView: View {
     VStack(alignment: .leading, spacing: 8) {
       Text(plan.rooms.allSatisfy { $0.outline != nil }
         ? "Every placed room is outlined"
-        : "Outline the corners — the capture asks for them by name")
+        : "Outline the corners (or tap a pin) — the capture asks for them by name")
         .font(.caption.weight(.semibold))
         .foregroundStyle(Color.secondary)
         .padding(.horizontal, 16)

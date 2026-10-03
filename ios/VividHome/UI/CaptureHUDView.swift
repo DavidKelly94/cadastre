@@ -147,7 +147,12 @@ struct CaptureHUDView: View {
               .foregroundStyle(Tokens.ok)
           }
           if coordinator.markersSeen.isEmpty {
-            Text("no markers seen").font(.caption2).foregroundStyle(Tokens.inkSecondary)
+            // The marks placed, not "no markers seen": printed markers are
+            // optional (ADR-0026) and a strip that only ever said none read as
+            // the marks not registering (build 71).
+            let marks = coordinator.landmarks.count
+            Text(marks == 0 ? "no marks yet" : "\(marks) mark\(marks == 1 ? "" : "s") placed")
+              .font(.caption2).foregroundStyle(Tokens.inkSecondary)
           }
         }
       }
@@ -238,7 +243,13 @@ struct CaptureHUDView: View {
 
         Spacer()
 
-        Button { takeStill(item: nil, named: nil) } label: {
+        Button {
+          if coordinator.takeStill(item: nil) {
+            tookUnlabelledStill()
+          } else {
+            show("Hold on — the last still is still being written")
+          }
+        } label: {
           Label("Still", systemImage: "camera").labelStyle(.iconOnly).font(.title3)
         }
         .foregroundStyle(Tokens.ink)
@@ -316,7 +327,9 @@ struct CaptureHUDView: View {
     let taken = Set(coordinator.stillsTaken.compactMap { $0 })
     let done = coordinator.checklist.filter { taken.contains($0.id) }.count
     return HStack(spacing: 8) {
-      Text("STILLS \(done)/\(coordinator.checklist.count)")
+      // Items of the trades' list ticked, not stills taken: that count is
+      // STILL in the strip above. Build 71 read "STILLS 0/4" as the latter.
+      Text("LIST \(done)/\(coordinator.checklist.count)")
         .font(.caption2.weight(.bold)).foregroundStyle(Tokens.inkSecondary)
       ScrollView(.horizontal, showsIndicators: false) {
         HStack(spacing: 6) {
@@ -345,6 +358,16 @@ struct CaptureHUDView: View {
       if let name { show("Still: \(name)") }
     } else {
       show("Hold on — the last still is still being written")
+    }
+  }
+
+  /// A still with no label ticks nothing on the list, and the strip's STILL
+  /// count is what moved: say so, or the list reads as broken.
+  private func tookUnlabelledStill() {
+    if coordinator.checklist.isEmpty {
+      show("Still taken")
+    } else {
+      show("Still taken · tap a LIST chip instead to tick an item")
     }
   }
 

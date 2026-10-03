@@ -119,7 +119,8 @@ struct SessionListView: View {
               ForEach(rows) { row in
                 NavigationLink {
                   SessionDetailView(
-                    row: row, onPC: link.index?.holding(of: row.id), plans: plans, project: project,
+                    row: row, onPC: link.index?.holding(of: row.id),
+                    alignedOnPC: link.index?.session(row.id)?.aligned, plans: plans, project: project,
                     onSend: { sending = SendBatch(rows: [row]) }
                   ) {
                     delete([row])
@@ -393,6 +394,9 @@ struct SessionDetailView: View {
   let row: SessionListView.Row
   /// The PC's word on this capture, when it has been asked.
   let onPC: ServerIndex.Holding?
+  /// Whether the PC has an alignment for it (its own, or one it adopted),
+  /// when it has been asked; nil otherwise.
+  let alignedOnPC: Bool?
   @ObservedObject var plans: PlanStore
   let project: String
   let onSend: () -> Void
@@ -434,23 +438,29 @@ struct SessionDetailView: View {
       }
 
       Section {
-        // Where the capture sits on the plan (ADR-0031). A guided capture
-        // placed itself at Stop; a free one is placed here, afterwards.
-        HStack {
-          Text("Placement").foregroundStyle(.secondary)
+        // Where this capture's walk sits on the drawing (ADR-0031): not the
+        // room's pin, which only says which room this is. "Placed" meant both
+        // on build 71 and read as a bug, so this says "aligned" and gives the
+        // capture's own reason from its leave check.
+        HStack(alignment: .top) {
+          Text("Alignment").foregroundStyle(.secondary)
           Spacer()
-          Text(placementText).multilineTextAlignment(.trailing)
+          Text(alignmentText).multilineTextAlignment(.trailing)
         }
         .font(.footnote)
         NavigationLink {
-          PlanPlacementView(plans: plans, layout: row.layout, manifest: row.manifest, project: project)
+          PlanPlacementView(
+            plans: plans, layout: row.layout, manifest: row.manifest, project: project,
+            onPlaced: { placement = $0 })
         } label: {
-          Label(placement == nil ? "Place on the plan" : "Adjust the placement", systemImage: "scope")
+          Label(
+            placement == nil ? "Align it: pair the landmarks with the drawing" : "Adjust the alignment",
+            systemImage: "scope")
         }
       } header: {
         Text("On the plan")
       } footer: {
-        Text(placementFooter)
+        Text(alignmentFooter)
       }
 
       Section {
@@ -505,23 +515,44 @@ struct SessionDetailView: View {
     }
   }
 
-  private var placementText: String {
-    guard let placement else { return "Not placed" }
-    let how = placement.method == "guided" ? "during capture" : "paired on the plan"
-    return "Placed \(how), \(Int((placement.rmsM * 100).rounded())) cm"
+  private var alignmentText: String {
+    if let placement {
+      let how = placement.method == "guided" ? "during capture" : "by pairing"
+      return "Aligned \(how), \(Int((placement.rmsM * 100).rounded())) cm"
+    }
+    if alignedOnPC == true { return "Aligned on the PC" }
+    if let line = row.manifest?.fieldCheck?.placementLine.text { return line }
+    return "Not aligned"
   }
 
-  private var placementFooter: String {
-    guard let manifest = row.manifest else { return "Pairing needs the capture's landmarks and a plan with a scale." }
-    guard let plan = plans.plans[manifest.level.slug] else {
-      return "No plan for \(manifest.level.name) yet. Add one on the house screen to place this capture."
+  private var alignmentFooter: String {
+    guard let manifest = row.manifest else {
+      return "Pairing needs the capture's landmarks and a plan with a scale."
     }
-    if !plan.isCalibrated {
-      return "The plan for \(manifest.level.name) has no scale yet. Set it on the plan screen first."
+    let pin = plans.plans[manifest.level.slug]?.placement(of: manifest.room.slug)
+    var text =
+      pin != nil
+      ? "\(manifest.room.name) is pinned on the plan, which says which room this is. "
+      : ""
+    text += "Alignment is where this capture's walk sits on the drawing: "
+    if placement != nil {
+      text += "done here; the PC adopts it with the capture."
+    } else if alignedOnPC == true {
+      text += "done on the PC with vividhome align."
+    } else if let plan = plans.plans[manifest.level.slug] {
+      if !plan.isCalibrated {
+        text += "set the plan's scale first."
+      } else if pin?.outline != nil {
+        text += "a capture of this room asks for its corners and aligns itself; this one did not, "
+          + "so pair its landmarks here."
+      } else {
+        text += "outline \(manifest.room.name) on the plan and the next capture aligns itself; "
+          + "pair this one's landmarks here."
+      }
+    } else {
+      text += "add a plan for \(manifest.level.name) first."
     }
-    return placement == nil
-      ? "Pair two or more of the capture's landmarks with their places on the drawing. The PC adopts the result with the capture."
-      : "Adjusting rewrites the placement beside the plans; the PC adopts the newer one when the capture is sent."
+    return text
   }
 
   private var deleteFooter: String {

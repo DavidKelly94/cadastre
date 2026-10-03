@@ -69,6 +69,10 @@ final class ARSessionController: NSObject, ObservableObject {
   /// a recording.
   private var referenceImages: Set<ARReferenceImage> = []
   private(set) var referenceImageFailures: [String] = []
+  private var referenceImagesLoaded = false
+  /// Whether `start` has run and `pause` has not: the session that is live
+  /// gets the marker images handed to it when they finish loading.
+  private(set) var isRunning = false
 
   override init() {
     super.init()
@@ -150,10 +154,12 @@ final class ARSessionController: NSObject, ObservableObject {
     session.run(
       configuration(preferredFrameRate: preferredFrameRate),
       options: [.resetTracking, .removeExistingAnchors])
+    isRunning = true
   }
 
   func pause() {
     session.pause()
+    isRunning = false
   }
 
   // MARK: - Reference images
@@ -171,6 +177,7 @@ final class ARSessionController: NSObject, ObservableObject {
   /// work happens once at launch off the critical path, and sixty validations
   /// that finish a moment later cost nothing worth a concurrency argument.
   func loadReferenceImages(width: Double = AppConfig.markerPhysicalWidth) async {
+    guard !referenceImagesLoaded else { return }
     var images: Set<ARReferenceImage> = []
     var failures: [String] = []
 
@@ -190,6 +197,15 @@ final class ARSessionController: NSObject, ObservableObject {
 
     referenceImages = images
     referenceImageFailures = failures.sorted()
+    referenceImagesLoaded = true
+
+    // The view attaches and starts the session before this finishes, so the
+    // first capture after launch was running with no detection images at all
+    // (build 71: "no markers seen" with one in frame). Hand them to the live
+    // session now; no reset option, so tracking and the mesh carry on.
+    if isRunning {
+      session.run(configuration(), options: [])
+    }
   }
 
   private static func bundledMarker(named name: String) -> CGImage? {

@@ -160,7 +160,9 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
 
   func setShowMesh(_ on: Bool) {
     showMesh = on
-    arView?.debugOptions = on ? [.showWireframe] : []
+    // The reconstruction mesh is ARKit's, not a SceneKit node, so SceneKit's
+    // wireframe option drew nothing (build 71). This is the option that draws it.
+    arView?.debugOptions = on ? [.showSceneUnderstanding] : []
   }
 
   // MARK: - Start

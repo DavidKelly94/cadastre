@@ -49,6 +49,12 @@ It prints:
 - `advertised as <store> (_vividhome._tcp.local)`, which is how the app finds
   the PC by itself.
 
+It also does the PC's share of the work as captures arrive: each one is
+ingested and validated when the phone finishes sending it, and a capture that
+arrives placed (the HUD said *placed* when you stopped) redraws its level's
+page, so **Rendering on the PC** on the phone is current without a command
+being typed here. The window prints a line per arrival saying what happened.
+
 Leave this window alone. The first time, Windows asks whether to allow Python
 through the firewall: allow it on **private** networks. Ctrl+C stops the server;
 start it again the same way whenever the phone needs the PC.
@@ -164,12 +170,17 @@ is not of this plan, such as a test room in a different house.
 
 ## 6. Render, and look on the phone
 
+A capture that arrived placed has already been drawn: Window A prints
+`rendered inspect/level-1.html` a minute or so after `received`. `align` on
+the PC (§5) redraws the page itself when it writes. So this command is only
+for a page that is missing or stale, which is the case for captures copied in
+by hand:
+
 ```
 uv run vividhome --store $store inspect --level level-1
 ```
 
-Run it again after every new alignment. The first run generates thumbnails
-and takes a minute.
+The first run generates thumbnails and takes a minute.
 
 On the phone: project screen, **Rendering on the PC**. If the row is not there,
 open PC, tap Test, and go back. The page shows the plan with the walk, the
@@ -186,8 +197,8 @@ made it.
 | Phone, once per level | Plan card, Scale: three points and the printed distance (or `plan calibrate --level <level> --web` in Window B) |
 | Phone, once per room | Plan card, the room under *Outline the corners*: tap its corners in order |
 | Phone, during capture | Tap each corner the HUD names; stop when it says *placed* |
-| Window B, only for a capture that was not placed | `align <session-id> --level <level> --web` |
-| Window B | `inspect --level <level>` |
+| Window A, by itself | `received <capture>` as each send lands, then `rendered inspect/<level>.html` for a placed one |
+| Window B, only for a capture that was not placed | `align <session-id> --level <level> --web` (draws the page too) |
 | Phone | Rendering on the PC |
 | Phone, when done | Delete the captures the PC has validated |
 

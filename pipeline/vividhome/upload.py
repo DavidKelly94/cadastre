@@ -251,7 +251,11 @@ class Inbox:
                 for plan in result.plans
             ],
             "alignment": (
-                {"adopted": result.alignment.adopted, "reason": result.alignment.reason}
+                {
+                    "adopted": result.alignment.adopted,
+                    "reason": result.alignment.reason,
+                    "level": result.alignment.level,
+                }
                 if result.alignment is not None
                 else None
             ),

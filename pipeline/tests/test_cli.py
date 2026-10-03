@@ -434,6 +434,65 @@ def test_ingest_says_what_became_of_the_plan(tmp_path, capsys: pytest.CaptureFix
     assert "plan main: already in the store and left alone" in capsys.readouterr().out
 
 
+def test_align_draws_the_level_page_unless_told_not_to(
+    tmp_path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR-0031 step 6: a new alignment on the PC redraws the page the phone opens,
+    so there is no second command to remember; --no-inspect keeps the old behaviour."""
+    from PIL import Image
+
+    from vividhome.plan import add_plan, calibrate
+    from vividhome.synth import SynthSpec, build
+
+    store = tmp_path / "vividhome-data"
+    session_id = "20261103-141502_main_room_framing_aaaaaa"
+    build(
+        store / "sessions" / "synthetic" / session_id,
+        SynthSpec(keyframes=2, colour_w=160, colour_h=120),
+    )
+    source = tmp_path / "plan.png"
+    Image.new("RGB", (400, 300), (255, 255, 255)).save(source, "PNG")
+    add_plan(store, source, "main")
+    # 0.02 m per pixel with the origin at (10, 10): the synthetic room's corners,
+    # taken as house metres, land at these pixels.
+    calibrate(
+        store,
+        "main",
+        point_a=(10.0, 10.0),
+        point_b=(210.0, 10.0),
+        distance_m=4.0,
+        origin_px=(10.0, 10.0),
+    )
+    pairs = "corner-nw=10,10;corner-ne=210,10;corner-se=210,260"
+    page = store / "inspect" / "main.html"
+
+    assert (
+        main(["--store", str(store), "align", session_id, "--level", "main", "--pairs", pairs]) == 0
+    )
+    out = capsys.readouterr().out
+    assert "wrote" in out and "inspect" in out
+    assert page.exists()
+
+    page.unlink()
+    assert (
+        main(
+            [
+                "--store",
+                str(store),
+                "align",
+                session_id,
+                "--level",
+                "main",
+                "--pairs",
+                pairs,
+                "--no-inspect",
+            ]
+        )
+        == 0
+    )
+    assert not page.exists()
+
+
 def test_corners_runs_on_a_synthetic_session(tmp_path, capsys: pytest.CaptureFixture[str]) -> None:
     from vividhome.synth import SynthSpec, build
 

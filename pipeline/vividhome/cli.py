@@ -141,6 +141,11 @@ def _add_align(sub: argparse._SubParsersAction) -> None:
         help="add correspondences from house-frame marker poses seen in earlier sessions",
     )
     p.add_argument("--force", action="store_true", help="write even when the residual is too large")
+    p.add_argument(
+        "--no-inspect",
+        action="store_true",
+        help="do not redraw the level's inspection page after writing the alignment",
+    )
 
 
 def _add_inspect(sub: argparse._SubParsersAction) -> None:
@@ -620,6 +625,19 @@ def _run_align(args: argparse.Namespace) -> int:
     added = update_marker_map(args.store, project_slug(session), session, alignment)
     if added:
         print(f"added to the house marker map: {', '.join(added)}")
+
+    # The page the phone opens should show what was just placed, without a
+    # second command (ADR-0031 step 6); a placed capture arriving over the
+    # network gets the same from serve.
+    if not getattr(args, "no_inspect", False):
+        from .inspector import build_page
+
+        try:
+            print(f"wrote {build_page(args.store, alignment.level)}")
+        except PlanError as error:
+            print(
+                f"vividhome align: the alignment is written but not drawn: {error}", file=sys.stderr
+            )
     return 0
 
 

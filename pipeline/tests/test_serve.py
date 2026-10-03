@@ -488,10 +488,86 @@ def test_the_captures_placement_travels_beside_it(paired, capture):
     assert listing["files"][f"alignments/{SESSION}.json"] == len(placement)
     status, _ = status_of(lambda: request(base, "PUT", f"/upload/{SESSION}/alignments", b"x"))
     assert status == 400, "alignments/ holds files"
-    # No calibrated plan in this store, so done reports the placement as not adopted.
+    # No calibrated plan in this store, so done reports the placement as not adopted,
+    # and nothing is drawn: the page would not change.
     status, receipt = status_of(lambda: request(base, "POST", f"/upload/{SESSION}/done", b""))
     assert status == 200 and receipt["validated"], receipt
     assert receipt["alignment"] == {
         "adopted": False,
         "reason": "the store has no calibrated plan for level 'main'",
+        "level": "main",
     }
+    assert receipt["inspect"] is None
+
+
+def test_a_placed_capture_arriving_redraws_its_level_for_the_phone(paired, capture, tmp_path):
+    """ADR-0031 step 6: the server is the watcher. When ingest adopts the placement
+    a capture arrived with, the level's inspection page is drawn in the background
+    and the index then lists it, which is when the app's rendering row is current."""
+    from PIL import Image
+
+    from vividhome.plan import add_plan, calibrate
+
+    base, store = paired
+    source = tmp_path / "plan.png"
+    Image.new("RGB", (400, 300), (255, 255, 255)).save(source, "PNG")
+    add_plan(store, source, "main")
+    calibrate(
+        store,
+        "main",
+        point_a=(10.0, 10.0),
+        point_b=(210.0, 10.0),
+        distance_m=4.0,
+        origin_px=(10.0, 10.0),
+    )
+    assert build_index(store)["projects"] == [], "nothing recorded yet"
+
+    send_session(base, capture)
+    placement = json.dumps(
+        {
+            "session_id": SESSION,
+            "level": "main",
+            "T_hs": [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0, 0.5, 0.0, 0.5, 1.0],
+            "pairs": [
+                {
+                    "label": "corner-nw",
+                    "session_xz": [0.0, 0.0],
+                    "house_xz": [0.5, 0.5],
+                    "source": "landmark",
+                },
+                {
+                    "label": "corner-ne",
+                    "session_xz": [4.0, 0.0],
+                    "house_xz": [4.5, 0.5],
+                    "source": "landmark",
+                },
+            ],
+            "rms_m": 0.021,
+            "max_residual_m": 0.03,
+            "method": "guided",
+            "floor_source": "lowest-landmark",
+            "created_at": "2026-10-03T10:00:00Z",
+            "source": "app",
+        }
+    ).encode()
+    with request(base, "PUT", f"/upload/{SESSION}/alignments/{SESSION}.json", placement) as r:
+        assert r.status == 201
+
+    status, receipt = status_of(lambda: request(base, "POST", f"/upload/{SESSION}/done", b""))
+    assert status == 200 and receipt["validated"], receipt
+    assert receipt["alignment"]["adopted"] is True
+    assert receipt["alignment"]["level"] == "main"
+    assert receipt["inspect"] == {"level": "main", "page": "inspect/main.html", "status": "queued"}
+
+    # The reply did not wait for the page; the page follows.
+    page = store / "inspect" / "main.html"
+    deadline = time.monotonic() + 60
+    while not page.exists() and time.monotonic() < deadline:
+        time.sleep(0.1)
+    assert page.exists(), "the level's page was not drawn after the placed capture arrived"
+    assert SESSION in page.read_text(encoding="utf-8")
+    [project] = build_index(store)["projects"]
+    [level] = project["levels"]
+    assert level["inspect"] == "inspect/main.html"
+    assert level["sessions"] == [SESSION]
+    assert project["sessions"][0]["alignment_source"] == "app"

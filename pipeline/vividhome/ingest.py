@@ -58,6 +58,9 @@ class AlignmentImport:
 
     adopted: bool
     reason: str
+    #: The level the placement is for, once the file said one; what the server
+    #: renders after adopting it.
+    level: str | None = None
 
 
 @dataclass
@@ -295,10 +298,13 @@ def _import_alignment(
             False,
             "the store already has an alignment for this capture; "
             "'vividhome align' replaces it deliberately",
+            level,
         )
     stored = _stored_calibration(store_root / "plans" / f"{level}.json")
     if stored is None or not stored.is_calibrated:
-        return AlignmentImport(False, f"the store has no calibrated plan for level {level!r}")
+        return AlignmentImport(
+            False, f"the store has no calibrated plan for level {level!r}", level
+        )
     phone = _stored_calibration(session_root.parent / "plans" / f"{level}.json")
     if phone is not None and phone.is_calibrated:
         same = (
@@ -312,6 +318,7 @@ def _import_alignment(
                 False,
                 f"solved against a different calibration of level {level!r} than the "
                 "store's; run 'vividhome align' on the PC",
+                level,
             )
 
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -321,6 +328,7 @@ def _import_alignment(
     return AlignmentImport(
         True,
         f"placed by the app, residual {how}; 'vividhome align' replaces it deliberately",
+        level,
     )
 
 

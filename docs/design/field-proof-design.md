@@ -94,6 +94,8 @@ Every addition keeps `format_version` at 3 and lands in `session-format.md` with
 5. The pairing screen for free captures, and the top-up flow.
 6. The server watcher on the PC, now that a capture arrives placed.
 
+**Step 6 built 2026-10-03.** Not a second process: `serve --lan` already sees every arrival, so it renders. When `ingest` adopts the placement a capture arrived with, the server queues that level's inspection page on a background thread (one page per level however many captures land together) and the receipt says `inspect: queued`; the index's `inspect` for the level says when the page exists, which is when the app's *Rendering on the PC* row is current. `align` on the PC draws the page too when it writes, unless `--no-inspect`. **Decided without the owner:** rendering inside `serve` rather than a `vividhome watch` command, because a folder watcher would be a second thing to start and the server is the thing that knows a capture landed; a capture that is not placed renders nothing, since the page would not change; the reply to the phone does not wait for the page, since thumbnails take a minute and the uploader would give up. Tested: a placed capture arriving over the upload endpoint ends with the page written and listed by the index.
+
 ## 9. Risks
 
 - **The plan is wrong.** A room built 20 cm off the drawing shows as a 20 cm residual, and the app cannot tell a bad tap from a bad plan. The verdict says *check*, not *wrong*, and the PC's corner comparison (`corners.py`) later says which.

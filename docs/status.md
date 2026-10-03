@@ -304,7 +304,8 @@ The owner walked the night's work on the real house. The corner snap worked.
 Five findings, two of them real bugs:
 
 - **The mesh button did nothing.** It set SceneKit's wireframe option, which
-  draws nothing for ARKit's reconstruction mesh. Now `showSceneUnderstanding`.
+  draws nothing for ARKit's reconstruction mesh, and `ARSCNView` has no option that
+  does (that is RealityKit's). Each mesh anchor is now drawn as a wireframe node.
 - **"No markers seen" with a printed marker in frame.** The AR session starts
   when the view attaches, before the sixty marker images finish loading, and
   nothing re-ran it with them: the first capture after every launch had no

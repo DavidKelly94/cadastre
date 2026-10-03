@@ -275,7 +275,13 @@ prints feet and inches, as eleven feet *minus* six inches, silently, and could
 not read `6 1/2"` at all. Fixed on both sides with the same cases. The owner
 typed a dimension on the PC's page today; it is worth checking which form.
 
-**Not walked.** The loupe, the zoomed tap positions and the pinch are the
+**Walked 2026-10-03, build 56:** the three points, the loupe and the fit all
+worked on the new house's plan; a 16 ft dimension gave 22.8 mm per pixel and a
+50 m sheet. The owner then asked what there is to see afterwards, and the
+answer is nothing until align and the level view land, which is the next
+step. The readout line was cut off at "A house is t…"; it wraps now.
+
+**Not yet checked.** The zoomed tap positions and the pinch are the
 parts no test covers: at zoom, a tap must still land on the pixel under the
 finger, which depends on SwiftUI reporting gesture locations in the view's
 own space under `scaleEffect`. That is the first thing to check on a device.

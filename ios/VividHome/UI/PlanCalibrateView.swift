@@ -233,6 +233,8 @@ struct PlanCalibrateView: View {
       Text(readout(plan: plan, imageWidth: Double(image.size.width)))
         .font(.footnote)
         .foregroundStyle(canSave ? Color.primary : Color.secondary)
+        // Two lines on a phone; the first walk saw it cut off at "A house is t…".
+        .fixedSize(horizontal: false, vertical: true)
       HStack {
         Button("Start again") {
           points = []

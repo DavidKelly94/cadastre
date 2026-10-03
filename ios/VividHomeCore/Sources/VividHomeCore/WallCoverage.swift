@@ -67,9 +67,17 @@ public enum WallCoverage {
 
     /// This camera in the house frame, through a placement.
     public func moved(by placement: PlanAlignment.Solution) -> Camera {
-      let position = placement.houseXZ(sessionX: x, z: z)
-      let heading = placement.houseDirection(sessionX: forwardX, z: forwardZ)
-      return Camera(x: position.x, z: position.z, forwardX: heading.x, forwardZ: heading.z, spread: spread)
+      moved(byTHs: placement.tHs)
+    }
+
+    /// This camera in the house frame, through a stored `T_hs` (column-major,
+    /// as the alignment file holds it): a yaw and a translation.
+    public func moved(byTHs t: [Double]) -> Camera {
+      guard t.count == 16 else { return self }
+      return Camera(
+        x: t[0] * x + t[8] * z + t[12], z: t[2] * x + t[10] * z + t[14],
+        forwardX: t[0] * forwardX + t[8] * forwardZ, forwardZ: t[2] * forwardX + t[10] * forwardZ,
+        spread: spread)
     }
   }
 

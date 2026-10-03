@@ -95,12 +95,17 @@ public struct FieldCheck: Codable, Equatable, Sendable {
   public var walls: Walls?
   public var stills: Stills
   public var checkedAt: String
+  /// The earlier captures of the same room and trades whose keyframes and
+  /// stills were counted with this one (design §6): a top-up's check describes
+  /// the room. Empty for a first capture.
+  public var together: [String]
 
-  public init(placement: Placement, walls: Walls?, stills: Stills, checkedAt: String) {
+  public init(placement: Placement, walls: Walls?, stills: Stills, checkedAt: String, together: [String] = []) {
     self.placement = placement
     self.walls = walls
     self.stills = stills
     self.checkedAt = checkedAt
+    self.together = together
   }
 
   enum CodingKeys: String, CodingKey {
@@ -108,13 +113,14 @@ public struct FieldCheck: Codable, Equatable, Sendable {
     case walls
     case stills
     case checkedAt = "checked_at"
+    case together
   }
 
   /// From the live placement and the walls' coverage as the HUD had them.
   public static func make(
     guided: Bool, cornersTapped: Int, placement: PlanAlignment.Solution?,
     coverage: [WallCoverage.Wall]?, checklist: [StillsChecklist.Item], taken: [String?],
-    checkedAt: String
+    checkedAt: String, together: [String] = []
   ) -> FieldCheck {
     let placed: Placement
     if !guided {
@@ -151,7 +157,7 @@ public struct FieldCheck: Codable, Equatable, Sendable {
     return FieldCheck(
       placement: placed, walls: walls,
       stills: Stills(done: progress.done, total: progress.total, missing: progress.missing.map(\.id)),
-      checkedAt: checkedAt)
+      checkedAt: checkedAt, together: together)
   }
 
   /// The three lines, in the order the review screen shows them.

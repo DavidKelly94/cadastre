@@ -115,6 +115,11 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   @Published private(set) var stillsTaken: [String?] = []
   /// Every usable keyframe's footprint, in the session frame.
   private var cameras: [WallCoverage.Camera] = []
+  /// The room's earlier captures of these trades (ADR-0031, design §6): their
+  /// keyframes already in the house frame, their stills, their ids.
+  private var history = RoomHistory()
+  /// The earlier captures' walks in house metres, for the inset to draw faintly.
+  @Published private(set) var priorWalks: [[(x: Double, z: Double)]] = []
   @Published private(set) var showMesh = false
   @Published private(set) var freeBytes: Int64 = 0
   /// "Kitchen · Electrical + Plumbing", for the HUD strip.
@@ -174,7 +179,14 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     cameras = []
     coverage = nil
     checklist = StillsChecklist.items(for: phases)
-    stillsTaken = []
+    // A top-up reads the room's earlier captures with it (design §6): their
+    // stills tick the list, their keyframes shade the walls, their walks show.
+    history = RoomHistory.gather(
+      store: SessionStore(documents: documents), project: project.slug, level: level.slug,
+      room: room.slug, phases: phases)
+    priorWalks = history.walks
+    stillsTaken = history.stillItems.map { Optional($0) }
+    recomputeCoverage()
     // ARKit's queue; the published values are touched on the main one.
     recorder.onKeyframe = { [weak self] record in
       let pose = record.poseWorldFromCamera
@@ -386,15 +398,17 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     }
   }
 
-  /// Every keyframe so far against the walls, in the house frame the current
-  /// placement gives. Called when the placement changes.
+  /// Every keyframe so far against the walls, in the house frame: the earlier
+  /// captures' as they were placed, this one's through the current placement.
+  /// Called when the placement changes. Nil with nothing to put on the walls.
   private func recomputeCoverage() {
-    guard let guide, let placement else {
+    guard let guide, placement != nil || !history.cameras.isEmpty else {
       coverage = nil
       return
     }
     let outline = guide.corners.map { (label: $0.label, x: $0.x, z: $0.z) }
-    coverage = WallCoverage.coverage(outline: outline, cameras: cameras.map { $0.moved(by: placement) })
+    let live = placement.map { solution in cameras.map { $0.moved(by: solution) } } ?? []
+    coverage = WallCoverage.coverage(outline: outline, cameras: history.cameras + live)
   }
 
   /// Where the camera is right now, in session metres, for the inset's dot.
@@ -696,7 +710,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     let fieldCheck = FieldCheck.make(
       guided: guide != nil, cornersTapped: landmarks.filter { $0.kind == .corner }.count,
       placement: placement, coverage: coverage, checklist: checklist, taken: stillsTaken,
-      checkedAt: ISO8601DateFormatter().string(from: Date()))
+      checkedAt: ISO8601DateFormatter().string(from: Date()), together: history.sessionIDs)
 
     do {
       let layout = try recorder.stop(fieldCheck: fieldCheck) { layout in

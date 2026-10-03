@@ -46,7 +46,7 @@ struct CaptureHUDView: View {
             if showInset {
               PlanInsetView(
                 room: room, guidance: guidance, placement: coordinator.placement,
-                coverage: coordinator.coverage, walk: coordinator.walk,
+                coverage: coordinator.coverage, walk: coordinator.walk, priorWalks: coordinator.priorWalks,
                 landmarks: coordinator.landmarks, camera: camera)
             }
             Button {

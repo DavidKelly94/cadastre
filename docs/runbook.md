@@ -137,11 +137,40 @@ The capture will ask you to tap each corner of the room by name, and place the c
 
 Do this at home with the plan in front of you. A room without an outline still captures, unguided, and is placed on the PC afterwards.
 
+## 4c. In the room: corners, stills, and the check before you leave
+
+With the room outlined, the capture guides itself (ADR-0031). On the HUD:
+
+- **Corners.** The chips above the buttons name the next corner to tap, in
+  order around the room. Stand at it and tap the floor where the walls meet.
+  The mark slides to where the mesh says the walls meet and the banner says by
+  how many centimetres; if it slid somewhere wrong, tap the mark and *Unsnap*.
+  *Skip* parks a corner you cannot reach; tap a chip out of order if that is
+  where you stand. After two corners the FIT readout shows the residual and
+  the line under the strip says *Placed on the plan, 6 cm*, *Check the
+  corners* or *Not placed*; a third corner tightens it.
+- **The inset.** The small plan under the marker strip shows the room, the
+  corners ticked, your walk once the capture is placed, and each wall shading
+  grey, amber, green as you photograph it. The chevron folds it away.
+- **Stills.** The STILLS chips are the trades' required stills from
+  `capture-protocol.md` §4. Tap a chip to take the still for that item; it
+  ticks once the file is written. The camera button takes a still with no
+  label, which ticks nothing.
+- **Stop** opens the review screen with three lines at the top: the placement,
+  the walls photographed with the worst gap in metres from a named corner, and
+  the stills taken against the list. Green is done; orange says what to
+  re-shoot while the wall is still open. *Capture more* starts a short second
+  capture of the same room and trades, which starts with the first capture's
+  walls already shaded and its stills already ticked, so you only fill the
+  gaps. Both captures are sent and kept.
+
 ## 5. Align each capture to the plan
 
 If the room was outlined (§4b), the capture placed itself: during capture the HUD asked for each corner by name, showed the fit in centimetres, and wrote the placement beside the plans when you stopped. The review screen says *Placed on the plan, 6 cm*. The next send carries it, the PC adopts it, and this step is done; `vividhome align` on the PC only redoes one deliberately.
 
-A capture with no outline, or one the review screen said was not placed, is aligned on the PC. Find the capture's id. It is the folder name under the project:
+A capture made without an outline can be placed on the phone afterwards: Captures → the capture → *Place on the plan*. Its landmarks appear as chips; tap a chip, then where that landmark is on the drawing, two pairs minimum, and *Place* when the fit line is green or amber. The same screen adjusts a placement later.
+
+Or align it on the PC. Find the capture's id. It is the folder name under the project:
 
 ```
 Get-ChildItem $store\sessions -Recurse -Depth 1 -Directory | Select-Object -ExpandProperty Name
@@ -196,7 +225,8 @@ made it.
 | Phone | Captures, Send N captures to the PC |
 | Phone, once per level | Plan card, Scale: three points and the printed distance (or `plan calibrate --level <level> --web` in Window B) |
 | Phone, once per room | Plan card, the room under *Outline the corners*: tap its corners in order |
-| Phone, during capture | Tap each corner the HUD names; stop when it says *placed* |
+| Phone, during capture | Tap each corner the HUD names; take the stills the chips ask for; stop when it says *placed* and the lines are green, or *Capture more* to fill the gaps |
+| Phone, for a capture made without an outline | Captures, the capture, *Place on the plan* |
 | Window A, by itself | `received <capture>` as each send lands, then `rendered inspect/<level>.html` for a placed one |
 | Window B, only for a capture that was not placed | `align <session-id> --level <level> --web` (draws the page too) |
 | Phone | Rendering on the PC |

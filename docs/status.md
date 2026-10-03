@@ -105,10 +105,35 @@ it survives one. Owner-side items are things only the owner can do.
    now held against the Python in CI on the fixture room, so what remains is
    the same comparison on one real capture.
 
-Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
-level → storey 0 and confirm two levels show as separate sections; import the
-new house's real plan in the app and see whether the room-name chips appear; fix
-the private `base` Actions access from `docs/transfer-runbook.md` step 12.
+Owner-side, the morning of 2026-10-04: everything written overnight on
+2026-10-03 (ADR-0031, every step, plus the leave check on the inspect page) is
+on TestFlight as builds 62 to 70, none of it walked. Walk the latest build on
+the real house plan, in this order, and write what breaks into this file:
+
+1. Plan card → *Scale*: three points and the printed distance (walked once on
+   build 56; confirm it still fits).
+2. The room under *Outline the corners*: tap its corners in order, Save; the
+   footer names them NW, NE, SE, SW.
+3. A guided capture in that room: the chips name the next corner; a tap near
+   a corner should slide to it and say by how many centimetres (*Unsnap* on
+   the mark puts it back); after two corners the FIT readout shows the
+   residual and the inset shows the walk; the walls shade as you photograph
+   them; the STILLS chips tick as you take stills for them.
+4. Stop: the three lines at the top of the review screen, then *Capture more*
+   for a short top-up of the same room, which should start with the walls
+   already shaded from the first capture.
+5. Captures → a capture made without an outline → *Place on the plan*.
+6. On the PC, with `serve --lan` running, send a placed capture: Window A
+   should print `received …` and then `rendered inspect/<level>.html`, and
+   *Rendering on the PC* on the phone should show the capture with its three
+   lines in the side panel.
+
+Every call made without you is under **Decided without the owner** in the
+entries below, newest first; say which to reverse. Still open from
+2026-09-18: walk New room → New level → storey 0 and confirm two levels show
+as separate sections; fix the private `base` Actions access from
+`docs/transfer-runbook.md` step 12 (the `main-triage` workflow fails on every
+push to `main` for that reason, and only for that reason).
 
 ## Pipeline (`pipeline/`) — complete
 

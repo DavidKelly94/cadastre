@@ -56,6 +56,7 @@ def test_a_fresh_session_is_listed_as_unaligned_and_unvalidated(store: Path):
         "path": f"sessions/synthetic/{SESSION_ID}",
         "level": "main",
         "aligned": False,
+        "alignment_source": None,
         "validated": None,
     }
     # The level has a plan but nothing on it yet: listed, uncalibrated, no page.
@@ -130,3 +131,18 @@ def test_a_plan_the_project_has_no_session_on_is_not_its_level(store: Path):
     add_plan(store, source, "basement")
     [project] = build_index(store)["projects"]
     assert [level["level"] for level in project["levels"]] == ["main"]
+
+
+def test_the_index_says_who_placed_a_session(store: Path):
+    """Section 15: an alignment the app made says source app; the PC's own say
+    nothing and read as pc."""
+    session_id = "20261103-141502_main_room_framing_aaaaaa"
+    align(store, session_id, "main")
+    assert build_index(store)["projects"][0]["sessions"][0]["alignment_source"] == "pc"
+    path = store / "alignments" / f"{session_id}.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["source"] = "app"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    entry = build_index(store)["projects"][0]["sessions"][0]
+    assert entry["aligned"] is True
+    assert entry["alignment_source"] == "app"

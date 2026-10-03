@@ -577,3 +577,118 @@ def test_an_uncalibrated_store_copy_with_alignments_is_not_replaced(session: Pat
     result = ingest(store, later)
     assert result.plans[0].imported is False
     assert not load_calibration(store, "main").is_calibrated
+
+
+# ADR-0031: a placement made on the phone
+
+
+def _phone_alignment(session: Path, level: str = "main", **overrides) -> Path:
+    """The file the app writes beside the plans (section 15), for this session."""
+    alignments = session.parent / "alignments"
+    alignments.mkdir(parents=True, exist_ok=True)
+    data = {
+        "session_id": session.name,
+        "level": level,
+        "T_hs": [1.0, 0, 0, 0, 0, 1.0, 0, 0, 0, 0, 1.0, 0, 1.5, 0.25, -0.5, 1.0],
+        "pairs": [
+            {
+                "label": "corner-nw",
+                "session_xz": [0.0, 0.0],
+                "house_xz": [1.5, -0.5],
+                "source": "landmark",
+            },
+            {
+                "label": "corner-ne",
+                "session_xz": [4.0, 0.0],
+                "house_xz": [5.5, -0.5],
+                "source": "landmark",
+            },
+        ],
+        "rms_m": 0.021,
+        "max_residual_m": 0.03,
+        "method": "guided",
+        "floor_source": "lowest-landmark",
+        "created_at": "2026-10-03T10:00:00Z",
+        "source": "app",
+    }
+    data.update(overrides)
+    path = alignments / f"{session.name}.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def test_the_phones_placement_is_adopted_with_the_capture(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    plan_beside(session, metres_per_pixel=0.01, origin_px=[100.0, 100.0])
+    _phone_alignment(session)
+    result = ingest(store, session)
+    assert result.alignment is not None and result.alignment.adopted, result.alignment
+    assert "0.021 m" in result.alignment.reason
+    stored = json.loads((store / "alignments" / f"{session.name}.json").read_text(encoding="utf-8"))
+    assert stored["source"] == "app" and stored["method"] == "guided"
+
+
+def test_a_placement_is_not_adopted_over_the_pcs_own(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    plan_beside(session, metres_per_pixel=0.01, origin_px=[100.0, 100.0])
+    (store / "alignments").mkdir(parents=True)
+    (store / "alignments" / f"{session.name}.json").write_text(
+        json.dumps({"session_id": session.name, "level": "main", "T_hs": [0.0] * 16}),
+        encoding="utf-8",
+    )
+    _phone_alignment(session)
+    result = ingest(store, session)
+    assert result.alignment is not None and not result.alignment.adopted
+    assert "already has an alignment" in result.alignment.reason
+    kept = json.loads((store / "alignments" / f"{session.name}.json").read_text(encoding="utf-8"))
+    assert "source" not in kept, "the PC's file was left alone"
+
+
+def test_a_placement_against_another_calibration_is_not_adopted(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    # The store was calibrated first, differently from what the phone will send.
+    plan_beside(session)
+    ingest(store, session)
+    calibrate(store, "main", point_a=(0, 0), point_b=(100, 0), distance_m=2.0, origin_px=(5, 5))
+
+    later = _second_session(tmp_path)
+    plan_beside(later, metres_per_pixel=0.01, origin_px=[100.0, 100.0])
+    _phone_alignment(later)
+    result = ingest(store, later)
+    assert result.alignment is not None and not result.alignment.adopted
+    assert "different calibration" in result.alignment.reason
+    assert not (store / "alignments" / f"{later.name}.json").exists()
+
+
+def test_a_placement_with_no_calibrated_plan_waits_for_the_pc(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    plan_beside(session)  # uncalibrated
+    _phone_alignment(session)
+    result = ingest(store, session)
+    assert result.alignment is not None and not result.alignment.adopted
+    assert "no calibrated plan" in result.alignment.reason
+
+
+def test_a_malformed_placement_is_reported_not_adopted(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    plan_beside(session, metres_per_pixel=0.01, origin_px=[100.0, 100.0])
+    _phone_alignment(session, T_hs=[1.0, 2.0])
+    result = ingest(store, session)
+    assert result.alignment is not None and not result.alignment.adopted
+    assert "section 15" in result.alignment.reason
+
+
+def test_no_placement_means_nothing_to_say(session: Path, tmp_path: Path):
+    store = tmp_path / "vividhome-data"
+    assert ingest(store, session).alignment is None
+
+
+def test_a_whole_visit_adopts_each_placement_after_the_plan(tmp_path: Path):
+    project = tmp_path / "capture"
+    first = build(project / "20261103-141502_main_room_framing_aaaaaa", SPEC).root
+    second = build(project / "20261103-150000_main_hall_bbbbbb", SPEC).root
+    plan_beside(first, metres_per_pixel=0.01, origin_px=[100.0, 100.0])
+    _phone_alignment(first)
+    _phone_alignment(second)
+    batch = ingest_many(tmp_path / "vividhome-data", project)
+    assert [r.alignment.adopted for r in batch.results] == [True, True]

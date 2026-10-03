@@ -66,6 +66,19 @@ final class SessionUploadTests: XCTestCase {
     XCTAssertTrue(files.allSatisfy { FileManager.default.fileExists(atPath: $0.url.path) })
   }
 
+  func testTheCapturesOwnPlacementGoesWithItAndNoOtherSessions() throws {
+    let (layout, plans) = try makeSession()
+    let alignments = plans.deletingLastPathComponent().appendingPathComponent("alignments", isDirectory: true)
+    try write("20261103-141502_main_kitchen_k3x7qa.json", under: alignments, bytes: 640)
+    try write("20261104-090000_upper_hall_bbbbbb.json", under: alignments, bytes: 600)
+    let files = try SessionUpload.files(of: layout, plans: plans, alignments: alignments)
+    XCTAssertEqual(
+      files.filter { $0.path.hasPrefix("alignments/") }.map(\.path),
+      ["alignments/20261103-141502_main_kitchen_k3x7qa.json"])
+    XCTAssertEqual(files.first { $0.path.hasPrefix("alignments/") }?.bytes, 640)
+    XCTAssertEqual(try SessionUpload.files(of: layout, plans: plans, alignments: nil).filter { $0.path.hasPrefix("alignments/") }.count, 0)
+  }
+
   func testWithoutAPlansFolderOnlyTheSessionGoes() throws {
     let (layout, _) = try makeSession()
     let files = try SessionUpload.files(of: layout, plans: nil)

@@ -489,6 +489,9 @@ def _run_ingest(args: argparse.Namespace) -> int:
             print(
                 f"  {len(result.report.warnings)} warning(s); run 'vividhome validate' for detail"
             )
+        if result.alignment is not None:
+            verb = "alignment adopted" if result.alignment.adopted else "alignment not adopted"
+            print(f"  {verb}: {result.alignment.reason}")
     for name, reason in batch.failures:
         print(f"not ingested {name}", file=sys.stderr)
         print("  " + reason.replace("\n", "\n  "), file=sys.stderr)

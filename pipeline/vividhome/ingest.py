@@ -26,6 +26,7 @@ from .session import Session, SessionError
 from .validate import Report, validate_session, write_report
 
 __all__ = [
+    "AlignmentImport",
     "IngestBatch",
     "IngestError",
     "IngestResult",
@@ -52,12 +53,21 @@ class PlanImport:
 
 
 @dataclass
+class AlignmentImport:
+    """What became of the placement the app made for this capture (section 15)."""
+
+    adopted: bool
+    reason: str
+
+
+@dataclass
 class IngestResult:
     session_id: str
     destination: Path
     bytes_copied: int
     report: Report
     plans: list[PlanImport] = field(default_factory=list)
+    alignment: AlignmentImport | None = None
 
     @property
     def ok(self) -> bool:
@@ -249,6 +259,71 @@ def _import_plans(store_root: Path, session_root: Path) -> list[PlanImport]:
     return results
 
 
+def _import_alignment(
+    store_root: Path, session_root: Path, session_id: str
+) -> AlignmentImport | None:
+    """Adopt ``alignments/<session-id>.json`` found beside the session, when it
+    is the app's placement of this capture and the store can use it (ADR-0031,
+    section 15).
+
+    Adopted only when the store has no alignment for the session yet, the
+    level's plan in the store is calibrated, and that calibration is the one
+    the phone solved against, which is the plan the phone sent beside the
+    capture. Anything else is reported and left for ``vividhome align``, which
+    replaces an alignment deliberately. None when the app sent nothing.
+    """
+    source = session_root.parent / "alignments" / f"{session_id}.json"
+    if not source.is_file():
+        return None
+    try:
+        raw = json.loads(source.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return AlignmentImport(False, f"{source.name} does not parse ({error})")
+    if (
+        not isinstance(raw, dict)
+        or raw.get("session_id") != session_id
+        or not raw.get("level")
+        or not isinstance(raw.get("T_hs"), list)
+        or len(raw["T_hs"]) != 16
+    ):
+        return AlignmentImport(False, f"{source.name} is not an alignment file (section 15)")
+    level = str(raw["level"])
+
+    target = store_root / "alignments" / f"{session_id}.json"
+    if target.exists():
+        return AlignmentImport(
+            False,
+            "the store already has an alignment for this capture; "
+            "'vividhome align' replaces it deliberately",
+        )
+    stored = _stored_calibration(store_root / "plans" / f"{level}.json")
+    if stored is None or not stored.is_calibrated:
+        return AlignmentImport(False, f"the store has no calibrated plan for level {level!r}")
+    phone = _stored_calibration(session_root.parent / "plans" / f"{level}.json")
+    if phone is not None and phone.is_calibrated:
+        same = (
+            abs(float(phone.metres_per_pixel) - float(stored.metres_per_pixel)) < 1e-9
+            and tuple(float(v) for v in phone.origin_px)
+            == tuple(float(v) for v in stored.origin_px)
+            and abs(float(phone.rotation_deg) - float(stored.rotation_deg)) < 1e-9
+        )
+        if not same:
+            return AlignmentImport(
+                False,
+                f"solved against a different calibration of level {level!r} than the "
+                "store's; run 'vividhome align' on the PC",
+            )
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, target)
+    rms = raw.get("rms_m")
+    how = f"{float(rms):.3f} m" if isinstance(rms, (int, float)) else "no residual given"
+    return AlignmentImport(
+        True,
+        f"placed by the app, residual {how}; 'vividhome align' replaces it deliberately",
+    )
+
+
 def _stored_calibration(json_path: Path) -> PlanCalibration | None:
     try:
         return PlanCalibration.from_dict(json.loads(json_path.read_text(encoding="utf-8")))
@@ -309,7 +384,10 @@ def ingest(
             keep_going=keep_going,
         )
         # Before the staging directory goes: for a zip, plans/ is only there.
+        # Plans first: the placement is adopted only against the calibration
+        # the store ends up with.
         result.plans = _import_plans(store_root, session_root)
+        result.alignment = _import_alignment(store_root, session_root, result.session_id)
     finally:
         if staging is not None and staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
@@ -340,24 +418,27 @@ def ingest_many(
     try:
         directory, staging = _stage(store_root, source)
         roots = _find_session_roots(directory)
+        # Plans once per project folder, not once per session in it, and
+        # first: a placement is adopted only against the calibration the
+        # store ends up with.
+        for parent in sorted({root.parent for root in roots}):
+            batch.plans.extend(_import_plans(store_root, parent / "_"))
         for session_root in roots:
             try:
-                batch.results.append(
-                    _ingest_root(
-                        store_root,
-                        session_root,
-                        session_root.name,
-                        project,
-                        staging=staging,
-                        force=force,
-                        keep_going=keep_going,
-                    )
+                result = _ingest_root(
+                    store_root,
+                    session_root,
+                    session_root.name,
+                    project,
+                    staging=staging,
+                    force=force,
+                    keep_going=keep_going,
                 )
             except IngestError as error:
                 batch.failures.append((session_root.name, str(error)))
-        # Plans once per project folder, not once per session in it.
-        for parent in sorted({root.parent for root in roots}):
-            batch.plans.extend(_import_plans(store_root, parent / "_"))
+                continue
+            result.alignment = _import_alignment(store_root, session_root, result.session_id)
+            batch.results.append(result)
     finally:
         if staging is not None and staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
@@ -389,6 +470,7 @@ def ingest_inbox(store: str | Path, entry: str | Path) -> IngestResult:
             keep_going=True,
         )
         result.plans = _import_plans(store_root, session_root)
+        result.alignment = _import_alignment(store_root, session_root, result.session_id)
     finally:
         shutil.rmtree(entry, ignore_errors=True)
     return result

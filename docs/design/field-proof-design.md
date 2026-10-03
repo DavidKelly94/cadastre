@@ -22,6 +22,14 @@ Non-goals: markers (optional, ADR-0026); identifying elements in stills (roadmap
 
 ## 3. Guided taps and live placement
 
+**Built 2026-10-03, walked by nobody.** What landed, and the calls made without the owner:
+
+- The corner chips replace the kind picker while a room is guided; an ellipsis button brings the picker back for a door or a window and *Back to the corners* returns. A chip can be tapped out of order (the owner stands where they stand) and *Skip* parks the one asked for.
+- The solve runs after every landmark change; the FIT readout shows the residual in centimetres and the line under the strip says *Placed on the plan, 6 cm*, *Check the corners: 18 cm off* or *Not placed*. Thresholds: under 10 cm placed, under the PC's 30 cm refusal check, above that not placed.
+- The file is written at Stop only for a fit under the 30 cm refusal; the review screen says what happened either way. The floor height comes from floor-tagged landmarks, else the lowest landmark; the mesh route the PC has is not on the phone yet.
+- The snap (below) is not built yet; `method` stays `raycast_estimated_plane`.
+- `ingest` adopts the file when the store has no alignment for the session and its calibration matches the plan beside the capture; the index says `alignment_source: app`.
+
 **The ask.** When a capture starts in a room with an outline, the landmark strip shows the room's corners as chips in outline order with the next one highlighted: *Tap the NW corner*. The owner stands at that corner and taps the floor where the walls meet, as now. A chip can be skipped (a corner hidden behind a stack of drywall) and comes back later.
 
 **The snap.** A tap raycasts to the mesh as today. Then, within 0.5 m of the hit, the app fits planes to the wall-classified mesh faces and, where two walls meet the floor, moves the point to that intersection (the rule `corners.py` runs offline, ported to the core package and tested against it). The snap is shown: the mark slides, and a long press puts it back. `landmarks.jsonl` records `method: "snap"` or `"tap"`, which is the field the record already has.

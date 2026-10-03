@@ -22,6 +22,8 @@ final class SessionUploader: ObservableObject {
     var name: String
     /// The project's `plans/` folder beside the session, sent with it (§13).
     var plans: URL?
+    /// The project's `alignments/` folder; only this capture's file goes (§15).
+    var alignments: URL?
   }
 
   struct Item: Identifiable, Equatable {
@@ -116,9 +118,10 @@ final class SessionUploader: ObservableObject {
     for job in jobs {
       let layout = job.layout
       let plans = job.plans
+      let alignments = job.alignments
       do {
         listed[job.id] = try await Task.detached {
-          try SessionUpload.files(of: layout, plans: plans)
+          try SessionUpload.files(of: layout, plans: plans, alignments: alignments)
         }.value
       } catch {
         set(job.id, .failed("Could not list the capture's files: \(error.localizedDescription)"))

@@ -476,3 +476,22 @@ def test_a_read_only_lan_server_still_refuses_save(paired):
     with pytest.raises(urllib.error.HTTPError) as exc:
         post(base, {"path": "plans/main.json", "data": {}})
     assert exc.value.code == 403
+
+
+def test_the_captures_placement_travels_beside_it(paired, capture):
+    base, _ = paired
+    send_session(base, capture)
+    placement = json.dumps({"session_id": SESSION, "level": "main", "T_hs": [0.0] * 16}).encode()
+    with request(base, "PUT", f"/upload/{SESSION}/alignments/{SESSION}.json", placement) as r:
+        assert r.status == 201
+    _, listing = status_of(lambda: request(base, "GET", f"/upload/{SESSION}"))
+    assert listing["files"][f"alignments/{SESSION}.json"] == len(placement)
+    status, _ = status_of(lambda: request(base, "PUT", f"/upload/{SESSION}/alignments", b"x"))
+    assert status == 400, "alignments/ holds files"
+    # No calibrated plan in this store, so done reports the placement as not adopted.
+    status, receipt = status_of(lambda: request(base, "POST", f"/upload/{SESSION}/done", b""))
+    assert status == 200 and receipt["validated"], receipt
+    assert receipt["alignment"] == {
+        "adopted": False,
+        "reason": "the store has no calibrated plan for level 'main'",
+    }

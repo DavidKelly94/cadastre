@@ -154,11 +154,12 @@ class Inbox:
             for path in session_dir.rglob("*"):
                 if path.is_file() and not path.name.endswith(".part"):
                     files[path.relative_to(session_dir).as_posix()] = path.stat().st_size
-        plans_dir = entry / "plans"
-        if plans_dir.is_dir():
-            for path in plans_dir.iterdir():
-                if path.is_file() and not path.name.endswith(".part"):
-                    files[f"plans/{path.name}"] = path.stat().st_size
+        for beside in ("plans", "alignments"):
+            directory = entry / beside
+            if directory.is_dir():
+                for path in directory.iterdir():
+                    if path.is_file() and not path.name.endswith(".part"):
+                        files[f"{beside}/{path.name}"] = path.stat().st_size
         state = "partial" if files else "none"
         return {"session_id": session_id, "state": state, "files": files}
 
@@ -176,10 +177,12 @@ class Inbox:
             raise UploadError(400, f"{relative!r} is not a session-relative path (section 2)")
         if segments[0] == "derived":
             raise UploadError(400, "derived/ is written only by the pipeline")
-        if segments[0] == "plans":
+        if segments[0] in ("plans", "alignments"):
+            # Beside the session, not in it: the project's plan (section 13)
+            # and the capture's own placement (section 15).
             if len(segments) != 2:
-                raise UploadError(400, "plans/ holds files, not a file")
-            target = entry / "plans" / segments[1]
+                raise UploadError(400, f"{segments[0]}/ holds files, not a file")
+            target = entry / segments[0] / segments[1]
         else:
             target = entry / session_id / Path(*segments)
         if not target.resolve().is_relative_to(entry.resolve()):  # pragma: no cover - belt
@@ -247,6 +250,11 @@ class Inbox:
                 {"level": plan.level, "imported": plan.imported, "reason": plan.reason}
                 for plan in result.plans
             ],
+            "alignment": (
+                {"adopted": result.alignment.adopted, "reason": result.alignment.reason}
+                if result.alignment is not None
+                else None
+            ),
         }
 
     def discard(self, session_id: str) -> None:

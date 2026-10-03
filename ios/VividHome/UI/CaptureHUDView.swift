@@ -24,6 +24,9 @@ struct CaptureHUDView: View {
   @State private var flash: String?
   @State private var renaming = false
   @State private var draftLabel = ""
+  /// In a guided room the corner chips replace the kind picker; this brings
+  /// the picker back for a door or a window.
+  @State private var otherMarks = false
 
   private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -74,7 +77,13 @@ struct CaptureHUDView: View {
         readout("DROP", "\(recorder.stats.dropped)", tone: recorder.stats.dropped > 0 ? Tokens.warn : nil)
         readout("STILL", "\(recorder.stats.stills)")
         readout("MRK", "\(recorder.stats.markerObservations)")
-        readout("FIT", coordinator.alignment.verdict.hudWord, tone: coordinator.alignment.hudColour)
+        if let placement = coordinator.placement {
+          // Placed live against the outline (ADR-0031): the residual, not a
+          // geometry word, because the plan is now part of the fit.
+          readout("FIT", "\(Int((placement.rms * 100).rounded())) cm", tone: placement.hudColour)
+        } else {
+          readout("FIT", coordinator.alignment.verdict.hudWord, tone: coordinator.alignment.hudColour)
+        }
         Spacer()
         readout("FREE", freeText, tone: coordinator.freeBytes < 2_000_000_000 ? Tokens.warn : nil)
         readout("THERM", thermalWord, tone: thermalColour)
@@ -83,7 +92,10 @@ struct CaptureHUDView: View {
         Text(reasonText).font(.caption2).foregroundStyle(Tokens.warn)
           .frame(maxWidth: .infinity, alignment: .leading)
       }
-      if reasonText == nil, let advice = coordinator.alignment.advice {
+      if reasonText == nil, let placement = coordinator.placement {
+        Text(placement.summary).font(.caption2).foregroundStyle(placement.hudColour)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      } else if reasonText == nil, let advice = coordinator.alignment.advice {
         // Tracking trouble outranks it: a limited-tracking frame is worth fixing
         // before the next landmark is worth placing.
         Text(advice).font(.caption2).foregroundStyle(Tokens.accentCool)
@@ -152,14 +164,26 @@ struct CaptureHUDView: View {
     VStack(spacing: 12) {
       // Landmark kind sits above the buttons so a tap on the feed always means
       // the same thing; a mode that changed under you mid-sweep would put a
-      // door where a corner belongs and nothing downstream could tell.
-      Picker("Landmark", selection: $landmarkKind) {
-        Text("Corner").tag(LandmarkKind.corner)
-        Text("Door").tag(LandmarkKind.door)
-        Text("Window").tag(LandmarkKind.window)
-        Text("Floor").tag(LandmarkKind.floor)
+      // door where a corner belongs and nothing downstream could tell. In a
+      // guided room (ADR-0031) the corners to tap take its place, by name.
+      if let guidance = coordinator.guidance, !otherMarks {
+        cornerChips(guidance)
+      } else {
+        Picker("Landmark", selection: $landmarkKind) {
+          Text("Corner").tag(LandmarkKind.corner)
+          Text("Door").tag(LandmarkKind.door)
+          Text("Window").tag(LandmarkKind.window)
+          Text("Floor").tag(LandmarkKind.floor)
+        }
+        .pickerStyle(.segmented)
+        if coordinator.guidance != nil {
+          Button("Back to the corners") {
+            otherMarks = false
+            landmarkKind = .corner
+          }
+          .font(.caption2).foregroundStyle(Tokens.accentCool)
+        }
       }
-      .pickerStyle(.segmented)
 
       HStack(spacing: 20) {
         Button {
@@ -187,16 +211,74 @@ struct CaptureHUDView: View {
         }
         .foregroundStyle(Tokens.ink)
       }
-      Text(
-        coordinator.selectedLandmark == nil
-          ? "Tap the view to mark a \(landmarkKind.rawValue) · tap a mark to edit it"
-          : "Tap where it should be")
+      Text(hint)
         .font(.caption2).foregroundStyle(Tokens.inkSecondary)
     }
     .padding(.horizontal, 20)
     .padding(.top, 12)
     .padding(.bottom, 28)
     .background(Tokens.scrim)
+  }
+
+  private var hint: String {
+    if coordinator.selectedLandmark != nil { return "Tap where it should be" }
+    if let guidance = coordinator.guidance, !otherMarks {
+      if let next = guidance.next {
+        return "Stand at the \(Self.short(next)) corner and tap the floor where the walls meet"
+      }
+      return guidance.remaining == 0 && guidance.skipped.isEmpty
+        ? "Every corner tapped · tap a mark to edit it"
+        : "Tap a skipped corner to ask for it again · tap a mark to edit it"
+    }
+    return "Tap the view to mark a \(landmarkKind.rawValue) · tap a mark to edit it"
+  }
+
+  /// The room's corners by name, in outline order: the next one lit, the
+  /// placed ones ticked, the skipped ones dimmed and tappable to ask again.
+  private func cornerChips(_ guidance: CaptureCoordinator.Guidance) -> some View {
+    HStack(spacing: 8) {
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 6) {
+          ForEach(guidance.corners, id: \.self) { corner in
+            let placed = guidance.placed.contains(corner)
+            let skipped = guidance.skipped.contains(corner)
+            let next = guidance.next == corner
+            Button {
+              if !placed { coordinator.chooseCorner(corner) }
+            } label: {
+              HStack(spacing: 4) {
+                if placed { Image(systemName: "checkmark").font(.caption2.weight(.bold)) }
+                Text(Self.short(corner))
+                  .font(.caption.weight(.semibold))
+                  .strikethrough(skipped)
+              }
+              .padding(.horizontal, 10).padding(.vertical, 6)
+              .background(
+                next ? Tokens.accentCool : (placed ? Tokens.ok.opacity(0.22) : Tokens.raised),
+                in: Capsule())
+              .foregroundStyle(next ? Tokens.onAccentWarm : (placed ? Tokens.ok : (skipped ? Tokens.inkSecondary : Tokens.ink)))
+            }
+            .buttonStyle(.plain)
+          }
+        }
+      }
+      if guidance.next != nil {
+        Button("Skip") { coordinator.skipNextCorner() }
+          .font(.caption.weight(.semibold)).foregroundStyle(Tokens.inkSecondary)
+      }
+      Button {
+        otherMarks = true
+      } label: {
+        Image(systemName: "ellipsis.circle").font(.title3)
+      }
+      .foregroundStyle(Tokens.inkSecondary)
+      .accessibilityLabel("Other marks")
+    }
+  }
+
+  /// `corner-ne2` as `NE2`.
+  private static func short(_ label: String) -> String {
+    label.replacingOccurrences(of: "corner-", with: "").uppercased()
   }
 
   private func banner(_ text: String, tone: Color) -> some View {
@@ -336,6 +418,16 @@ extension AlignmentQuality.Verdict {
     case .impossible: return "NONE"
     case .weak: return "WEAK"
     case .good: return "OK"
+    }
+  }
+}
+
+extension PlanAlignment.Solution {
+  var hudColour: Color {
+    switch verdict {
+    case .placed: return Tokens.ok
+    case .check: return Tokens.warn
+    case .notPlaced: return Tokens.error
     }
   }
 }

@@ -101,7 +101,10 @@ struct CaptureSetupView: View {
           // a valid session that cannot be placed on the record (ADR-0026).
           Text(plans.plans[levelSlug] == nil
             ? "You can record without one, but nothing can be placed on the record until a plan exists for this level."
-            : "Tap to see which rooms are captured, and to drag this room to where it actually is.")
+            : (guide != nil
+              ? "This room is outlined: the capture will ask for each corner and place itself on the plan before you stop."
+              : "Tap to see which rooms are captured, and to drag this room to where it actually is. "
+                + "Set the scale and outline this room there to be placed on the plan before you leave."))
         }
 
         Section("Notes") {
@@ -145,6 +148,18 @@ struct CaptureSetupView: View {
     let ordered = CapturePhase.allCases.filter { phases.contains($0) }
     lastPhases = ordered.map(\.rawValue).joined(separator: ",")
     coordinator.start(
-      level: level, room: room, phases: ordered, notes: notes.isEmpty ? nil : notes)
+      level: level, room: room, phases: ordered, notes: notes.isEmpty ? nil : notes,
+      guide: guide)
+  }
+
+  /// The room's corners in house metres, when the plan is calibrated and the
+  /// room outlined (ADR-0031); nil means a free capture, placed later.
+  private var guide: CaptureCoordinator.GuidedRoom? {
+    guard let plan = plans.plans[levelSlug], plan.isCalibrated,
+      let corners = plan.houseCorners(of: room.slug), corners.count >= RoomOutline.minimumCorners
+    else { return nil }
+    return CaptureCoordinator.GuidedRoom(
+      level: levelSlug, floorHeight: plan.floorHeight,
+      corners: corners.map { .init(label: $0.label, x: $0.x, z: $0.z) })
   }
 }

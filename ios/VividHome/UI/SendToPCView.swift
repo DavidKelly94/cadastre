@@ -88,7 +88,8 @@ struct SendToPCView: View {
         let jobs = jobs
         exactBytes = await Task.detached {
           jobs.reduce(0) { total, job in
-            let files = (try? SessionUpload.files(of: job.layout, plans: job.plans)) ?? []
+            let files =
+              (try? SessionUpload.files(of: job.layout, plans: job.plans, alignments: job.alignments)) ?? []
             return total + SessionUpload.totalBytes(files)
           }
         }.value
@@ -128,7 +129,9 @@ struct SendToPCView: View {
         layout: row.layout,
         name: row.manifest?.room.name ?? row.id,
         plans: row.layout.root.deletingLastPathComponent()
-          .appendingPathComponent("plans", isDirectory: true))
+          .appendingPathComponent("plans", isDirectory: true),
+        alignments: row.layout.root.deletingLastPathComponent()
+          .appendingPathComponent("alignments", isDirectory: true))
     }
   }
 

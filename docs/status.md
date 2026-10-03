@@ -90,9 +90,11 @@ it survives one. Owner-side items are things only the owner can do.
    guided corner taps with a live placement and residual, walls shading as
    they are photographed, a per-phase stills checklist, a leave check, and
    free capture and top-ups kept as they are. Design in
-   `docs/design/field-proof-design.md`. **Outlines built 2026-10-03, not
-   walked**: the Outline screen, corner naming, the house-corner projection,
-   the project validator's rule 7. Next: the guided taps and the live solve.
+   `docs/design/field-proof-design.md`. **Outlines and guided taps built
+   2026-10-03, not walked**: the Outline screen and corner naming; then the
+   HUD asking for corners by name, the live fit with its residual, the
+   placement file written at Stop, sent with the capture and adopted by the
+   PC. Next: the snap to mesh corners, the plan inset, live coverage.
 
 Owner-side, unchanged since 2026-09-18: walk build 42 through New room → New
 level → storey 0 and confirm two levels show as separate sections; import the
@@ -115,7 +117,7 @@ the private `base` Actions access from `docs/transfer-runbook.md` step 12.
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **352 tests passing**, ruff clean.
+19 modules, **361 tests passing**, ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -259,6 +261,38 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The capture places itself, written blind, 2026-10-03
+
+The second piece of ADR-0031, and the one that moves ADR-0030's align step
+into the room. When the level is calibrated and the room outlined, the HUD
+replaces the landmark kind picker with the room's corners by name, lights the
+next one, and a tap on the floor records that corner. After two, the phone
+solves the same rigid fit `align.py` solves (`Umeyama2D` and `PlanAlignment`
+in the core package, pinned to the Python's numbers to 1e-9) and the FIT
+readout turns into centimetres: *Placed on the plan, 6 cm*, *Check the
+corners: 18 cm off*, or *Not placed*. Every later tap, move, rename or delete
+re-solves. Skip parks a corner that cannot be reached; tapping a chip out of
+order says where the owner actually stands; an ellipsis brings the picker
+back for a door or a window.
+
+At Stop the placement is written as `alignments/<session-id>.json` beside
+the plans, the PC's own file shape plus `source: app` and `method: guided`
+(section 15), and only for a fit under the PC's 30 cm refusal. The review
+screen leads with it. Sending a capture now carries that one file; the server
+takes `alignments/<file>`; `ingest` adopts it when the store has no alignment
+for the session and its calibration matches the plan the phone solved
+against, and says why when it does not; the index reports who placed each
+session. Twelve new pipeline tests and seven core tests.
+
+**Decisions made without the owner, to revisit:** the three thresholds; the
+chips replacing the picker rather than sitting beside it; writing nothing
+above 30 cm rather than a file the PC would refuse; the floor height from
+landmarks only, since the mesh is not read live yet.
+
+**Not walked.** None of it has run on a phone. The first thing to check is
+that a tap in a guided room gets the corner's name, and that two taps
+produce a plausible residual on the real house.
 
 ## Rooms outlined on the plan, written blind, 2026-10-03
 

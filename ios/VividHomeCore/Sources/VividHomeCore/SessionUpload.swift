@@ -28,7 +28,8 @@ public enum SessionUpload {
   /// is given, because the plan travels with the capture (ADR-0025, §13).
   /// Sorted by path, so a resumed send walks the same order.
   public static func files(
-    of layout: SessionLayout, plans: URL? = nil, manager: FileManager = .default
+    of layout: SessionLayout, plans: URL? = nil, alignments: URL? = nil,
+    manager: FileManager = .default
   ) throws -> [File] {
     var out: [File] = []
     let root = layout.root.standardizedFileURL
@@ -54,6 +55,16 @@ public enum SessionUpload {
         let path = "plans/\(url.lastPathComponent)"
         guard values?.isRegularFile == true, isSendable(path) else { continue }
         out.append(File(path: path, url: url, bytes: values?.fileSize ?? 0))
+      }
+    }
+    // The capture's own placement, when the phone made one (ADR-0031): the
+    // one file named for this session in the project's alignments folder.
+    if let alignments {
+      let name = "\(layout.root.lastPathComponent).json"
+      let url = alignments.appendingPathComponent(name)
+      let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+      if values?.isRegularFile == true, isSendable("alignments/\(name)") {
+        out.append(File(path: "alignments/\(name)", url: url, bytes: values?.fileSize ?? 0))
       }
     }
     return out.sorted { $0.path < $1.path }

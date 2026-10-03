@@ -23,6 +23,18 @@ struct SessionReviewView: View {
           }
         }
 
+        Section {
+          placementLine
+        } header: {
+          Text("On the plan")
+        } footer: {
+          Text(summary.placementWritten
+            ? "Written beside the plans; the PC adopts it with the capture."
+            : (summary.guided
+              ? "Nothing written. Two well-placed corners are the minimum; the PC can place it later."
+              : "Outline this room on the plan and the next capture places itself before you leave."))
+        }
+
         Section("Capture") {
           row("Room", summary.room)
           row("Level", summary.level)
@@ -146,6 +158,22 @@ struct SessionReviewView: View {
     Label(text, systemImage: bad ? "xmark.octagon.fill" : "exclamationmark.circle")
       .foregroundStyle(bad ? .red : .orange)
       .font(.footnote)
+  }
+
+  @ViewBuilder
+  private var placementLine: some View {
+    if let placement = summary.placement {
+      Label(placement.summary, systemImage: placement.verdict == .placed
+        ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+        .foregroundStyle(placement.verdict == .placed ? Tokens.ok
+          : (placement.verdict == .check ? Tokens.warn : Tokens.error))
+    } else if summary.guided {
+      Label("Not placed: fewer than two corners tapped", systemImage: "circle.dashed")
+        .foregroundStyle(Tokens.warn)
+    } else {
+      Label("Not placed: no outline for this room", systemImage: "circle.dashed")
+        .foregroundStyle(.secondary)
+    }
   }
 
   private var duration: String {

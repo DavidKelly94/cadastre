@@ -181,6 +181,8 @@ Two consequences, both of which have already bitten:
 - **Labels contain spaces.** Any reader splitting a list of them on whitespace will mangle them. `vividhome align --pairs` did exactly that and could not express a single real label; it separates on `;` now.
 - **They are not stable across phases.** The number comes from tap order within one session, so the same physical corner can be `bedroom corner 1` in framing and `bedroom corner 3` in rough-in. This does not affect alignment — every session is solved from its own landmarks against the plan, never against another session's labels — but nothing should be built that assumes a label identifies the same point twice.
 
+**Guided corners ([ADR-0031](adr/0031-the-capture-proves-itself-before-you-leave.md)).** When the room was outlined on the plan (section 13), the app asks for each corner by its outline name and records exactly that as `label`: `corner-nw`, `corner-ne2`, ... A landmark label that equals one of the room's corner names is therefore a correspondence the app has already paired, and section 15's file is the fit it solved from them. Labels of free captures are what the owner typed, as before. `method` is `raycast_estimated_plane` for a tap on the mesh; a snapped corner will carry its own value when that lands.
+
 ## 9. Mesh files
 
 `mesh.obj` contains all `ARMeshAnchor` geometries transformed into session (world) coordinates, concatenated: `v x y z` lines (metres) then `f a b c` lines (1-based indices), no normals or texture coordinates required. `mesh_classes.u8` has exactly one byte per `f` line, in the same order, holding the ARKit face classification raw value: `0` none, `1` wall, `2` floor, `3` ceiling, `4` table, `5` seat, `6` window, `7` door. `mesh.json` records `anchors`, `vertices`, `faces` and a `class_histogram`.
@@ -303,7 +305,7 @@ Produced by the pipeline since 2026-09-30; **no client reads it yet**. The app's
 - `generated_at` is when the request was answered, UTC. The index is never stored, so it cannot be stale against the store it describes; a client shows this time as the age of what it fetched.
 - Every path is relative to the server root, which is the store, and is fetched with a plain `GET`.
 - `projects[].levels` are the store's plans that this project has a session recorded on or aligned to — `plans/` itself is store-wide (section 13), and this is how the index scopes it. `inspect` is null until `vividhome inspect` has written the page. `sessions` under a level are the ids aligned onto it.
-- `projects[].sessions[].validated` is true or false from `derived/validate.json`, and null when no report has been written. `aligned` says whether `alignments/<session-id>.json` exists. `level` is the manifest's level slug.
+- `projects[].sessions[].validated` is true or false from `derived/validate.json`, and null when no report has been written. `aligned` says whether `alignments/<session-id>.json` exists, and `alignment_source` (since 2026-10-03) says who solved it: `pc` for the pipeline's own, `app` for a placement the phone made (section 15), null when unaligned. `level` is the manifest's level slug.
 - Discovery: the server advertises `_vividhome._tcp` over Bonjour with the store folder name as the instance and TXT records `store`, `version` and `path` (`/index.json`).
 - The server refuses every POST when it listens beyond localhost. A reader on the network can fetch anything under the store, raw sessions included, and can change nothing.
 - Readers ignore unknown fields (section 12). Nothing in the index is an instruction: a path is a place to fetch, never something to run.
@@ -315,7 +317,38 @@ Accepted by the pipeline since 2026-10-02 ([ADR-0029](adr/0029-the-pc-is-reached
 The server accepts uploads only when its store holds a pairing code, which `vividhome serve --lan` creates and prints. Every request under `/upload/` carries it as `Authorization: Bearer <code>`; the code is 16 hexadecimal characters, matched without regard to case, spaces or dashes. A missing or wrong code is `401`; a server with no code is `403`. Error bodies are `{"error": "<one sentence>"}`.
 
 - `GET /upload/<session-id>` → `{"session_id": "...", "state": "none" | "partial" | "ingested", "files": {"<path>": <bytes>, ...}}`. `files` is what the inbox holds for this session so far, with each file's size, and is empty for `none` and `ingested`. `ingested` means the store already has the session under any project.
-- `PUT /upload/<session-id>/<path>` with the file's bytes as the body and a `Content-Length`. `<path>` is a session-relative path from section 2 (`manifest.json`, `rgb/000123.jpg`, ...) or `plans/<file>` for the project's plan files of section 13 found beside the session. Rules: one or two segments, each of `A-Za-z0-9_.-` and not starting with `.`; `derived/` is refused; a file is at most 256 MB. A file already in the inbox is replaced. `201` → `{"stored": "<path>", "bytes": <n>}`; `400` for a bad id or path; `409` when the session is already in the store; `413` when too large.
-- `POST /upload/<session-id>/done` → ingest what the inbox holds: the session moves to `sessions/<project>/<session-id>` (the manifest's project), `vividhome validate` runs on it, plans beside it are imported for the levels the store lacks, and the inbox entry is removed. `200` → `{"session_id": "...", "ingested": true, "validated": true | false, "destination": "sessions/<project>/<session-id>", "errors": ["..."], "warnings": <n>, "plans": [{"level": "...", "imported": true | false, "reason": "..."}]}`. A session that fails validation is kept and reported with `validated: false` and up to five `errors`; the index then lists it as validated false. `400` when the inbox holds no readable `manifest.json`; `409` when the session is already in the store.
+- `PUT /upload/<session-id>/<path>` with the file's bytes as the body and a `Content-Length`. `<path>` is a session-relative path from section 2 (`manifest.json`, `rgb/000123.jpg`, ...), `plans/<file>` for the project's plan files of section 13 found beside the session, or `alignments/<session-id>.json` for the capture's own placement (section 15). Rules: one or two segments, each of `A-Za-z0-9_.-` and not starting with `.`; `derived/` is refused; a file is at most 256 MB. A file already in the inbox is replaced. `201` → `{"stored": "<path>", "bytes": <n>}`; `400` for a bad id or path; `409` when the session is already in the store; `413` when too large.
+- `POST /upload/<session-id>/done` → ingest what the inbox holds: the session moves to `sessions/<project>/<session-id>` (the manifest's project), `vividhome validate` runs on it, plans beside it are imported for the levels the store lacks, and the inbox entry is removed. `200` → `{"session_id": "...", "ingested": true, "validated": true | false, "destination": "sessions/<project>/<session-id>", "errors": ["..."], "warnings": <n>, "plans": [{"level": "...", "imported": true | false, "reason": "..."}], "alignment": {"adopted": true | false, "reason": "..."} | null}`. `alignment` is null when the app sent no placement. A session that fails validation is kept and reported with `validated: false` and up to five `errors`; the index then lists it as validated false. `400` when the inbox holds no readable `manifest.json`; `409` when the session is already in the store.
 
 A session id must match section 1 exactly. The inbox is staging under the store (`.inbox/`), never listed by the index, and the store is written only by `ingest`, as before. The server never executes anything it receives.
+
+## 15. Alignments the app writes (`alignments/<session-id>.json`)
+
+Written by the app since 2026-10-03 ([ADR-0030](adr/0030-the-phone-owns-the-first-loop.md), [ADR-0031](adr/0031-the-capture-proves-itself-before-you-leave.md)); read by `ingest`, which adopts it, and then by `inspect` and the index like any alignment. Additive: `format_version` stays 3.
+
+On the phone it lives beside `plans/`, at `Documents/sessions/<project-slug>/alignments/<session-id>.json`: project-level, like the plan, because a raw session is immutable (rule 6) and `derived/` is the pipeline's. It is the file `vividhome align` writes under `<store>/alignments/`, with two additions:
+
+```json
+{
+  "session_id": "20261103-141502_main_kitchen_k3x7qa",
+  "level": "main",
+  "T_hs": [0.9096, 0, 0.4156, 0,  0, 1, 0, 0,  -0.4156, 0, 0.9096, 0,  1.5066, 0.25, -0.4995, 1],
+  "pairs": [
+    { "label": "corner-nw", "session_xz": [-2.386, -1.652], "house_xz": [0, -3], "source": "landmark" },
+    { "label": "corner-ne", "session_xz": [1.199, -3.282],  "house_xz": [4, -3], "source": "landmark" }
+  ],
+  "rms_m": 0.028494,
+  "max_residual_m": 0.040931,
+  "method": "guided",
+  "floor_source": "lowest-landmark",
+  "created_at": "2026-11-03T19:15:02Z",
+  "source": "app"
+}
+```
+
+- `T_hs` is the session-to-house transform, column-major like every 4x4 in this format: a yaw about `+y` and a translation, with `t_y = floor_height_m - floor_y` as `align` computes it. `pairs` are the tapped corners matched to the outline's corners of the same name, both as horizontal metres; `rms_m` and `max_residual_m` are the fit's residuals over them.
+- `source` is `app`. `method` is `guided` for corners asked for by name during capture; the PC writes `landmarks`, `markers` or `landmarks+markers` and no `source`. `floor_source` is `floor-landmarks`, `lowest-landmark` or `assumed-zero` on the phone; the PC's `mesh` value is not produced there yet.
+- The app writes the file only for a fit the PC would accept, under `align`'s 0.30 m refusal; a worse fit is shown on the review screen and nothing is written.
+- `ingest` adopts the file into `<store>/alignments/` when the store has no alignment for the session, the level's plan in the store is calibrated, and that calibration matches the one beside the capture (the plan the phone solved against). Otherwise it reports why and leaves the store alone; `vividhome align` replaces an alignment deliberately. The index then reports `alignment_source: "app"`.
+- The app sends it with the capture as `alignments/<session-id>.json` (section 14.1), only its own: the file named for the session being sent.
+

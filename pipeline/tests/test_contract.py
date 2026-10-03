@@ -23,6 +23,7 @@ import pytest
 
 from vividhome.corners import propose_corners
 from vividhome.coverage import wall_coverage
+from vividhome.fieldcheck import CHECKLIST, lines
 from vividhome.session import Session
 
 SESSION = os.environ.get("VIVIDHOME_CONTRACT_SESSION")
@@ -91,3 +92,13 @@ def test_the_live_coverage_is_the_offline_coverage(session: Session, swift: dict
     # The walk went along the north wall, so it is the one that is photographed.
     north = next(wall for wall in report.walls if wall.start == "corner-nw")
     assert north.photographed_fraction > 0.9
+
+
+def test_the_checklist_and_the_leave_checks_sentences_read_the_same_on_both_ends(swift: dict):
+    """The stills checklist is the protocol's table on both sides, and the review
+    screen's three lines are made from the manifest's numbers by both sides."""
+    assert [item["id"] for item in swift["checklist"]] == list(CHECKLIST)
+    assert {item["id"]: item["name"] for item in swift["checklist"]} == CHECKLIST
+    assert len(swift["field_checks"]) >= 5
+    for sample in swift["field_checks"]:
+        assert lines(sample["check"]) == sample["lines"], sample["check"]

@@ -113,7 +113,7 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
 - `walls` is present only when the capture was placed: each wall of the room's outline (section 13), counted photographed when at least 70% of its length was in a keyframe's horizontal field of view within 4 m with no other wall between, the live form of `vividhome coverage`'s photographed rule. `gaps` lists the widest unphotographed run of each wall below that bar, worst wall first, in metres from the wall's first corner.
 - `stills` is the per-trade checklist (`capture-protocol.md` §4, carried in the app as data): `missing` holds the ids of items no still was taken for, in list order. The ids are the ones stills carry as `item` (section 6).
 - `together` lists the ids of the earlier complete captures of the same room, level and trades whose keyframes and stills were counted with this one (`field-proof-design.md` §6: a top-up closes the gaps of the capture before it, so its check describes the room). Empty for a first capture. Each of those captures has its own `field_check`.
-- It is the app's claim, made from what it had in the room. `vividhome validate` is the pipeline's, and neither overrides the other.
+- It is the app's claim, made from what it had in the room. `vividhome validate` is the pipeline's, and neither overrides the other. The inspect page shows the three sentences the review screen showed, made from these numbers by `fieldcheck.py` the way the app makes them from `FieldCheck`; the `contract` CI job keeps the two wordings the same.
 
 ## 5. `frames.jsonl`
 

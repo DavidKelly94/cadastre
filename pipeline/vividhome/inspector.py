@@ -25,6 +25,7 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from .fieldcheck import lines as field_check_lines
 from .plan import PlanCalibration, PlanError, house_to_plan, load_calibration, plan_paths
 from .session import PHASE_ORDER, Session
 from .transforms import mat_from_cm
@@ -55,6 +56,10 @@ class SessionOverlay:
     keyframes: list[dict]
     stills: list[dict] = field(default_factory=list)
     quality: dict = field(default_factory=dict)
+    #: The app's leave check from the manifest (section 4), as written, and the
+    #: three sentences the review screen made from it; None and [] without one.
+    field_check: dict | None = None
+    field_check_lines: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -67,6 +72,8 @@ class SessionOverlay:
             "keyframes": self.keyframes,
             "stills": self.stills,
             "quality": self.quality,
+            "field_check": self.field_check,
+            "field_check_lines": self.field_check_lines,
         }
 
 
@@ -302,6 +309,7 @@ def _overlay(
             markers.append({"id": marker, "u": round(u, 2), "v": round(v, 2)})
 
     room = session.manifest.get("room")
+    check = session.field_check
     return SessionOverlay(
         session_id=session_id,
         room=str(room.get("name", "")) if isinstance(room, dict) else "",
@@ -312,6 +320,8 @@ def _overlay(
         keyframes=keyframes,
         stills=stills,
         quality=_quality(session),
+        field_check=check,
+        field_check_lines=field_check_lines(check) if check is not None else [],
     )
 
 
@@ -399,6 +409,9 @@ def _render(page: LevelPage) -> str:
   .id {{ font-family: ui-monospace, monospace; font-size: 11px; opacity: .7;
          word-break: break-all; }}
   .bad {{ color: #c0392b; }}
+  .check {{ font-size: 11px; margin-top: 2px; }}
+  .check.ok {{ color: #2e8b57; }}
+  .check.warn {{ color: #b7791f; }}
   .hint {{ font-size: 11px; opacity: .6; margin-top: 16px; }}
   #thumb {{ position: fixed; pointer-events: none; display: none;
             border: 1px solid #8886; border-radius: 4px; background: #000; }}
@@ -649,6 +662,14 @@ DATA.sessions.forEach(s => {{
     + `<div class="id">${{s.session_id}}</div>`
     + `<div class="id">${{quality.keyframes ?? "?"}} keyframes, `
     + `${{s.stills.length}} still(s), ${{quality.warnings ?? 0}} warning(s)</div>`;
+  // The leave check the phone made before the owner left the room (section 4
+  // field_check): the same three sentences the review screen showed.
+  (s.field_check_lines || []).forEach(line => {{
+    const div = document.createElement("div");
+    div.className = "check " + (line.ok ? "ok" : "warn");
+    div.textContent = line.text;
+    row.appendChild(div);
+  }});
   row.addEventListener("click", () => {{
     if (hidden.has(s.session_id)) hidden.delete(s.session_id);
     else hidden.add(s.session_id);

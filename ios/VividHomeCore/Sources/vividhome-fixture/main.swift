@@ -241,18 +241,38 @@ struct ContractWall: Codable {
   }
 }
 
+struct ContractLine: Codable {
+  var text: String
+  var ok: Bool
+}
+
+/// A leave check and the sentences the phone makes from it, for the Python
+/// to make the same (fieldcheck.py).
+struct ContractFieldCheck: Codable {
+  var check: FieldCheck
+  var lines: [ContractLine]
+}
+
+struct ContractItem: Codable {
+  var id: String
+  var name: String
+}
+
 struct Contract: Codable {
   var snaps: [ContractSnap]
   var coverage: [ContractWall]
   var rangeM: Double
   var keyframesUsed: Int
   var keyframesTotal: Int
+  var checklist: [ContractItem]
+  var fieldChecks: [ContractFieldCheck]
 
   enum CodingKeys: String, CodingKey {
-    case snaps, coverage
+    case snaps, coverage, checklist
     case rangeM = "range_m"
     case keyframesUsed = "keyframes_used"
     case keyframesTotal = "keyframes_total"
+    case fieldChecks = "field_checks"
   }
 }
 
@@ -288,6 +308,36 @@ let cameras = frames.compactMap { frame in
 let footprint = taps.map { (label: $0.label, x: $0.position.x, z: $0.position.z) }
 let walls = WallCoverage.coverage(outline: footprint, cameras: cameras)
 func hundredths(_ value: Double) -> Double { (value * 100).rounded() / 100 }
+
+// Leave checks of every shape the review screen can show, with the phone's
+// sentences for each; the stills ids are the checklist's.
+let sampleChecks: [FieldCheck] = [
+  FieldCheck(
+    placement: .init(status: "check", rmsM: 0.18, corners: 2),
+    walls: .init(
+      photographed: 4, total: 5,
+      gaps: [
+        .init(wall: "corner-nw->corner-ne", fromM: 1.9, lengthM: 0.8),
+        .init(wall: "corner-se->corner-sw", fromM: 0, lengthM: 0.5),
+      ]),
+    stills: .init(done: 7, total: 11, missing: ["panel", "home-runs", "smoke-co", "boxes"]),
+    checkedAt: "2026-10-03T18:00:00Z", together: ["20261103-141502_main_kitchen_aaaaaa"]),
+  FieldCheck(
+    placement: .init(status: "placed", rmsM: 0.0449, corners: 3),
+    walls: .init(photographed: 4, total: 4, gaps: []),
+    stills: .init(done: 10, total: 10, missing: []), checkedAt: "2026-10-03T18:00:00Z"),
+  FieldCheck(
+    placement: .init(status: "not_placed", rmsM: 0.314, corners: 2), walls: nil,
+    stills: .init(done: 1, total: 8, missing: StillsChecklist.items(for: [.electrical]).dropFirst().map(\.id)),
+    checkedAt: "2026-10-03T18:00:00Z"),
+  FieldCheck(
+    placement: .init(status: "untapped", corners: 1), walls: nil,
+    stills: .init(done: 2, total: 10, missing: ["headers", "blocking"]), checkedAt: "2026-10-03T18:00:00Z"),
+  FieldCheck(
+    placement: .init(status: "free", corners: 0), walls: nil,
+    stills: .init(done: 0, total: 0, missing: []), checkedAt: "2026-10-03T18:00:00Z"),
+]
+
 let contract = Contract(
   snaps: snaps,
   coverage: walls.map { wall in
@@ -295,7 +345,11 @@ let contract = Contract(
       start: wall.start, end: wall.end, lengthM: wall.length, photographedFraction: wall.fraction,
       notPhotographedM: wall.gaps.map { [hundredths($0.from), hundredths($0.from + $0.length)] })
   },
-  rangeM: WallCoverage.rangeMetres, keyframesUsed: cameras.count, keyframesTotal: frames.count)
+  rangeM: WallCoverage.rangeMetres, keyframesUsed: cameras.count, keyframesTotal: frames.count,
+  checklist: StillsChecklist.all.map { ContractItem(id: $0.id, name: $0.name) },
+  fieldChecks: sampleChecks.map { check in
+    ContractFieldCheck(check: check, lines: check.lines.map { ContractLine(text: $0.text, ok: $0.ok) })
+  })
 let contractEncoder = JSONEncoder()
 contractEncoder.outputFormatting = [.sortedKeys, .prettyPrinted]
 try contractEncoder.encode(contract).write(to: contractPath)

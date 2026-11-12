@@ -298,6 +298,14 @@ picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
 
+## An empty house can start from the drawing, 2026-11-12
+
+Clearing the project before framing showed the gap: *Import a plan* lived on
+a level's section, and a level only appears once it has a capture or a plan,
+so an empty house screen had no way in except recording a room first. The
+empty state now offers *Import a plan*, asks for the level's name, and opens
+the import. Not walked.
+
 ## Build 71 walked, 2026-10-03
 
 The owner walked the night's work on the real house. The corner snap worked.

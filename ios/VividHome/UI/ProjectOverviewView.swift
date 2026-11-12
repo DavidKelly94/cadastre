@@ -32,6 +32,9 @@ struct ProjectOverviewView: View {
   @State private var showingPC = false
   @State private var rendering: RenderingTarget?
   @State private var planSheet: PlanSheet?
+  /// Naming the first level, to import its plan before anything is recorded.
+  @State private var namingLevel = false
+  @State private var draftLevel = ""
 
   private var store: SessionStore {
     SessionStore(documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
@@ -73,11 +76,22 @@ struct ProjectOverviewView: View {
         if loading {
           ProgressView().controlSize(.large)
         } else if sections.isEmpty {
-          ContentUnavailableView(
-            "Nothing here yet", systemImage: "house",
-            description: Text(
-              "Tap New room to record the first one. Rooms also appear here "
-                + "once they are placed on a plan."))
+          // A level appears once it has a capture or a plan, and the plan
+          // import lived on the level, so an empty house had no way to start
+          // from the drawing (found clearing the project before framing).
+          ContentUnavailableView {
+            Label("Nothing here yet", systemImage: "house")
+          } description: {
+            Text(
+              "Start from the drawing: import a plan for the first level, set its scale and "
+                + "outline the rooms. Or tap New room to record without one.")
+          } actions: {
+            Button("Import a plan") {
+              draftLevel = ""
+              namingLevel = true
+            }
+            .buttonStyle(.borderedProminent)
+          }
         } else {
           list
         }
@@ -91,6 +105,18 @@ struct ProjectOverviewView: View {
         ToolbarItem(placement: .primaryAction) {
           Button("New room", systemImage: "plus") { adding = true }
         }
+      }
+      .alert("Name the level", isPresented: $namingLevel) {
+        TextField("Level 1", text: $draftLevel)
+        Button("Cancel", role: .cancel) {}
+        Button("Import") {
+          let name = draftLevel.trimmingCharacters(in: .whitespaces)
+          guard let slug = SessionID.slug(name) else { return }
+          planSheet = .importPlan(
+            LevelSection(slug: slug, name: name, index: 1, rooms: [], unwalked: []))
+        }
+      } message: {
+        Text("The storey the drawing shows, as you would say it: Level 1, Basement, Upstairs.")
       }
       .sheet(isPresented: $adding) {
         NewRoomSheet(levels: knownLevels) { level, room in

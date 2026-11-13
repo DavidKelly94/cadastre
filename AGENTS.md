@@ -60,6 +60,10 @@ the one-line local gate: `cd pipeline && uv run ruff check . && uv run pytest -q
   pass. Match the surrounding style rather than introducing new patterns.
 - **Scope:** keep changes focused on the request; unrelated refactors belong in
   their own PR.
+- **Spelling:** American English in everything new: text on screen, documents,
+  comments, names. Names the format fixes (`metres_per_pixel` and the like) stay
+  as they are, since renaming one is a format change. Older text is converted
+  when it is next edited.
 
 ## Rules specific to this project
 

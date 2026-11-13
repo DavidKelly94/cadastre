@@ -353,6 +353,17 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## What is next is written down, not started, 2026-11-13
+
+After the rehearsal the owner asked for the plan and the ADRs before any more
+is built, so that the work survives a session ending. `docs/next-steps.md`
+has the order and the steps; ADR-0033 to ADR-0037 are **Proposed** and none
+is accepted: projects in the app, placement from the scan, a capture
+complete enough for 3D, 3D on the PC in stages, and the exterior. Nothing in
+them is built. The owner also asked for American spelling from here on, which
+is now a convention in `AGENTS.md`; the text already on screen has not been
+converted yet.
+
 ## The rehearsal: a drawing to the PC's page, end to end, 2026-11-13
 
 The owner ran it at home on build 80. *Add a level from a plan* took the

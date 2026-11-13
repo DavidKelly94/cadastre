@@ -158,6 +158,7 @@ def build_model(store: str | Path, level: str, *, points: bool = True) -> ModelR
     all_indices = np.concatenate(indices).reshape(-1)
     low = all_positions.min(axis=0)
     high = all_positions.max(axis=0)
+    ceiling = _ceiling_height(all_positions, all_indices, float(calibration.floor_height_m))
 
     plan = None
     if image_path.exists():
@@ -204,6 +205,7 @@ def build_model(store: str | Path, level: str, *, points: bool = True) -> ModelR
         "low": [round(float(value), 4) for value in low],
         "high": [round(float(value), 4) for value in high],
         "floor": float(calibration.floor_height_m),
+        "ceiling": ceiling,
         "units": units.default(),
         "sessions": sessions,
         "plan": plan,
@@ -220,6 +222,33 @@ def build_model(store: str | Path, level: str, *, points: bool = True) -> ModelR
         points=point_offset,
         points_data=cloud_path if point_offset else None,
     )
+
+
+def _ceiling_height(
+    positions: np.ndarray, indices: np.ndarray, floor: float, *, minimum_area_m2: float = 1.0
+) -> float | None:
+    """The height of the level's ceiling, read off the scan: the height, at
+    least a meter and a half above the floor, where the most flat surface
+    lies. None when there is under a square meter of it, as in open framing.
+
+    The page opens a room by not drawing above a height. The highest vertex is
+    the wrong height to start from: a real scan has a scrap of something above
+    the ceiling (the first real one did, 2026-11-13), and then the ceiling is
+    drawn and the room is a closed box.
+    """
+    corners = positions[indices.reshape(-1, 3)].astype(np.float64)
+    cross = np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0])
+    length = np.linalg.norm(cross, axis=1)
+    height = corners[:, :, 1].mean(axis=1)
+    flat = (length > 0) & (np.abs(cross[:, 1]) > 0.8 * length) & (height > floor + 1.5)
+    if not flat.any():
+        return None
+    bins = np.floor((height[flat] - floor) / 0.05).astype(np.int64)
+    area = np.bincount(bins, weights=0.5 * length[flat])
+    best = int(area.argmax())
+    if area[best] < minimum_area_m2:
+        return None
+    return round(floor + (best + 0.5) * 0.05, 3)
 
 
 def _render(data: dict) -> str:
@@ -564,7 +593,11 @@ cutSlider.min = DATA.floor + 0.3;
 cutSlider.max = DATA.high[1] + 0.05;
 cutSlider.step = 0.05;
 // A room with a ceiling opens a little below it; open framing has none to cut.
-cut = Math.min(Number(cutSlider.max), Math.max(DATA.floor + 1.2, DATA.high[1] - 0.35));
+// The ceiling's height is read off the scan, since the highest point of a real
+// scan is some scrap above it.
+cut = DATA.ceiling != null
+  ? Math.max(DATA.floor + 1.2, DATA.ceiling - 0.15)
+  : Math.min(Number(cutSlider.max), Math.max(DATA.floor + 1.2, DATA.high[1] - 0.35));
 cutSlider.value = cut;
 function showCut() { document.getElementById("cutValue").textContent = feet(cut - DATA.floor); }
 cutSlider.addEventListener("input", () => { cut = Number(cutSlider.value); showCut(); redraw(); });

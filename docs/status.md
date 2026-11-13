@@ -353,6 +353,29 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## Corners found in the scan and matched to the outline, core only, 2026-11-13
+
+Third step of `capture-guidance-design.md` (ADR-0034), the half that Linux
+can test. `CornerFinder` takes the mesh faces of a room and returns where its
+wall planes meet, each with the heights it was seen over, so a corner counts
+whether it is seen at the floor or the ceiling. When ARKit has classed less
+than 2 m² as wall, as it is expected to at framing, every vertical face is
+used. `CornerMatch` tries every pair of those against every pair of outline
+corners the same distance apart and keeps the turn and shift that lands the
+most; it names the outline corners nothing landed on, and when a room fits
+more than one way round it returns every way and chooses none.
+
+**Verified, on synthetic rooms only:** a rectangle (four corners, two ways
+round, reported as such), an L (six corners, one way), a corner hidden behind
+something (three found, the fourth named as missing), a cabinet (ignored), a
+stray corner and 3 cm of noise (absorbed), a room that is the wrong size
+(nothing proposed). `CornerFinderTests`, 10 tests.
+
+**Not built:** anything that shows a proposal to the owner (step 4), the
+Python matcher, and so any run on a real capture. **Nothing here has seen a
+real mesh**, framed or finished. The owner's tapped framing captures are the
+first evidence it will meet.
+
 ## Enough for 3D: the measure, and the line at Stop, 2026-11-13
 
 First step of `capture-guidance-design.md` (ADR-0035). `ModelReadiness` in the
@@ -368,11 +391,18 @@ and the review screen shows a fourth line, "Enough for 3D" or what is short,
 with up to two things to do about it. The PC's page shows the same line.
 It advises; nothing blocks Stop.
 
+**While capturing (step 2, written the same day):** a row labeled 3D on the
+capture screen, with Walls and its percentage, Floor and Ceiling ticking as
+each is met, and under it the one thing most worth doing ("Ceiling not seen.
+Tilt up as you walk."). The plan inset draws a white line along each stretch
+of wall seen from two places, over the existing bands. The report is redone
+every fifth keyframe. **Only compiles; nobody has captured with it.**
+
 `readiness.py` measures the same on the PC. **Verified:** `ModelReadinessTests`
 and `test_readiness.py` on a 4 by 3 m room; the contract job compares the two
 on the fixture's room and walk, run locally. **Only compiles:** the wiring in
-the capture and the review screen. **Not built:** the live row on the capture
-screen (step 2), and "ground covered".
+the capture, the capture screen and the review screen. **Not built:**
+"ground covered".
 
 Known limits: every threshold is a first guess; a top-up counts the walls
 together with the room's earlier captures but the floor, ceiling and heights

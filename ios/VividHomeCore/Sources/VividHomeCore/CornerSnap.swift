@@ -51,6 +51,9 @@ public enum CornerSnap {
     var area: Double
     var extent: (low: Double, high: Double)
     var bottom: Double
+    /// The highest point of the wall's faces: with `bottom`, the heights
+    /// over which the wall was seen.
+    var top: Double = -Double.infinity
 
     var normal: (Double, Double) { (cos(azimuth), sin(azimuth)) }
     var tangent: (Double, Double) { (-sin(azimuth), cos(azimuth)) }
@@ -94,7 +97,10 @@ public enum CornerSnap {
   /// the largest unassigned face seeds a plane, faces within 10° of its
   /// normal and 15 cm of its line join, the plane is refitted by area, and
   /// membership is taken once more. Clusters under 0.05 m² are furniture.
-  static func findWalls(_ faces: [Face]) -> [Wall] {
+  ///
+  /// `anyClass` takes every vertical face, whatever ARKit called it: open
+  /// framing is rarely classed as wall (`CornerFinder`).
+  static func findWalls(_ faces: [Face], anyClass: Bool = false) -> [Wall] {
     struct Candidate {
       var theta: Double
       var area: Double
@@ -103,7 +109,7 @@ public enum CornerSnap {
       var corners: [Vector3]
     }
     var candidates: [Candidate] = []
-    for face in faces where face.classification == wallClass {
+    for face in faces where anyClass || face.classification == wallClass {
       let (nx, ny, nz, area) = normalAndArea(face)
       guard area > 0, abs(ny) <= 0.2 else { continue }
       candidates.append(
@@ -160,6 +166,7 @@ public enum CornerSnap {
       guard total >= 0.05 else { continue }
       let tangent = (-sin(reference), cos(reference))
       var low = Double.infinity, high = -Double.infinity, bottom = Double.infinity
+      var top = -Double.infinity
       var refitOffset = 0.0
       for index in group {
         refitOffset += candidates[index].area * (candidates[index].cx * normal.0 + candidates[index].cz * normal.1)
@@ -168,10 +175,14 @@ public enum CornerSnap {
           low = min(low, along)
           high = max(high, along)
           bottom = min(bottom, corner.y)
+          top = max(top, corner.y)
         }
       }
       refitOffset /= max(total, 1e-12)
-      walls.append(Wall(azimuth: reference, offset: refitOffset, area: total, extent: (low, high), bottom: bottom))
+      walls.append(
+        Wall(
+          azimuth: reference, offset: refitOffset, area: total, extent: (low, high), bottom: bottom,
+          top: top))
     }
     return walls.sorted { $0.area > $1.area }
   }

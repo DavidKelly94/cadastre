@@ -14,6 +14,9 @@ struct PlanInsetView: View {
   let guidance: CaptureCoordinator.Guidance
   let placement: PlanAlignment.Solution?
   let coverage: [WallCoverage.Wall]?
+  /// Which stretches have been seen from two places (ADR-0035); nil until
+  /// the capture is placed.
+  let views: [ModelReadiness.WallViews]?
   let walk: [(x: Double, z: Double)]
   /// Earlier captures of the room, already in house metres (design §6).
   let priorWalks: [[(x: Double, z: Double)]]
@@ -56,6 +59,30 @@ struct PlanInsetView: View {
           segment.move(to: at(a.x, a.z))
           segment.addLine(to: at(b.x, b.z))
           context.stroke(segment, with: .color(Self.shade(wall.fraction)), lineWidth: 4)
+        }
+      }
+
+      // Over that, the stretches seen from two places, which is what a 3D
+      // model needs: a brighter, narrower line along the wall, so a wall
+      // that is green underneath and bare on top was photographed from one
+      // spot only.
+      if let views {
+        for wall in views {
+          guard let a = room.corners.first(where: { $0.label == wall.start }),
+            let b = room.corners.first(where: { $0.label == wall.end }), wall.cells > 0
+          else { continue }
+          let twice = wall.seenTwice
+          var index = 0
+          while index < twice.count {
+            guard twice[index] else { index += 1; continue }
+            let begin = index
+            while index < twice.count, twice[index] { index += 1 }
+            let from = Double(begin) / Double(twice.count), to = Double(index) / Double(twice.count)
+            var run = Path()
+            run.move(to: at(a.x + (b.x - a.x) * from, a.z + (b.z - a.z) * from))
+            run.addLine(to: at(a.x + (b.x - a.x) * to, a.z + (b.z - a.z) * to))
+            context.stroke(run, with: .color(.white), lineWidth: 1.5)
+          }
         }
       }
 
@@ -128,7 +155,7 @@ struct PlanInsetView: View {
     guard placement != nil else { return priorWalks.isEmpty ? "tap 2 corners" : "top-up · tap 2 corners" }
     guard let coverage, !coverage.isEmpty else { return "" }
     let done = coverage.filter { $0.fraction >= 0.7 }.count
-    return "walls \(done)/\(coverage.count)"
+    return "walls \(done)/\(coverage.count) · white 2×"
   }
 
   /// Three bands, not a gradient, like the coverage pins on the plan screen.

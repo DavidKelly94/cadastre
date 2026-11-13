@@ -105,6 +105,12 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   /// What the keyframes so far have photographed of each wall, in the house
   /// frame; nil until the capture is placed (ADR-0031, design §4).
   @Published private(set) var coverage: [WallCoverage.Wall]?
+  /// Which stretches of wall have been seen from two places, in the house
+  /// frame, for the inset; nil until the capture is placed (ADR-0035).
+  @Published private(set) var wallViews: [ModelReadiness.WallViews]?
+  /// Whether there is enough for a 3D model so far, and what is missing,
+  /// refreshed every few keyframes; nil before the first one.
+  @Published private(set) var model: ModelReadiness.Report?
   /// The room being guided, for the inset to draw; nil for a free capture.
   var guidedRoom: GuidedRoom? { guide }
   /// The stills the pass's trades require (ADR-0031, design §5), for the
@@ -212,6 +218,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     cameras = []
     views = []
     coverage = nil
+    wallViews = nil
+    model = nil
     checklist = StillsChecklist.items(for: phases)
     // A top-up reads the room's earlier captures with it (design §6): their
     // stills tick the list, their keyframes shade the walls, their walks show.
@@ -434,6 +442,18 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       WallCoverage.add(camera.moved(by: placement), to: &walls)
       coverage = walls
     }
+    if let placement, var seen = wallViews {
+      ModelReadiness.add(camera.moved(by: placement), to: &seen)
+      wallViews = seen
+    }
+    // The whole report is a pass over every keyframe; every fifth is often
+    // enough for a row that says what is still missing.
+    if views.count % 5 == 0 { refreshModel() }
+  }
+
+  private func refreshModel() {
+    let placed = placement.map { $0.verdict != .notPlaced } ?? false
+    model = ModelReadiness.report(views: views, walls: placed ? wallViews : nil)
   }
 
   /// Every keyframe so far against the walls, in the house frame: the earlier
@@ -442,11 +462,15 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   private func recomputeCoverage() {
     guard let guide, placement != nil || !history.cameras.isEmpty else {
       coverage = nil
+      wallViews = nil
+      refreshModel()
       return
     }
     let outline = guide.corners.map { (label: $0.label, x: $0.x, z: $0.z) }
     let live = placement.map { solution in cameras.map { $0.moved(by: solution) } } ?? []
     coverage = WallCoverage.coverage(outline: outline, cameras: history.cameras + live)
+    wallViews = ModelReadiness.wallViews(outline: outline, cameras: history.cameras + live)
+    refreshModel()
   }
 
   /// Whether this capture holds enough for a 3D model (ADR-0035). The walls

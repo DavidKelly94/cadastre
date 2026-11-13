@@ -371,10 +371,40 @@ something (three found, the fourth named as missing), a cabinet (ignored), a
 stray corner and 3 cm of noise (absorbed), a room that is the wrong size
 (nothing proposed). `CornerFinderTests`, 10 tests.
 
-**Not built:** anything that shows a proposal to the owner (step 4), the
-Python matcher, and so any run on a real capture. **Nothing here has seen a
+**Not built:** the Python matcher, and so any run on a real capture. **Nothing here has seen a
 real mesh**, framed or finished. The owner's tapped framing captures are the
 first evidence it will meet.
+
+## Corner marks proposed from the scan, written blind, 2026-11-13
+
+Fourth step of `capture-guidance-design.md` (ADR-0034), started at the
+owner's word the same day ("we can always fix it backwards"). While a guided
+capture runs and a corner is still unmarked, the phone looks for the room's
+corners in its scan every three seconds, off the main thread, and matches
+them to the outline. What it finds is drawn as white rings in the camera
+view, each with the corner's name and a question mark, and a bar asks "Are
+the white rings on them?" with *Confirm*, *Other way* when the room fits more
+than one way round, and *Not right*.
+
+- **Nothing counts until Confirm.** Confirmed marks are ordinary landmarks,
+  recorded with `method: mesh_corner_proposed` (section 8), and the placement
+  is solved from them as from taps.
+- **A tap always wins.** Tapping a real corner marks it as before, removes
+  that corner from the proposal, and drops any way round that disagrees with
+  it. After confirming, a mark is selected, moved or deleted like any other.
+- **The phone says which corners it cannot see**, by name, to be tapped.
+- **The switch.** The wand beside the plan inset turns proposals off; the
+  choice is kept between captures. Off is the capture exactly as it was.
+- *Not right* stops proposals for half a minute.
+
+`CornerProposal` in the core holds those rules and is tested on Linux (three
+tests in `CornerFinderTests`). **Everything on the screen compiles only, and
+none of it has seen a real scan**: not a finished room, not framing. The
+thresholds are guesses. If the rings land wrong the capture is unharmed: tap
+the corners, or turn the wand off.
+
+Not built from the design: confirming one mark at a time, ceiling taps and
+the upright check (step 5), wall height (step 6), the heading (step 7).
 
 ## Enough for 3D: the measure, and the line at Stop, 2026-11-13
 

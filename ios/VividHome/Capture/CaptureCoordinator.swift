@@ -111,6 +111,21 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   /// Whether there is enough for a 3D model so far, and what is missing,
   /// refreshed every few keyframes; nil before the first one.
   @Published private(set) var model: ModelReadiness.Report?
+  /// Corner marks the scan proposes for corners nobody has marked yet,
+  /// waiting for the owner to confirm (ADR-0034). Nil when there is nothing
+  /// to propose.
+  @Published private(set) var proposal: CornerProposal.Shown?
+  /// Whether the scan may propose corners at all. The owner's switch, kept
+  /// between captures; off leaves the guided taps exactly as they were.
+  @Published var suggestCorners: Bool =
+    UserDefaults.standard.object(forKey: CaptureCoordinator.suggestKey) as? Bool ?? true
+  {
+    didSet {
+      UserDefaults.standard.set(suggestCorners, forKey: Self.suggestKey)
+      if !suggestCorners { clearProposal() }
+    }
+  }
+  static let suggestKey = "suggestCorners"
   /// The room being guided, for the inset to draw; nil for a free capture.
   var guidedRoom: GuidedRoom? { guide }
   /// The stills the pass's trades require (ADR-0031, design §5), for the
@@ -140,6 +155,14 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   private var landmarksWriter: JSONLWriter?
   private weak var arView: ARSCNView?
   private var landmarkNodes: [UUID: SCNNode] = [:]
+  /// Every way round the scan's corners fit the outline, as last matched;
+  /// which of them is on screen; and the rings drawn for it.
+  private var proposalFits: [CornerMatch.Fit] = []
+  private var proposalChoice = 0
+  private var proposalNodes: [SCNNode] = []
+  private var proposalBusy = false
+  private var proposalNotBefore = Date.distantPast
+  private let proposalQueue = DispatchQueue(label: "ai.vividhome.corner-proposals", qos: .utility)
   private var markerNodes: [UUID: SCNNode] = [:]
   /// The reconstruction mesh drawn as wireframe, one node per anchor, while
   /// the HUD's mesh toggle is on.
@@ -291,6 +314,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       rescoreAlignment()
       landmarkNodes.values.forEach { $0.removeFromParentNode() }
       landmarkNodes = [:]
+      clearProposal()
+      proposalNotBefore = Date.distantPast
       markerNodes.values.forEach { $0.removeFromParentNode() }
       markerNodes = [:]
       contextLabel = room.name + " · " + phases.map(\.shortName).joined(separator: " + ")
@@ -559,6 +584,142 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     placement = PlanAlignment.solve(
       pairs: pairs, floorY: floor.y, floorSource: floor.source, floorHeight: guide.floorHeight)
     recomputeCoverage()
+    // A mark placed, moved or removed by hand changes what is left to
+    // propose, and may settle which way round the room goes.
+    showProposal()
+  }
+
+  // MARK: - Proposed corners (ADR-0034)
+
+  /// Look for the room's corners in the scan and match them to the outline.
+  /// Called about once a second by the capture screen; does the work off the
+  /// main thread, at most every three seconds, and only while a corner is
+  /// still unmarked. What it finds is shown, never placed.
+  func refreshProposal() {
+    guard phase == .recording, suggestCorners, let guide, let guidance, guidance.remaining > 0,
+      !proposalBusy, Date() >= proposalNotBefore
+    else { return }
+    let anchors = controller.session.currentFrame?.anchors.compactMap { $0 as? ARMeshAnchor } ?? []
+    guard !anchors.isEmpty else { return }
+    proposalBusy = true
+    let outline = guide.corners.map { (label: $0.label, x: $0.x, z: $0.z) }
+    proposalQueue.async { [weak self] in
+      let faces = MeshProbe.verticalFaces(in: anchors, limit: 12_000)
+      let match = CornerMatch.propose(candidates: CornerFinder.candidates(faces: faces), outline: outline)
+      DispatchQueue.main.async {
+        guard let self else { return }
+        self.proposalBusy = false
+        self.proposalNotBefore = max(self.proposalNotBefore, Date().addingTimeInterval(3))
+        guard self.phase == .recording, self.suggestCorners else { return }
+        self.proposalFits = match.map { [$0.fit] + $0.alternatives } ?? []
+        self.showProposal()
+      }
+    }
+  }
+
+  /// Redraw the proposal from the fits in hand: those that agree with every
+  /// corner marked by hand, and of those the one nearest what was on screen.
+  private func showProposal() {
+    let before = proposal?.marks ?? []
+    proposalNodes.forEach { $0.removeFromParentNode() }
+    proposalNodes = []
+    guard suggestCorners, let guidance, !proposalFits.isEmpty else {
+      proposal = nil
+      return
+    }
+    var marked: [String: (x: Double, z: Double)] = [:]
+    for landmark in landmarks where landmark.kind == .corner {
+      marked[landmark.label] = (landmark.position.x, landmark.position.z)
+    }
+    let fits = CornerProposal.consistent(proposalFits, with: marked)
+    guard !fits.isEmpty else {
+      proposal = nil
+      return
+    }
+    proposalChoice = CornerProposal.steady(fits, previous: before)
+    proposal = CornerProposal.shown(
+      fit: fits[proposalChoice], ways: fits.count, corners: guidance.corners, placed: guidance.placed)
+    guard let proposal, let arView else { return }
+    for mark in proposal.marks { drawProposed(mark, floor: proposal.floor, in: arView) }
+  }
+
+  /// The owner says the rings are on the corners: each becomes a mark, as if
+  /// tapped, recorded as proposed by the scan. Returns how many.
+  @discardableResult
+  func confirmProposal() -> Int {
+    guard phase == .recording, let proposal, let arView else { return 0 }
+    let time = recorder.sessionTime(for: controller.session.currentFrame?.timestamp ?? 0)
+    for mark in proposal.marks {
+      var landmark = PlacedLandmark(
+        label: mark.label, kind: .corner, position: Vector3(mark.x, proposal.floor, mark.z),
+        time: time, keyframeIndex: recorder.currentKeyframeIndex)
+      landmark.method = CornerProposal.method
+      landmarks.append(landmark)
+      draw(landmark, in: arView)
+    }
+    let count = proposal.marks.count
+    clearProposal()
+    rescoreAlignment()
+    resolvePlacement()
+    return count
+  }
+
+  /// The room fits more than one way round and the one shown is not it.
+  func otherWayProposal() {
+    guard let guidance, let shown = proposal, shown.ways > 1 else { return }
+    var marked: [String: (x: Double, z: Double)] = [:]
+    for landmark in landmarks where landmark.kind == .corner {
+      marked[landmark.label] = (landmark.position.x, landmark.position.z)
+    }
+    let fits = CornerProposal.consistent(proposalFits, with: marked)
+    guard fits.count > 1 else { return }
+    proposalChoice = (proposalChoice + 1) % fits.count
+    proposalNodes.forEach { $0.removeFromParentNode() }
+    proposalNodes = []
+    proposal = CornerProposal.shown(
+      fit: fits[proposalChoice], ways: fits.count, corners: guidance.corners, placed: guidance.placed)
+    guard let proposal, let arView else { return }
+    for mark in proposal.marks { drawProposed(mark, floor: proposal.floor, in: arView) }
+  }
+
+  /// The rings are not on the corners. Nothing is proposed again for half a
+  /// minute, which is time to tap them by hand.
+  func dismissProposal() {
+    clearProposal()
+    proposalNotBefore = Date().addingTimeInterval(30)
+  }
+
+  private func clearProposal() {
+    proposalNodes.forEach { $0.removeFromParentNode() }
+    proposalNodes = []
+    proposalFits = []
+    proposalChoice = 0
+    proposal = nil
+  }
+
+  /// A proposed mark: a white ring on the floor with the corner's name and a
+  /// question mark, so it cannot be mistaken for a mark that counts.
+  private func drawProposed(_ mark: CornerMatch.Mark, floor: Double, in view: ARSCNView) {
+    let ring = SCNTorus(ringRadius: 0.07, pipeRadius: 0.006)
+    ring.firstMaterial?.diffuse.contents = UIColor.white
+    ring.firstMaterial?.lightingModel = .constant
+    let node = SCNNode(geometry: ring)
+    node.position = SCNVector3(Float(mark.x), Float(floor), Float(mark.z))
+
+    let name = mark.label.replacingOccurrences(of: "corner-", with: "").uppercased() + "?"
+    let text = SCNText(string: name, extrusionDepth: 0)
+    text.font = .systemFont(ofSize: 2)
+    text.flatness = 0.2
+    text.firstMaterial?.diffuse.contents = UIColor.white
+    text.firstMaterial?.lightingModel = .constant
+    let textNode = SCNNode(geometry: text)
+    textNode.scale = SCNVector3(0.014, 0.014, 0.014)
+    textNode.position = SCNVector3(0, 0.08, 0)
+    textNode.constraints = [SCNBillboardConstraint()]
+    node.addChildNode(textNode)
+
+    view.scene.rootNode.addChildNode(node)
+    proposalNodes.append(node)
   }
 
   /// The capture's placement, written beside the plans as the file the PC
@@ -827,6 +988,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     selectedLandmark = nil
     landmarkNodes.values.forEach { $0.removeFromParentNode() }
     landmarkNodes = [:]
+    clearProposal()
     stillCapture = nil
     markerLogger = nil
     landmarkLogger = nil

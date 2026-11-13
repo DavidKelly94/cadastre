@@ -43,6 +43,41 @@ enum MeshProbe {
     return out
   }
 
+  /// Every near-vertical face in the scan, for finding the room's corners
+  /// with nobody tapping (ADR-0034). Floors, ceilings and anything sloped are
+  /// left out here, since `CornerFinder` would drop them anyway and a room is
+  /// tens of thousands of faces. Above `limit` every nth is kept, which
+  /// thins each wall evenly. Safe off the main thread: an anchor's geometry
+  /// is a snapshot.
+  static func verticalFaces(in anchors: [ARMeshAnchor], limit: Int = 30_000) -> [CornerSnap.Face] {
+    var out: [CornerSnap.Face] = []
+    for anchor in anchors {
+      let geometry = anchor.geometry
+      let transform = anchor.transform
+      let classification = geometry.classification
+      let faces = geometry.faces
+      for face in 0..<faces.count {
+        let triangle = MeshExporter.face(faces, at: face)
+        let a = world(transform, MeshExporter.vertex(geometry.vertices, at: Int(triangle.0)))
+        let b = world(transform, MeshExporter.vertex(geometry.vertices, at: Int(triangle.1)))
+        let c = world(transform, MeshExporter.vertex(geometry.vertices, at: Int(triangle.2)))
+        let normal = simd_cross(b - a, c - a)
+        let length = simd_length(normal)
+        guard length > 0, abs(normal.y / length) <= 0.2 else { continue }
+        let raw = classification.map { MeshExporter.classification($0, at: face) } ?? 0
+        out.append(
+          CornerSnap.Face(
+            a: Vector3(Double(a.x), Double(a.y), Double(a.z)),
+            b: Vector3(Double(b.x), Double(b.y), Double(b.z)),
+            c: Vector3(Double(c.x), Double(c.y), Double(c.z)),
+            classification: raw))
+      }
+    }
+    guard out.count > limit, limit > 0 else { return out }
+    let step = (out.count + limit - 1) / limit
+    return stride(from: 0, to: out.count, by: step).map { out[$0] }
+  }
+
   private static func world(_ transform: simd_float4x4, _ local: SIMD3<Float>) -> SIMD3<Float> {
     let moved = transform * SIMD4<Float>(local.x, local.y, local.z, 1)
     return SIMD3<Float>(moved.x, moved.y, moved.z)

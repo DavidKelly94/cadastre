@@ -115,6 +115,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   @Published private(set) var stillsTaken: [String?] = []
   /// Every usable keyframe's footprint, in the session frame.
   private var cameras: [WallCoverage.Camera] = []
+  /// Every keyframe's position and tilt, for the 3D measure (ADR-0035).
+  private var views: [ModelReadiness.View] = []
   /// The room's earlier captures of these trades (ADR-0031, design §6): their
   /// keyframes already in the house frame, their stills, their ids.
   private var history = RoomHistory()
@@ -208,6 +210,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     placement = nil
     walk = []
     cameras = []
+    views = []
     coverage = nil
     checklist = StillsChecklist.items(for: phases)
     // A top-up reads the room's earlier captures with it (design §6): their
@@ -225,7 +228,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       let camera = WallCoverage.Camera(
         pose: pose, fx: record.intrinsics.fx, fy: record.intrinsics.fy,
         width: record.width, height: record.height)
-      DispatchQueue.main.async { self?.keyframeKept(at: point, camera: camera) }
+      let view = ModelReadiness.View(pose: pose)
+      DispatchQueue.main.async { self?.keyframeKept(at: point, camera: camera, view: view) }
     }
 
     do {
@@ -417,8 +421,11 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     return CornerSnap.snap(tap: position, faces: faces)
   }
 
-  private func keyframeKept(at point: (x: Double, z: Double), camera: WallCoverage.Camera?) {
+  private func keyframeKept(
+    at point: (x: Double, z: Double), camera: WallCoverage.Camera?, view: ModelReadiness.View
+  ) {
     walk.append(point)
+    views.append(view)
     guard let camera else { return }
     cameras.append(camera)
     // One camera against the walls is cheap; the whole set is redone only
@@ -440,6 +447,20 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     let outline = guide.corners.map { (label: $0.label, x: $0.x, z: $0.z) }
     let live = placement.map { solution in cameras.map { $0.moved(by: solution) } } ?? []
     coverage = WallCoverage.coverage(outline: outline, cameras: history.cameras + live)
+  }
+
+  /// Whether this capture holds enough for a 3D model (ADR-0035). The walls
+  /// are measured only once the capture is placed, with the room's earlier
+  /// captures counted in as coverage counts them; the floor, the ceiling and
+  /// the heights are this capture's own.
+  private func modelReport() -> ModelReadiness.Report {
+    var walls: [ModelReadiness.WallViews]?
+    if let guide, let placement, placement.verdict != .notPlaced {
+      let outline = guide.corners.map { (label: $0.label, x: $0.x, z: $0.z) }
+      walls = ModelReadiness.wallViews(
+        outline: outline, cameras: history.cameras + cameras.map { $0.moved(by: placement) })
+    }
+    return ModelReadiness.report(views: views, walls: walls)
   }
 
   /// Where the camera is right now, in session metres, for the inset's dot.
@@ -744,7 +765,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     let fieldCheck = FieldCheck.make(
       guided: guide != nil, cornersTapped: landmarks.filter { $0.kind == .corner }.count,
       placement: placement, coverage: coverage, checklist: checklist, taken: stillsTaken,
-      checkedAt: ISO8601DateFormatter().string(from: Date()), together: history.sessionIDs)
+      checkedAt: ISO8601DateFormatter().string(from: Date()), together: history.sessionIDs,
+      model: modelReport())
 
     do {
       let layout = try recorder.stop(fieldCheck: fieldCheck) { layout in

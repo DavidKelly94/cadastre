@@ -99,13 +99,20 @@ public struct FieldCheck: Codable, Equatable, Sendable {
   /// stills were counted with this one (design §6): a top-up's check describes
   /// the room. Empty for a first capture.
   public var together: [String]
+  /// Whether the capture holds enough for a 3D model (ADR-0035, since
+  /// 2026-11-13). Nil in captures made before it.
+  public var model: ModelReadiness.Report?
 
-  public init(placement: Placement, walls: Walls?, stills: Stills, checkedAt: String, together: [String] = []) {
+  public init(
+    placement: Placement, walls: Walls?, stills: Stills, checkedAt: String, together: [String] = [],
+    model: ModelReadiness.Report? = nil
+  ) {
     self.placement = placement
     self.walls = walls
     self.stills = stills
     self.checkedAt = checkedAt
     self.together = together
+    self.model = model
   }
 
   enum CodingKeys: String, CodingKey {
@@ -114,13 +121,14 @@ public struct FieldCheck: Codable, Equatable, Sendable {
     case stills
     case checkedAt = "checked_at"
     case together
+    case model
   }
 
   /// From the live placement and the walls' coverage as the HUD had them.
   public static func make(
     guided: Bool, cornersTapped: Int, placement: PlanAlignment.Solution?,
     coverage: [WallCoverage.Wall]?, checklist: [StillsChecklist.Item], taken: [String?],
-    checkedAt: String, together: [String] = []
+    checkedAt: String, together: [String] = [], model: ModelReadiness.Report? = nil
   ) -> FieldCheck {
     let placed: Placement
     if !guided {
@@ -157,13 +165,16 @@ public struct FieldCheck: Codable, Equatable, Sendable {
     return FieldCheck(
       placement: placed, walls: walls,
       stills: Stills(done: progress.done, total: progress.total, missing: progress.missing.map(\.id)),
-      checkedAt: checkedAt, together: together)
+      checkedAt: checkedAt, together: together, model: model)
   }
 
-  /// The three lines, in the order the review screen shows them, with
-  /// lengths written the way the owner reads them.
+  /// The lines, in the order the review screen shows them, with lengths
+  /// written the way the owner reads them: placement, walls, stills, and
+  /// whether there is enough for 3D when the capture measured that.
   public func lines(in units: Units) -> [Line] {
-    [placementLine(in: units), wallsLine(in: units), stillsLine]
+    var out = [placementLine(in: units), wallsLine(in: units), stillsLine]
+    if let model { out.append(model.line(in: units)) }
+    return out
   }
 
   public func placementLine(in units: Units) -> Line {

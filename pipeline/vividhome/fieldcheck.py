@@ -10,10 +10,15 @@ side's wording has to land on both, which is the point.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 from vividhome.units import default as default_units
 from vividhome.units import length, small
+
+#: The share of wall seen from two places that reads as enough for 3D;
+#: ``ModelReadiness.wallsTwiceEnough`` and ``readiness.WALLS_TWICE_ENOUGH``.
+WALLS_TWICE_ENOUGH = 0.70
 
 __all__ = ["CHECKLIST", "EVERY_PHASE", "PHASE_ITEMS", "lines", "short_corner"]
 
@@ -146,18 +151,41 @@ def _stills_line(stills: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "ok": not missing}
 
 
+def _model_line(model: dict[str, Any]) -> dict[str, Any]:
+    """Whether there is enough for a 3D model (ADR-0035); ``Report.line``."""
+    twice = model.get("walls_twice")
+    floor, ceiling = bool(model.get("floor")), bool(model.get("ceiling"))
+    enough = twice is not None and float(twice) >= WALLS_TWICE_ENOUGH and floor and ceiling
+    if enough:
+        return {"text": "Enough for 3D", "ok": True}
+    parts = []
+    if twice is None:
+        parts.append("walls unknown until the capture is placed")
+    elif float(twice) < WALLS_TWICE_ENOUGH:
+        parts.append(f"walls seen from two spots: {math.floor(float(twice) * 100 + 0.5)}%")
+    if not floor:
+        parts.append("floor not seen")
+    if not ceiling:
+        parts.append("ceiling not seen")
+    return {"text": "Not enough for 3D yet: " + "; ".join(parts), "ok": False}
+
+
 def lines(check: dict[str, Any], units: str | None = None) -> list[dict[str, Any]]:
-    """The three lines of the review screen, from a manifest's ``field_check``.
+    """The lines of the review screen, from a manifest's ``field_check``.
 
     Each is ``{"text": ..., "ok": bool}``, green when ok and orange otherwise, in
-    the order the screen shows them: placement, walls, stills. Lengths are
-    written in ``units`` (``imperial`` or ``metric``), or the default.
+    the order the screen shows them: placement, walls, stills, and whether
+    there is enough for 3D when the capture measured that. Lengths are written
+    in ``units`` (``imperial`` or ``metric``), or the default.
     """
     units = units or default_units()
     placement = check.get("placement") if isinstance(check.get("placement"), dict) else {}
     stills = check.get("stills") if isinstance(check.get("stills"), dict) else {}
-    return [
+    out = [
         _placement_line(placement, units),
         _walls_line(check.get("walls"), units),
         _stills_line(stills),
     ]
+    if isinstance(check.get("model"), dict):
+        out.append(_model_line(check["model"]))
+    return out

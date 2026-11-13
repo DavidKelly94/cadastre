@@ -105,6 +105,23 @@ def test_the_checklist_and_the_leave_checks_sentences_read_the_same_on_both_ends
         assert lines(sample["check"], "metric") == sample["lines_metric"], sample["check"]
 
 
+def test_enough_for_3d_is_measured_the_same_on_both_ends(session: Session, swift: dict):
+    """The phone says before the owner leaves whether a model could be built;
+    the PC measures the same walk the same way (ADR-0035)."""
+    from vividhome.readiness import session_report
+
+    ours = session_report(session)
+    theirs = swift["readiness"]
+    assert ours["floor"] == theirs["floor"]
+    assert ours["ceiling"] == theirs["ceiling"]
+    assert ours["heights"] == theirs["heights"]
+    assert ours["walls_twice"] == pytest.approx(theirs.get("walls_twice"), abs=0.011)
+    assert [gap["wall"] for gap in ours["gaps"]] == [gap["wall"] for gap in theirs["gaps"]]
+    for mine, other in zip(ours["gaps"], theirs["gaps"], strict=True):
+        assert mine["from_m"] == pytest.approx(other["from_m"], abs=0.11)
+        assert mine["length_m"] == pytest.approx(other["length_m"], abs=0.11)
+
+
 def test_a_length_is_written_the_same_way_on_both_ends(swift: dict):
     """Feet and inches or metric, the owner's choice, from the same meters.
     The table runs from a millimeter to a house, with the halfway cases in."""

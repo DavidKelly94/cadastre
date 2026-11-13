@@ -34,6 +34,14 @@ struct SessionReviewView: View {
               Label(line.text, systemImage: line.ok ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                 .foregroundStyle(line.ok ? Tokens.ok : Tokens.warn)
             }
+            // What a 3D model still lacks, as something to do about it while
+            // the room can still be walked (ADR-0035). Advice: nothing here
+            // makes the capture a bad one.
+            if let model = check.model {
+              ForEach(model.missing(in: AppUnits.current).prefix(2), id: \.self) { gap in
+                Text(gap).font(.footnote).foregroundStyle(.secondary)
+              }
+            }
           } else {
             placementLine
           }

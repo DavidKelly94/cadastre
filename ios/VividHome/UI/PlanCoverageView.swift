@@ -35,6 +35,9 @@ struct PlanCoverageView: View {
   @State private var outlining: String?
   @State private var naming = false
   @State private var draftRoom = ""
+  /// The screen that reads the scale and the rooms off the drawing is open.
+  @State private var reading = false
+  @State private var offeredReading = false
 
   private static let space = "plan"
 
@@ -82,6 +85,16 @@ struct PlanCoverageView: View {
             }
           }
         }
+        // A plan that came from a PDF can set itself up (ADR-0032).
+        ToolbarItem(placement: .topBarLeading) {
+          if store.sheetSource(for: level) != nil {
+            Button {
+              reading = true
+            } label: {
+              Label("Read the drawing", systemImage: "wand.and.stars")
+            }
+          }
+        }
         ToolbarItem(placement: .confirmationAction) { Button("Done", action: onDone) }
       }
       .confirmationDialog(
@@ -102,6 +115,18 @@ struct PlanCoverageView: View {
       }
       .navigationDestination(item: $outlining) { room in
         PlanOutlineView(store: store, level: level, room: room)
+      }
+      .navigationDestination(isPresented: $reading) {
+        PlanReadView(store: store, level: level)
+      }
+      .onAppear {
+        // A fresh PDF with nothing set up yet: offer the reading straight
+        // away, once, since it is what the owner came here to do by hand.
+        guard !offeredReading, let plan, !plan.isCalibrated, plan.rooms.isEmpty,
+          store.sheetSource(for: level) != nil
+        else { return }
+        offeredReading = true
+        reading = true
       }
       .alert("Name the room", isPresented: $naming) {
         TextField("Kitchen", text: $draftRoom)

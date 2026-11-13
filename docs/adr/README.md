@@ -39,6 +39,7 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0029](0029-the-pc-is-reached-over-the-owners-tailnet.md) | The PC is reached over the owner's tailnet, and the app sends captures to it | Accepted |
 | [ADR-0030](0030-the-phone-owns-the-first-loop.md) | The phone owns the record's first loop; the PC is the archive and the heavy compute | Accepted |
 | [ADR-0031](0031-the-capture-proves-itself-before-you-leave.md) | The capture proves itself before you leave the room | Accepted |
+| [ADR-0032](0032-the-drawing-sets-itself-up.md) | The drawing sets itself up | Accepted |
 
 ## Adding a new ADR
 

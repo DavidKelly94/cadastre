@@ -298,6 +298,31 @@ picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
 
+## The drawing sets itself up: the reading, 2026-11-13
+
+ADR-0032, first of three pieces. The owner called setup click heavy: about
+eighty taps a level for work the architect already did. `SheetReader` in the
+core package reads a vector sheet handed to it as plain numbers (characters
+with their boxes, filled shapes, stroked lines, in page points): the scale
+from the title-block note and the page size, tested against the sheet's own
+dimensions; the rooms from their labels and room numbers; each outline by
+filling out from the label to the wall shapes, closing over wall stubs, and
+walking the edge into corners. `PlanFile.apply` writes the chosen parts into
+the fields the Scale and Outline screens already write. Fourteen tests on a
+synthetic sheet.
+
+**Run on the owner's real first-floor sheet, locally and uncommitted:** scale
+`1/4" = 1'-0"` with 162 of 162 dimensions agreeing (a wrong scale matches 19
+to 39 of them by chance, against a bar of 60%), and 14 of 18 rooms outlined
+with 4 to 14 corners; living, kitchen, dining and entry come out as one open
+space and are pinned only. `VIVIDHOME_SHEET_JSON` runs the same on any sheet.
+
+**Not built yet:** the reader that lifts those numbers out of a PDF on the
+phone, and the screen that shows the proposal. Until both land nothing in the
+app changes. **Decided without the owner:** rooms sharing a space are pinned
+and not outlined; an existing scale is never replaced; more than 16 corners is
+not offered as an outline; the house origin is the top-left of its walls.
+
 ## An empty house can start from the drawing, 2026-11-12
 
 Clearing the project before framing showed the gap: *Import a plan* lived on

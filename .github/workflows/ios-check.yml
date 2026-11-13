@@ -34,7 +34,7 @@ jobs:
         run: |
           set -o pipefail
           swift test --package-path ios/VividHomeCore 2>&1 \
-            | tee package-test.log | grep -E "error|RUN |PROPOSAL |failed|Executed|passed \\("
+            | tee package-test.log | grep -E "error|RUN |PROPOSAL |failed|Executed"
       - run: brew install xcodegen
       - run: xcodegen generate --spec ios/project.yml --project ios
       # pipefail is load-bearing: the exit status of a pipeline is the LAST

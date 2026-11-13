@@ -55,7 +55,8 @@ struct ProjectOverviewView: View {
       let placed = plan.rooms.map(\.room)
       var section =
         byLevel[slug]
-        ?? LevelSection(slug: slug, name: slug.capitalized, index: 0, rooms: [], unwalked: [])
+        ?? LevelSection(
+          slug: slug, name: SessionID.displayName(slug: slug), index: 0, rooms: [], unwalked: [])
       let walked = Set(section.rooms.map(\.room))
       section.unwalked = placed.filter { !walked.contains($0) }.sorted()
       byLevel[slug] = section

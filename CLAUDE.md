@@ -39,6 +39,8 @@ Claude-specific additions.
 - `docs/status.md` — what is actually built, what is blocked. **Update it in the
   same commit as the work**; a status file that lags is worse than none.
 - `docs/plan.md` — the approved plan, including scope and the 14-day schedule.
+- `docs/next-steps.md` — what comes after the 2026-11-13 rehearsal, in order, with
+  the ADR each item waits on. Start here when picking the work up cold.
 - `docs/implementation-guide.md` — build order, CI workflows, project and export
   configuration. Start here to write code.
 - `docs/session-format.md` — the on-disk contract between the app and the pipeline.

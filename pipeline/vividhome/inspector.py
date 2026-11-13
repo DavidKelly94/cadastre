@@ -148,21 +148,40 @@ def _quality(session: Session) -> dict:
     }
 
 
-def _thumbnail(session: Session, relative: str, target_dir: Path, name: str) -> str | None:
-    """Write a 320 px thumbnail of a session image and return its path relative
-    to the session root, or None when the source is missing or will not decode."""
+def _upright(image, turn: int):
+    """A stored image turned ``turn`` degrees clockwise, which is what `_turn`
+    says makes it upright. Pillow's ``rotate`` counts the other way."""
+    return image if turn % 360 == 0 else image.rotate(-turn, expand=True)
+
+
+def _thumbnail(
+    session: Session, relative: str, target_dir: Path, name: str, turn: int = 0
+) -> str | None:
+    """Write a thumbnail of a session image, 320 px along its stored width and
+    turned upright, and return its path relative to the session root, or None
+    when the source is missing or will not decode.
+
+    The lightbox turned the photo and the hover preview did not, so a capture
+    made holding the phone upright previewed on its side (seen on the first
+    rehearsal page, 2026-11-13). A turned thumbnail carries the turn in its
+    name, so previews written sideways before this are not picked up again.
+    """
     from PIL import Image
 
     source = session.resolve(relative)
     if not source.exists():
         return None
+    if turn % 360 != 0:
+        stem, dot, suffix = name.rpartition(".")
+        name = f"{stem}-t{turn}{dot}{suffix}"
     target = target_dir / name
     if not target.exists():
         try:
             with Image.open(source) as image:
                 ratio = THUMBNAIL_WIDTH / image.width
                 size = (THUMBNAIL_WIDTH, max(1, round(image.height * ratio)))
-                image.convert("RGB").resize(size).save(target, "JPEG", quality=80)
+                small = image.convert("RGB").resize(size)
+                _upright(small, turn).save(target, "JPEG", quality=80)
         except OSError:
             return None
     return f"derived/thumbs/{target.name}"
@@ -260,7 +279,9 @@ def _overlay(
             "thumb": None,
         }
         if thumb_dir is not None:
-            relative = _thumbnail(session, frame.rgb, thumb_dir, f"{frame.i:06d}.jpg")
+            relative = _thumbnail(
+                session, frame.rgb, thumb_dir, f"{frame.i:06d}.jpg", entry["turn"]
+            )
             if relative:
                 entry["thumb"] = f"{session_prefix}/{relative}"
         keyframes.append(entry)
@@ -284,7 +305,9 @@ def _overlay(
             "thumb": None,
         }
         if thumb_dir is not None:
-            relative = _thumbnail(session, still.path, thumb_dir, f"still-{still.s:03d}.jpg")
+            relative = _thumbnail(
+                session, still.path, thumb_dir, f"still-{still.s:03d}.jpg", entry["turn"]
+            )
             if relative:
                 entry["thumb"] = f"{session_prefix}/{relative}"
         stills.append(entry)
@@ -572,7 +595,8 @@ function showThumb(event, src) {{
   thumb.src = src;
   thumb.style.display = "block";
   thumb.style.left = Math.min(event.clientX + 14, innerWidth - 340) + "px";
-  thumb.style.top = Math.min(event.clientY + 14, innerHeight - 260) + "px";
+  // Tall enough for a preview of a photo taken with the phone upright.
+  thumb.style.top = Math.max(0, Math.min(event.clientY + 14, innerHeight - 340)) + "px";
 }}
 function hideThumb() {{ thumb.style.display = "none"; }}
 

@@ -13,6 +13,8 @@ import VividHomeCore
 struct PlanImportView: View {
   @ObservedObject var store: PlanStore
   let levelName: String
+  /// The floor number, when the level is being made from this plan.
+  var levelIndex: Int? = nil
   let onDone: () -> Void
 
   @State private var picked: PhotosPickerItem?
@@ -149,7 +151,8 @@ struct PlanImportView: View {
     guard let preview else { return }
     do {
       try store.importPlan(
-        image: preview, levelName: levelName, source: source, originalData: originalData)
+        image: preview, levelName: levelName, levelIndex: levelIndex, source: source,
+        originalData: originalData)
       onDone()
     } catch {
       failure = error.localizedDescription

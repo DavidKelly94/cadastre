@@ -148,4 +148,29 @@ final class PlanTests: XCTestCase {
     XCTAssertEqual(PlanSource(file: "source.jpg", kind: .jpeg).named(forLevel: "upper").file, "upper.source.jpg")
     XCTAssertEqual(PlanSource(file: "x", kind: .heic).named(forLevel: "loft").file, "loft.source.heic")
   }
+
+  /// A level made from its plan has no capture to carry its name and floor
+  /// number, so the plan file does (2026-11-13: a basement added from its
+  /// drawing would otherwise have been floor 0 in every manifest).
+  func testALevelMadeFromItsPlanKeepsItsNameAndFloorNumber() throws {
+    let plan = PlanFile(level: "basement", image: "basement.png", name: "Basement", index: -1)
+    let data = try JSONEncoder().encode(plan)
+    let text = String(decoding: data, as: UTF8.self)
+    XCTAssertTrue(text.contains("\"index\":-1"), text)
+    let back = try JSONDecoder().decode(PlanFile.self, from: data)
+    XCTAssertEqual(back, plan)
+    XCTAssertEqual(back.levelRef, LevelRef(slug: "basement", name: "Basement", index: -1))
+  }
+
+  func testAnOlderPlanFileReadsAsFloorZeroUnderItsSlug() throws {
+    let old = Data(#"{"level":"main-floor","image":"main-floor.png","rotation_deg":0,"floor_height_m":0}"#.utf8)
+    let plan = try JSONDecoder().decode(PlanFile.self, from: old)
+    XCTAssertNil(plan.name)
+    XCTAssertNil(plan.index)
+    XCTAssertEqual(plan.levelRef, LevelRef(slug: "main-floor", name: "Main Floor", index: 0))
+    // And writing it back does not invent the fields.
+    let text = String(decoding: try JSONEncoder().encode(plan), as: UTF8.self)
+    XCTAssertFalse(text.contains("\"index\""), text)
+    XCTAssertFalse(text.contains("\"name\""), text)
+  }
 }

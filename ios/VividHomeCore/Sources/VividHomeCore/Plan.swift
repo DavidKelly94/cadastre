@@ -26,6 +26,16 @@ public struct PlanFile: Codable, Equatable, Sendable {
   public var source: PlanSource?
   /// Where the owner says each room is. See ``PlanRoom``.
   public var rooms: [PlanRoom]
+  /// The level's name as the owner typed it, when the level was made from
+  /// its plan (since 2026-11-13). Nil in older files: show the slug.
+  public var name: String?
+  /// Which floor this is: 0 the ground floor, -1 a basement, 1 the floor
+  /// above. Nil in older files, which reads as 0.
+  ///
+  /// A level made from a plan has no capture to carry its number yet, and
+  /// without this every such level was floor 0, which then went into each
+  /// capture's manifest for good.
+  public var index: Int?
 
   /// Calibration is the presence of both numbers, never a stored flag.
   ///
@@ -48,7 +58,9 @@ public struct PlanFile: Codable, Equatable, Sendable {
     rotationDegrees: Double = 0,
     floorHeight: Double = 0,
     source: PlanSource? = nil,
-    rooms: [PlanRoom] = []
+    rooms: [PlanRoom] = [],
+    name: String? = nil,
+    index: Int? = nil
   ) {
     self.level = level
     self.image = image
@@ -58,6 +70,8 @@ public struct PlanFile: Codable, Equatable, Sendable {
     self.floorHeight = floorHeight
     self.source = source
     self.rooms = rooms
+    self.name = name
+    self.index = index
   }
 
   enum CodingKeys: String, CodingKey {
@@ -69,6 +83,8 @@ public struct PlanFile: Codable, Equatable, Sendable {
     case floorHeight = "floor_height_m"
     case source
     case rooms
+    case name
+    case index
   }
 
   /// Decoding tolerates a plan written by an older `plan add`, which has neither
@@ -84,6 +100,14 @@ public struct PlanFile: Codable, Equatable, Sendable {
     floorHeight = try c.decodeIfPresent(Double.self, forKey: .floorHeight) ?? 0
     source = try c.decodeIfPresent(PlanSource.self, forKey: .source)
     rooms = try c.decodeIfPresent([PlanRoom].self, forKey: .rooms) ?? []
+    name = try c.decodeIfPresent(String.self, forKey: .name)
+    index = try c.decodeIfPresent(Int.self, forKey: .index)
+  }
+
+  /// The level as a capture names it: the typed name and floor number when
+  /// the plan carries them, otherwise the slug read as a name and floor 0.
+  public var levelRef: LevelRef {
+    LevelRef(slug: level, name: name ?? SessionID.displayName(slug: level), index: index ?? 0)
   }
 
   /// Place a room, or move it if it is already placed.

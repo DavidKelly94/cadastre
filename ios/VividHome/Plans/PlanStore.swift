@@ -111,9 +111,10 @@ final class PlanStore: ObservableObject {
 
   /// Import an image as the plan for a level, keeping the original beside it.
   @discardableResult
-  func importPlan(image: UIImage, levelName: String, source: PlanSource?, originalData: Data?)
-    throws -> PlanFile
-  {
+  func importPlan(
+    image: UIImage, levelName: String, levelIndex: Int? = nil, source: PlanSource?,
+    originalData: Data?
+  ) throws -> PlanFile {
     guard let level = SessionID.slug(levelName) else { throw Failure.badLevel }
     try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
 
@@ -141,6 +142,10 @@ final class PlanStore: ObservableObject {
     var plan = plans[level] ?? PlanFile(level: level, image: name)
     plan.image = name
     plan.source = storedSource
+    // The name and floor number as asked for when the level was made. A
+    // drawing imported again onto a level keeps what it had.
+    if plan.name == nil { plan.name = levelName.trimmingCharacters(in: .whitespaces) }
+    if plan.index == nil, let levelIndex { plan.index = levelIndex }
     plans[level] = plan
     readings[level] = nil
     try save(plan)

@@ -262,6 +262,8 @@ Documents/sessions/<project-slug>/
   "rotation_deg": 0.0,
   "floor_height_m": 0.0,
   "source": { "file": "main.source.pdf", "kind": "pdf", "page": 2 },
+  "name": "Main Floor",
+  "index": 0,
   "rooms": [
     { "room": "kitchen", "x": 1840, "y": 990, "placed_at": "2026-11-03T14:02:11Z",
       "outline": [[1702, 905], [1980, 905], [1980, 1088], [1702, 1088]],
@@ -274,6 +276,7 @@ Documents/sessions/<project-slug>/
 - `rooms[].x`, `rooms[].y` are **pixel coordinates in `image`**, origin top-left, x right, y down. Not metres and not plan units: an uncalibrated raster has no metric meaning, which is the point.
 - `rooms[].room` is the `<room>` slug used in session ids, and is how a placement finds its captures.
 - `rooms[].outline` (optional, since 2026-10-03, [ADR-0031](adr/0031-the-capture-proves-itself-before-you-leave.md)) is the room's corners on the drawing, in order around the room, as `[u, v]` pixels like `x`, `y`; `outlined_at` says when. At least three, none repeated, not closed by hand. Corners are named from the outline's geometry, never stored: the compass label the capture protocol uses (`corner-nw`, `corner-ne`, `corner-se`, `corner-sw`, with `2`, `3` suffixes for a second corner in a quadrant), by each corner's bearing from the outline's centre with north up the page. That name is what the app asks the owner to tap in the field and what `landmarks.jsonl` records, so a landmark label is a key into the outline. The outline is the plan's statement of where the corners are; the pin stays the label's position, and moving the pin does not change the outline.
+- `name` and `index` (optional, since 2026-11-13) are the level's name as the owner typed it and which floor it is: 0 the ground floor, -1 a basement, 1 the floor above. They are what a session's manifest records for its level, kept here because a level made from its plan has no session yet to carry them. Absent, the name is the slug and the floor is 0. The pipeline does not use either and writes both back untouched.
 - `source` is omitted when the original was not retained. `kind` is `pdf`, `jpeg` or `heic`; `page` appears only for `pdf`.
 - Readers ignore unknown fields (section 12), so a plan file written by an older `plan add` — with no `source` and no `rooms` — is valid.
 

@@ -346,6 +346,28 @@ def test_calibrate_keeps_the_placements_the_app_wrote(store: Path):
     assert json.loads(json_path.read_text(encoding="utf-8"))["rooms"] == APP_FIELDS["rooms"]
 
 
+def test_calibrate_keeps_a_levels_name_and_floor_number(store: Path):
+    """A level made from its plan on the phone carries its name and which floor
+    it is (section 13, since 2026-11-13). The PC does not model either and
+    must hand them back untouched."""
+    add_plan(store, make_png(store.parent / "src.png"), "basement")
+    _, json_path = plan_paths(store, "basement")
+    raw = json.loads(json_path.read_text(encoding="utf-8"))
+    json_path.write_text(json.dumps({**raw, "name": "Basement", "index": -1}), encoding="utf-8")
+
+    calibrate(
+        store,
+        "basement",
+        point_a=(100.0, 100.0),
+        point_b=(300.0, 100.0),
+        distance_m=4.0,
+        origin_px=(100.0, 100.0),
+    )
+    after = json.loads(json_path.read_text(encoding="utf-8"))
+    assert after["name"] == "Basement"
+    assert after["index"] == -1
+
+
 def test_extra_fields_never_shadow_the_modelled_ones():
     raw = {"level": "main", "image": "main.png", **APP_FIELDS}
     loaded = PlanCalibration.from_dict(raw)

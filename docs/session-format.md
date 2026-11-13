@@ -105,7 +105,9 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
              "gaps": [ { "wall": "corner-nw->corner-ne", "from_m": 1.9, "length_m": 0.8 } ] },
   "stills": { "done": 7, "total": 11, "missing": ["panel", "home-runs", "smoke-co"] },
   "checked_at": "2026-11-03T19:19:48Z",
-  "together": []
+  "together": [],
+  "model": { "walls_twice": 0.62, "floor": true, "ceiling": false, "heights": false,
+             "gaps": [ { "wall": "corner-ne->corner-se", "from_m": 1.2, "length_m": 1.5 } ] }
 }
 ```
 
@@ -113,6 +115,7 @@ Keyframe file names are the zero-padded 6-digit keyframe index `i`. Still file n
 - `walls` is present only when the capture was placed: each wall of the room's outline (section 13), counted photographed when at least 70% of its length was in a keyframe's horizontal field of view within 4 m with no other wall between, the live form of `vividhome coverage`'s photographed rule. `gaps` lists the widest unphotographed run of each wall below that bar, worst wall first, in metres from the wall's first corner.
 - `stills` is the per-trade checklist (`capture-protocol.md` §4, carried in the app as data): `missing` holds the ids of items no still was taken for, in list order. The ids are the ones stills carry as `item` (section 6).
 - `together` lists the ids of the earlier complete captures of the same room, level and trades whose keyframes and stills were counted with this one (`field-proof-design.md` §6: a top-up closes the gaps of the capture before it, so its check describes the room). Empty for a first capture. Each of those captures has its own `field_check`.
+- `model` (optional, since 2026-11-13, [ADR-0035](adr/0035-a-capture-complete-enough-for-3d.md)) says whether the capture holds enough for a 3D model. `walls_twice` is the share of the outline's wall, 0 to 1, that was photographed from two places whose bearings differ by at least 20 degrees with one view within 2.5 m; it is null when the capture was not placed, since there are then no walls to measure. `floor` and `ceiling` are true when at least 10 keyframes were tilted 25 degrees or more toward it from at least 3 different half-meter squares. `heights` is true when 15% of keyframes were 0.4 m or more from the median camera height. `gaps` lists up to three of the longest stretches not seen twice, longest first, in the form `walls.gaps` uses. Enough means `walls_twice` of 0.7 or more with `floor` and `ceiling`; the thresholds are first guesses. A reader shows a fourth line when `model` is present and three when it is not.
 - It is the app's claim, made from what it had in the room. `vividhome validate` is the pipeline's, and neither overrides the other. The inspect page shows the three sentences the review screen showed, made from these numbers by `fieldcheck.py` the way the app makes them from `FieldCheck`; the `contract` CI job keeps the two wordings the same.
 
 ## 5. `frames.jsonl`

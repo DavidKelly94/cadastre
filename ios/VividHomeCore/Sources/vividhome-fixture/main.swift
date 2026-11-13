@@ -300,9 +300,12 @@ struct Contract: Codable {
   var checklist: [ContractItem]
   var fieldChecks: [ContractFieldCheck]
   var lengths: [ContractLength]
+  /// Enough for 3D, measured on this room and this walk (ADR-0035), for
+  /// `readiness.py` to measure the same.
+  var readiness: ModelReadiness.Report
 
   enum CodingKeys: String, CodingKey {
-    case snaps, coverage, checklist, lengths
+    case snaps, coverage, checklist, lengths, readiness
     case rangeM = "range_m"
     case keyframesUsed = "keyframes_used"
     case keyframesTotal = "keyframes_total"
@@ -377,6 +380,21 @@ let sampleChecks: [FieldCheck] = [
   FieldCheck(
     placement: .init(status: "free", corners: 0), walls: nil,
     stills: .init(done: 0, total: 0, missing: []), checkedAt: "2026-10-03T18:00:00Z"),
+  // With the 3D measure (ADR-0035): enough, thin, and not placed.
+  FieldCheck(
+    placement: .init(status: "placed", rmsM: 0.05, corners: 4), walls: nil,
+    stills: .init(done: 0, total: 0, missing: []), checkedAt: "2026-11-13T18:00:00Z",
+    model: .init(wallsTwice: 0.9, floor: true, ceiling: true, heights: false, gaps: [])),
+  FieldCheck(
+    placement: .init(status: "placed", rmsM: 0.05, corners: 4), walls: nil,
+    stills: .init(done: 0, total: 0, missing: []), checkedAt: "2026-11-13T18:00:00Z",
+    model: .init(
+      wallsTwice: 0.625, floor: false, ceiling: false, heights: true,
+      gaps: [.init(wall: "corner-ne->corner-se", fromM: 1.2, lengthM: 1.5)])),
+  FieldCheck(
+    placement: .init(status: "free", corners: 0), walls: nil,
+    stills: .init(done: 0, total: 0, missing: []), checkedAt: "2026-11-13T18:00:00Z",
+    model: .init(wallsTwice: nil, floor: true, ceiling: false, heights: false, gaps: [])),
 ]
 
 let contract = Contract(
@@ -401,7 +419,10 @@ let contract = Contract(
       imperialArea: Units.imperial.area(meters), imperialPerPixel: Units.imperial.perPixel(meters),
       metricSmall: Units.metric.small(meters), metricLength: Units.metric.length(meters),
       metricArea: Units.metric.area(meters), metricPerPixel: Units.metric.perPixel(meters))
-  })
+  },
+  readiness: ModelReadiness.report(
+    views: frames.map { ModelReadiness.View(pose: $0.poseWorldFromCamera) },
+    walls: ModelReadiness.wallViews(outline: footprint, cameras: cameras)))
 let contractEncoder = JSONEncoder()
 contractEncoder.outputFormatting = [.sortedKeys, .prettyPrinted]
 try contractEncoder.encode(contract).write(to: contractPath)
@@ -410,6 +431,7 @@ for snap in snaps {
   let moved = snap.movedBy.map { String(format: "%.3f m", $0) } ?? "no snap"
   print("  \(snap.label): \(moved)")
 }
+print("  enough for 3D: \(contract.readiness.line(in: .imperial).text)")
 for wall in contract.coverage {
   print("  \(wall.start) -> \(wall.end): photographed \(Int((wall.photographedFraction * 100).rounded()))%")
 }

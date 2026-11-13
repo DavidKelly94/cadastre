@@ -156,7 +156,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **388 tests passing** (plus 4 that run only in the contract job), ruff clean.
+19 modules, **392 tests passing** (plus 5 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -353,6 +353,31 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## Enough for 3D: the measure, and the line at Stop, 2026-11-13
+
+First step of `capture-guidance-design.md` (ADR-0035). `ModelReadiness` in the
+core measures, from the camera poses a capture already holds: the share of
+wall photographed from two places a useful angle apart with one of them
+close, whether the floor and the ceiling were looked at from more than one
+spot, and whether the phone was held at two heights. Turning on the spot in
+the middle of a room photographs every wall and scores zero, which is what
+the rehearsal capture did.
+
+At Stop the capture records it as `field_check.model` (section 4, optional),
+and the review screen shows a fourth line, "Enough for 3D" or what is short,
+with up to two things to do about it. The PC's page shows the same line.
+It advises; nothing blocks Stop.
+
+`readiness.py` measures the same on the PC. **Verified:** `ModelReadinessTests`
+and `test_readiness.py` on a 4 by 3 m room; the contract job compares the two
+on the fixture's room and walk, run locally. **Only compiles:** the wiring in
+the capture and the review screen. **Not built:** the live row on the capture
+screen (step 2), and "ground covered".
+
+Known limits: every threshold is a first guess; a top-up counts the walls
+together with the room's earlier captures but the floor, ceiling and heights
+on its own; a capture with no outline cannot measure walls and says so.
+
 ## Feet and inches, 2026-11-13
 
 The owner asked for imperial measurements, or a choice. Both: every length
@@ -377,8 +402,8 @@ and the format's field names stay as they are.
 
 **Verified:** `UnitsTests` and `test_units.py`; the contract job now compares
 61 lengths written eight ways and every sample leave check in both units,
-run locally against the fixture. **Only compiles:** the picker and the
-screens that read it.
+run locally against the fixture. Compiled in CI and shipped in build 83; the picker and its screens have not
+been used by the owner yet.
 
 User-visible British spellings went in the same pass ("storey" became
 "floor", "metres" in help text). Comments and older documents are converted

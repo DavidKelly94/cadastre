@@ -87,7 +87,7 @@ The plan inset shades each wall in three states instead of two: not photographed
 
 ### 3.3 What is recorded
 
-`field_check` gains an optional `model` object: `walls_twice` (0 to 1), `floor`, `ceiling`, `heights` (booleans), and `missing` (the lines shown). The PC recomputes the same numbers in `fieldcheck.py`, and the contract job compares the two, as it does for coverage today.
+`field_check` gains an optional `model` object: `walls_twice` (0 to 1), `floor`, `ceiling`, `heights` (booleans), and `gaps` (the longest stretches of wall not seen twice, as numbers; the lines shown are made from them at display time, so they follow the reader's units). The PC recomputes the same numbers in `fieldcheck.py`, and the contract job compares the two, as it does for coverage today.
 
 ## 4. Where the code goes
 
@@ -105,7 +105,7 @@ Rule 3 holds: the ARKit layer gathers faces and draws; every decision is in the 
 
 Each line is one pull request, and each leaves the app working.
 
-1. `ModelReadiness` in the core and in Python, with the contract comparison. No screen change.
+1. `ModelReadiness` in the core and in Python, with the contract comparison. **Built 2026-11-13**, and wired a little further than planned: the capture records `model` at Stop and the review screen shows the fourth line with up to two things to do, since that costs no new screen. "Ground covered" from section 3.1 is not built.
 2. The 3D row, the two lines of gaps, the three-state inset, the leave-check line.
 3. `CornerFinder` and `CornerMatch` in the core, with the Python twin run over the rehearsal capture on the owner's PC.
 4. Proposed marks on the capture screen: draw, confirm, override, the off switch.

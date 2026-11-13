@@ -407,11 +407,21 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
       return .noSurface
     }
 
+    // A corner may be marked at either end (ADR-0034): the ceiling end is the
+    // same point on the plan, and often the only end in sight. A tap well
+    // above the phone is the ceiling.
+    let cameraY = controller.session.currentFrame.map { Double($0.camera.transform.columns.3.y) }
+    func atCeiling(_ kind: LandmarkKind) -> Bool {
+      guard kind == .corner, let cameraY else { return false }
+      return CornerEnd.isCeiling(tapY: position.y, cameraY: cameraY)
+    }
+
     if let selected = selectedLandmark, let index = landmarks.firstIndex(where: { $0.id == selected })
     {
       landmarks[index].position = position
       landmarks[index].tapped = nil
       landmarks[index].method = PlacedLandmark.raycastMethod
+      landmarks[index].end = atCeiling(landmarks[index].kind) ? CornerEnd.ceiling : nil
       rescoreAlignment()
       resolvePlacement()
       landmarkNodes[selected]?.position = SCNVector3(
@@ -433,18 +443,30 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     // A corner tap moves to where two mesh walls meet the floor, when they do
     // within reach (ADR-0031). The finger's point is kept so it can be undone.
     var snapped: Double?
+    let ceiling = atCeiling(kind)
+    if ceiling { landmark.end = CornerEnd.ceiling }
     if kind == .corner, let snap = snapCorner(at: position) {
       landmark.tapped = position
-      landmark.position = snap.position
       landmark.method = CornerSnap.method
-      snapped = snap.movedBy
+      if ceiling {
+        // The snap puts a mark on the corner's line and down on the floor.
+        // At the ceiling only the first half applies: sideways onto the
+        // line, the height left where the finger put it.
+        landmark.position = Vector3(snap.position.x, position.y, snap.position.z)
+        let dx = snap.position.x - position.x, dz = snap.position.z - position.z
+        snapped = (dx * dx + dz * dz).squareRoot()
+      } else {
+        landmark.position = snap.position
+        snapped = snap.movedBy
+      }
     }
     landmarks.append(landmark)
     draw(landmark, in: arView)
     rescoreAlignment()
     resolvePlacement()
-    if let snapped { return .snapped(label, snapped) }
-    return .placed(label)
+    let said = ceiling ? "\(label) at the ceiling" : label
+    if let snapped { return .snapped(said, snapped) }
+    return .placed(said)
   }
 
   private func snapCorner(at position: Vector3) -> CornerSnap.Snap? {
@@ -580,7 +602,10 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
           houseXZ: (corner.x, corner.z)))
     }
     guidance?.placed = placed
-    let floor = PlanAlignment.floorY(landmarks: landmarks.map { (kind: $0.kind, y: $0.position.y) })
+    let floor = PlanAlignment.floorY(
+      landmarks: landmarks.map {
+        (kind: $0.kind, y: $0.position.y, ceiling: $0.end == CornerEnd.ceiling)
+      })
     placement = PlanAlignment.solve(
       pairs: pairs, floorY: floor.y, floorSource: floor.source, floorHeight: guide.floorHeight)
     recomputeCoverage()

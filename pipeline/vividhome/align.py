@@ -114,7 +114,11 @@ def floor_y_session(session: Session) -> tuple[float, str]:
     if mesh_floor is not None:
         return mesh_floor, "mesh"
 
-    all_heights = [landmark.p_w[1] for landmark in session.landmarks()]
+    # A corner marked at its ceiling end (section 8, `end`) is the right place
+    # on the plan and the wrong height for a floor.
+    all_heights = [
+        landmark.p_w[1] for landmark in session.landmarks() if landmark.raw.get("end") != "ceiling"
+    ]
     if all_heights:
         return float(np.min(all_heights)), "lowest-landmark"
     return 0.0, "assumed-zero"

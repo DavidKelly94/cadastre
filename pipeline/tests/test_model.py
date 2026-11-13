@@ -94,6 +94,34 @@ def test_the_scan_is_moved_into_the_house(store: Path):
     assert listed["phases"] == session.phases
 
 
+def test_the_ceiling_is_read_off_the_scan_not_off_its_highest_point(store: Path):
+    """The page opens a room by cutting just under the ceiling. The first real
+    scan had a scrap above its ceiling, so the highest point left it closed."""
+    from vividhome.model import _ceiling_height
+
+    data = page_data(build_model(store, "main", points=False).page)
+    assert data["ceiling"] == pytest.approx(data["floor"] + SynthSpec().height_m, abs=0.06)
+
+    # A flat square at 2.4 m, and one stray triangle at 3.5 m above it.
+    positions = np.array(
+        [
+            [0, 2.4, 0],
+            [3, 2.4, 0],
+            [3, 2.4, 3],
+            [0, 2.4, 3],
+            [1, 3.5, 1],
+            [1.2, 3.5, 1],
+            [1, 3.5, 1.2],
+        ],
+        dtype=np.float32,
+    )
+    indices = np.array([0, 1, 2, 0, 2, 3, 4, 5, 6], dtype=np.uint32)
+    assert _ceiling_height(positions, indices, 0.0) == pytest.approx(2.4, abs=0.03)
+    # Walls only, as in open framing: no ceiling to cut under.
+    wall = np.array([[0, 0, 0], [3, 0, 0], [3, 2.4, 0], [0, 2.4, 0]], dtype=np.float32)
+    assert _ceiling_height(wall, np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32), 0.0) is None
+
+
 def test_the_drawing_lies_under_the_rooms_where_the_calibration_puts_it(store: Path):
     from vividhome.plan import load_calibration
 

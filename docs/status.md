@@ -158,7 +158,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-24 modules, **410 tests passing** (plus 5 that run only in the contract job), ruff clean.
+24 modules, **411 tests passing** (plus 5 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -405,6 +405,16 @@ hundred keyframes here; a real 275-keyframe room has not been timed.
 
 Known limits: up to 1.5 million points per capture, 16 bytes each, all sent
 to the page; no thinning by distance.
+
+**First look at a real scan (the owner's screenshot, stage one's page):** the
+rehearsal room's 228,501 faces drew, standing on the drawing where the
+placement put them. Two things showed. The room was a closed box: the cut
+started from the scan's highest point, and a scrap of mesh above the ceiling
+put that over the ceiling. The page now reads the ceiling's height off the
+scan (the height with the most flat surface, at least a meter and a half up)
+and cuts just under it; open framing has none and keeps the old rule. And
+the scan runs out through the doorway into the next room, which is what the
+phone saw; nothing clips a capture to its room's outline yet.
 
 ## Build 89 and a fresh store: a project end to end, 2026-11-13
 

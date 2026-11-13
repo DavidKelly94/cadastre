@@ -102,6 +102,7 @@ struct ProjectRootView: View {
               project: project.slug,
               projectName: project.name,
               onShowProjects: onShowProjects,
+              onShowCaptures: { sheet = .sessions },
               plans: plans,
               link: link,
               onPick: { level, room in

@@ -377,6 +377,25 @@ stray corner and 3 cm of noise (absorbed), a room that is the wrong size
 real mesh**, framed or finished. The owner's tapped framing captures are the
 first evidence it will meet.
 
+## Build 89 and a fresh store: a project end to end, 2026-11-13
+
+The owner started over as planned: a new, empty store on the PC, and on
+build 89 a new project made in the app, with the rehearsal drawing imported
+into it and the room captured and sent. The PC printed, with no command
+typed: the capture filed under `projects/test-house/`, its plan copied with
+its scale ("0.12 in per pixel"), the placement adopted "off by 3 in", the 3D
+page built from **228,501 faces**, and the level page.
+
+That is the first real run of: a project made on the phone and kept apart on
+the PC; lengths in feet and inches on the PC's receipts; and `model` on a
+real scan rather than the 688-face synthetic room. **Not yet seen:** the 3D
+page drawn in a browser from that scan, the proposed corner rings, and
+anything in framing.
+
+The owner had to ask how to send a capture: the list of captures was only
+under *Past captures* at the bottom of a room's setup screen. The project
+screen now has **Captures** at the top, as a word. Compiles only.
+
 ## Projects, the PC's half: each project keeps its own, 2026-11-13
 
 ADR-0033, started when the owner asked whether a second project could be made

@@ -26,6 +26,10 @@ struct ProjectOverviewView: View {
   /// of projects (ADR-0033).
   var projectName: String = ""
   var onShowProjects: (() -> Void)? = nil
+  /// Opens the list of captures: review, send to the PC, delete. It used to
+  /// be reachable only from a room's setup screen, under "Past captures",
+  /// which the owner had to ask the way to (2026-11-13).
+  var onShowCaptures: (() -> Void)? = nil
   @ObservedObject var plans: PlanStore
   @ObservedObject var link: PCLink
   let onPick: (LevelRef, String) -> Void
@@ -117,6 +121,13 @@ struct ProjectOverviewView: View {
         }
         ToolbarItem(placement: .topBarLeading) {
           Button("PC", systemImage: "desktopcomputer") { showingPC = true }
+        }
+        if let onShowCaptures {
+          // A word, not an icon: the wand taught that an unlabeled button
+          // is one nobody presses.
+          ToolbarItem(placement: .primaryAction) {
+            Button("Captures", action: onShowCaptures)
+          }
         }
         ToolbarItem(placement: .primaryAction) {
           Button("New room", systemImage: "plus") { adding = true }

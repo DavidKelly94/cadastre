@@ -135,3 +135,53 @@ def test_a_length_is_written_the_same_way_on_both_ends(swift: dict):
             assert units.length(meters, name) == sample[f"{name}_length"], meters
             assert units.area(meters, name) == sample[f"{name}_area"], meters
             assert units.per_pixel(meters, name) == sample[f"{name}_per_pixel"], meters
+
+
+def test_an_outlines_corners_get_the_same_names_on_both_ends(swift: dict):
+    """The name is what the phone asks for and writes to landmarks.jsonl, and
+    what the PC looks a tap up by: computed on each end, never stored."""
+    from vividhome.corners import corner_names
+
+    assert len(swift["corner_names"]) >= 4
+    for sample in swift["corner_names"]:
+        assert corner_names(sample["points"]) == sample["names"], sample["points"]
+
+
+def test_the_scan_goes_on_the_outline_the_same_ways_on_both_ends(session: Session, swift: dict):
+    """Proposed marks (ADR-0034): the PC's check of what the phone would have
+    proposed is only worth reading if it matches the way the phone matches."""
+    from vividhome.corners import match_outline
+
+    def placed(marks: list[tuple[str, float, float]]) -> tuple:
+        return tuple((label, round(x, 2), round(z, 2)) for label, x, z in marks)
+
+    assert len(swift["proposals"]) >= 2
+    for sample in swift["proposals"]:
+        outline = [(point["label"], point["x"], point["z"]) for point in sample["outline"]]
+        theirs = {
+            placed([(mark["label"], mark["x"], mark["z"]) for mark in way["marks"]])
+            for way in sample["ways"]
+        }
+        assert theirs, "the fixture's rooms are ones the phone can match"
+
+        # The phone's candidates through the PC's matcher: the matcher alone.
+        candidates = [(x, z) for x, z in sample["candidates"]]
+        match = match_outline(candidates, outline)
+        assert match is not None
+        ours = {
+            placed([(label, *candidates[index]) for label, index in way.marks])
+            for way in match.ways
+        }
+        assert ours == theirs
+        assert list(match.missing) == sample["missing"]
+        assert match.fit.rms_m == pytest.approx(sample["ways"][0]["rms_m"], abs=1e-6)
+
+        if sample["from_mesh"]:
+            # And the PC's own candidates, found in the same mesh, go on the
+            # same ways: the finder and the matcher together.
+            found = [(c.p_w[0], c.p_w[2]) for c in propose_corners(session).candidates]
+            match = match_outline(found, outline)
+            assert match is not None
+            assert {
+                placed([(label, *found[index]) for label, index in way.marks]) for way in match.ways
+            } == theirs

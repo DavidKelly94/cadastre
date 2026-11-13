@@ -158,7 +158,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-24 modules, **411 tests passing** (plus 5 that run only in the contract job), ruff clean.
+24 modules, **418 tests passing** (plus 7 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -355,6 +355,49 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## The PC says what the phone would have proposed, 2026-11-13
+
+The other half of the third step of `capture-guidance-design.md`, and the way
+a tapped capture becomes evidence for proposed marks (ADR-0034) without
+anyone trusting them first. `vividhome corners <session>` already found the
+corners in a capture's mesh. It now also reads the room's outline off the
+level's plan in the store, names its corners the way the phone does, and
+matches the found corners to it the way the phone's `CornerMatch` does. For
+each corner it prints how far the proposal was from the owner's own tap of
+that corner, in feet and inches by default. A rectangle fits two ways round;
+it says how many ways the phone would have offered and which of them the
+taps agree with. It names the outline corners the scan did not find. When
+less than 2 m² of the scan is classified as wall it fits walls to every
+vertical face, as the phone does, and says so. The same is written to
+`derived/corner_candidates.json` as `against_outline`. The shape of what it
+prints, with made-up numbers, not a run:
+
+```
+against the outline of bedroom: the phone would have proposed 3 of 4 corners (fit 1 1/4 in)
+corner-nw    C3  2 in from the tap
+corner-ne    C1  3/4 in from the tap
+corner-se    C2  no tap
+not found, to tap by hand: corner-sw
+```
+
+**Verified:** on synthetic rooms (`test_corners.py`, 7 new tests), and in the
+`contract` job, where the phone's fixture now writes its candidates, its
+outline and every way it matched them for two rooms, plus the corner names of
+four outlines, and the Python has to give the same names, the same ways and
+the same missing corners, both from the phone's candidates and from its own,
+found in the same mesh. Run locally against the Swift fixture: 425 passed.
+
+**Not verified: any real capture.** This is the tool for that, and nobody has
+run it on one. The numbers that matter are the ones it prints for the
+owner's framing captures: how many corners it finds in open studs, and how
+far they sit from the taps. The PC's finder merges candidates closer than
+10 cm and the phone's does not; on a real mesh that may show as a
+difference between what this prints and what the phone drew.
+
+**Decided without the owner:** the report goes on the existing `corners`
+command instead of a new one; when the taps cannot choose between ways
+(nobody tapped), it reports the first and says nothing about which is right.
+
 ## Corners found in the scan and matched to the outline, core only, 2026-11-13
 
 Third step of `capture-guidance-design.md` (ADR-0034), the half that Linux
@@ -373,7 +416,7 @@ something (three found, the fourth named as missing), a cabinet (ignored), a
 stray corner and 3 cm of noise (absorbed), a room that is the wrong size
 (nothing proposed). `CornerFinderTests`, 10 tests.
 
-**Not built:** the Python matcher, and so any run on a real capture. **Nothing here has seen a
+**Since built:** the Python matcher (the section above). **Nothing here has seen a
 real mesh**, framed or finished. The owner's tapped framing captures are the
 first evidence it will meet.
 

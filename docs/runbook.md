@@ -223,6 +223,16 @@ pair matched to the wrong corner, so run it again and check each pair against
 the walk. `--force` writes it anyway; use that only when you know the capture
 is not of this plan, such as a test room in a different house.
 
+## 5b. See what the phone would have proposed
+
+The phone can find a room's corners in its own scan and offer them as marks to confirm. Before trusting that in a kind of room it has not seen, such as open framing, check it against a capture where you tapped the corners yourself:
+
+```
+uv run vividhome --store $store corners <session-id>
+```
+
+The last lines say how many of the room's corners the phone would have proposed, how far each was from your tap, and which it would have left for you. A few inches is what a good proposal looks like. If it finds few corners, or they sit far from your taps, keep tapping in rooms like that one; the output is the evidence for tuning the finder.
+
 ## 6. Render, and look on the phone
 
 A capture that arrived placed has already been drawn: Window A prints

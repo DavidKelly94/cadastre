@@ -212,7 +212,8 @@ def _add_markers(sub: argparse._SubParsersAction) -> None:
 def _add_corners(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser(
         "corners",
-        help="propose room corners from the wall mesh and score them against the tapped ones",
+        help="propose room corners from the wall mesh, score them against the tapped ones, "
+        "and say what the phone would have proposed against the room's outline",
     )
     p.add_argument("session", help="session directory or id within the store")
     p.add_argument(
@@ -855,7 +856,7 @@ def _run_corners(args: argparse.Namespace) -> int:
 
     try:
         session = Session.load(resolve_session(args.store, args.session))
-        report = propose_corners(session, min_area_m2=args.min_area)
+        report = propose_corners(session, min_area_m2=args.min_area, store=args.store)
     except (FileNotFoundError, SessionError) as error:
         print(f"vividhome corners: {error}", file=sys.stderr)
         return 1

@@ -385,7 +385,12 @@ once per level per launch and shared between the screens.
 
 **Verified:** the history and the comparison, on Linux
 (`EditHistoryTests`, `testAPlanKnowsWhichRoomsStandAsDrawnAndPutsOneBack`).
-**Only compiles:** every screen change above, until the owner has tried it.
+**Works on the phone, build 79:** the owner tried undo after a drag, *As
+drawn*, the pin's *Put back the drawing's outline*, a removed room offered
+back in the tray, and the second reading with its per-room wording and *Tick
+all*. All five did what they say. Not yet tried: a capture in a room whose
+outline and scale both came from the drawing, a second sheet, and the PC
+adopting a plan set up this way.
 
 **Decided without the owner:** a second reading never replaces a hand-changed
 outline unless the owner ticks it; "as drawn" means corner for corner in the

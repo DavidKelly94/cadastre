@@ -141,4 +141,55 @@ final class CornerFinderTests: XCTestCase {
     let small = CornerFinder.candidates(faces: room([(0, 0), (2, 0), (2, 2), (0, 2)]))
     XCTAssertNil(CornerMatch.propose(candidates: small, outline: outline(rectangle)))
   }
+
+  // MARK: - What the screen shows
+
+  private func marks(_ pairs: [(String, Double, Double)]) -> [CornerMatch.Mark] {
+    pairs.map { CornerMatch.Mark(label: $0.0, x: $0.1, z: $0.2, bottom: 0, top: 2.4) }
+  }
+
+  /// A rectangle's two fits: the same four places, named the other way round.
+  private var twoWays: [CornerMatch.Fit] {
+    [
+      CornerMatch.Fit(
+        marks: marks([("corner-nw", 0, 0), ("corner-ne", 4, 0), ("corner-se", 4, 3), ("corner-sw", 0, 3)]),
+        rms: 0.01),
+      CornerMatch.Fit(
+        marks: marks([("corner-nw", 4, 3), ("corner-ne", 0, 3), ("corner-se", 0, 0), ("corner-sw", 4, 0)]),
+        rms: 0.01),
+    ]
+  }
+
+  func testACornerMarkedByHandSettlesWhichWayRound() {
+    XCTAssertEqual(CornerProposal.consistent(twoWays, with: [:]).count, 2)
+    // The owner tapped NW at the far corner: only the second fit calls it that.
+    let kept = CornerProposal.consistent(twoWays, with: ["corner-nw": (x: 3.9, z: 3.1)])
+    XCTAssertEqual(kept, [twoWays[1]])
+    // A tap that agrees with neither leaves nothing to propose.
+    XCTAssertEqual(CornerProposal.consistent(twoWays, with: ["corner-nw": (x: 2, z: 1.5)]), [])
+  }
+
+  func testAProposalDoesNotTurnRoundByItself() {
+    XCTAssertEqual(CornerProposal.steady(twoWays, previous: []), 0)
+    XCTAssertEqual(CornerProposal.steady(twoWays, previous: twoWays[1].marks), 1)
+    // The same two fits arriving in the other order: still the one shown.
+    XCTAssertEqual(CornerProposal.steady([twoWays[1], twoWays[0]], previous: twoWays[1].marks), 0)
+  }
+
+  func testOnlyUnmarkedCornersAreProposedAndTheRestAreNamed() throws {
+    let corners = ["corner-nw", "corner-ne", "corner-se", "corner-sw"]
+    let three = CornerMatch.Fit(
+      marks: marks([("corner-nw", 0, 0), ("corner-ne", 4, 0), ("corner-se", 4, 3)]), rms: 0.02)
+    let shown = try XCTUnwrap(
+      CornerProposal.shown(fit: three, ways: 2, corners: corners, placed: ["corner-nw"]))
+    XCTAssertEqual(shown.marks.map(\.label), ["corner-ne", "corner-se"], "NW was tapped: a tap wins")
+    XCTAssertEqual(shown.missing, ["corner-sw"], "the one the scan cannot see")
+    XCTAssertEqual(shown.total, 4)
+    XCTAssertEqual(shown.ways, 2)
+    XCTAssertEqual(shown.floor, 0)
+    // Everything already marked: nothing to propose.
+    XCTAssertNil(
+      CornerProposal.shown(
+        fit: three, ways: 1, corners: corners, placed: ["corner-nw", "corner-ne", "corner-se"]))
+  }
 }

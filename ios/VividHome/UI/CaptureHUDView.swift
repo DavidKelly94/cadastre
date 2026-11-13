@@ -58,6 +58,17 @@ struct CaptureHUDView: View {
             }
             .foregroundStyle(Tokens.inkSecondary)
             .accessibilityLabel(showInset ? "Hide the plan" : "Show the plan")
+            // The owner's switch for corner marks proposed from the scan
+            // (ADR-0034): off leaves the taps exactly as they were.
+            Button {
+              coordinator.suggestCorners.toggle()
+              show(coordinator.suggestCorners ? "Suggesting corners from the scan" : "Corner suggestions off")
+            } label: {
+              Image(systemName: coordinator.suggestCorners ? "wand.and.stars" : "wand.and.stars.inverse")
+                .font(.title3)
+            }
+            .foregroundStyle(coordinator.suggestCorners ? Tokens.ink : Tokens.inkSecondary)
+            .accessibilityLabel(coordinator.suggestCorners ? "Stop suggesting corners" : "Suggest corners")
             Spacer()
           }
           .padding(.horizontal, 12).padding(.top, 8)
@@ -65,6 +76,7 @@ struct CaptureHUDView: View {
         Spacer()
         if let flash { flashBanner(flash) }
         if case .warn(let message) = recorder.verdict { banner(message, tone: Tokens.warn) }
+        if let proposal = coordinator.proposal { proposalBar(proposal) }
         if selected != nil { selectionBar }
         controls
       }
@@ -72,6 +84,7 @@ struct CaptureHUDView: View {
     .onReceive(tick) { _ in
       coordinator.refreshFreeSpace()
       camera = coordinator.cameraXZ()
+      coordinator.refreshProposal()
     }
     .onChange(of: recorder.verdict) { _, verdict in
       // The recorder decides to stop; the screen only carries the reason out.
@@ -353,6 +366,46 @@ struct CaptureHUDView: View {
         }
       }
     }
+  }
+
+  /// Corner marks the scan proposes (ADR-0034): the rings in the camera view
+  /// count for nothing until Confirm, and a tap on the real corner always
+  /// wins over them.
+  private func proposalBar(_ proposal: CornerProposal.Shown) -> some View {
+    let found = proposal.marks.count
+    let names = proposal.missing.map(Self.short).joined(separator: ", ")
+    return VStack(alignment: .leading, spacing: 6) {
+      Text(
+        "The scan found \(found) of \(proposal.total) corner\(proposal.total == 1 ? "" : "s"). "
+          + "Are the white rings on them?"
+      )
+      .font(.footnote.weight(.semibold)).foregroundStyle(Tokens.ink)
+      if proposal.ways > 1 {
+        Text("This room fits \(proposal.ways) ways round. Check the names on the rings.")
+          .font(.caption2).foregroundStyle(Tokens.warn)
+      }
+      if !proposal.missing.isEmpty {
+        Text("The scan cannot see \(names). Tap \(proposal.missing.count == 1 ? "it" : "them") yourself.")
+          .font(.caption2).foregroundStyle(Tokens.inkSecondary)
+      }
+      HStack(spacing: 10) {
+        Button("Confirm") {
+          let count = coordinator.confirmProposal()
+          show("Marked \(count) corner\(count == 1 ? "" : "s") from the scan")
+        }
+        .buttonStyle(.borderedProminent)
+        if proposal.ways > 1 {
+          Button("Other way") { coordinator.otherWayProposal() }.buttonStyle(.bordered)
+        }
+        Button("Not right") { coordinator.dismissProposal() }.buttonStyle(.bordered)
+        Spacer()
+      }
+      .font(.footnote.weight(.semibold))
+    }
+    .padding(12)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .background(Tokens.raised.opacity(0.94), in: RoundedRectangle(cornerRadius: 12))
+    .padding(.horizontal, 12).padding(.bottom, 8)
   }
 
   /// Whether there is enough for a 3D model yet, and the one thing most

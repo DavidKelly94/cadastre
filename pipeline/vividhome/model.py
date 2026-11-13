@@ -28,6 +28,7 @@ from . import units
 from .inspector import _alignments, _find_session, _phase_rank
 from .mesh import read_mesh
 from .plan import PlanError, load_calibration, plan_paths, plan_to_house
+from .points import VOXEL_M, session_points
 from .session import Session, SessionError
 from .transforms import mat_from_cm
 
@@ -54,6 +55,10 @@ class ModelResult:
     vertices: int
     faces: int
     skipped: list[str] = field(default_factory=list)
+    #: Colored points from the keyframes, and the file they are in; 0 and
+    #: None when the level was built without them.
+    points: int = 0
+    points_data: Path | None = None
 
 
 def model_paths(store: str | Path, level: str) -> tuple[Path, Path]:
@@ -61,8 +66,16 @@ def model_paths(store: str | Path, level: str) -> tuple[Path, Path]:
     return directory / f"{level}-3d.html", directory / f"{level}-3d.bin"
 
 
-def build_model(store: str | Path, level: str) -> ModelResult:
+def points_path(store: str | Path, level: str) -> Path:
+    return Path(store) / "inspect" / f"{level}-3d-points.bin"
+
+
+def build_model(store: str | Path, level: str, *, points: bool = True) -> ModelResult:
     """Write the level's 3D page and its data, and say what went into it.
+
+    ``points`` adds the keyframes themselves: every depth pixel in the house
+    with its photograph's color (``points.py``). It is the slower part, a
+    second or two per hundred keyframes.
 
     Raises :class:`PlanError` when the level is not calibrated, or when no
     placed capture on it has a mesh: there is then nothing to show.
@@ -94,7 +107,7 @@ def build_model(store: str | Path, level: str) -> ModelResult:
             continue
         t_hs = mat_from_cm(alignment["T_hs"])
         moved = mesh.vertices @ t_hs[:3, :3].T + t_hs[:3, 3]
-        entries.append((session, moved.astype(np.float32), mesh.faces.astype(np.uint32)))
+        entries.append((session, moved.astype(np.float32), mesh.faces.astype(np.uint32), t_hs))
 
     if not entries:
         reason = "; ".join(skipped) if skipped else "no placed capture on it"
@@ -114,20 +127,30 @@ def build_model(store: str | Path, level: str) -> ModelResult:
     sessions = []
     vertex_offset = 0
     index_offset = 0
-    for order, (session, moved, faces) in enumerate(entries):
+    cloud_positions = []
+    cloud_colors = []
+    point_offset = 0
+    for order, (session, moved, faces, t_hs) in enumerate(entries):
         positions.append(moved)
         indices.append(faces + vertex_offset)
-        sessions.append(
-            {
-                "id": session.root.name,
-                "room": room_of(session),
-                "phases": list(session.phases),
-                "first": index_offset,
-                "count": int(faces.size),
-                "faces": len(faces),
-                "color": list(PALETTE[order % len(PALETTE)]),
-            }
-        )
+        entry = {
+            "id": session.root.name,
+            "room": room_of(session),
+            "phases": list(session.phases),
+            "first": index_offset,
+            "count": int(faces.size),
+            "faces": len(faces),
+            "color": list(PALETTE[order % len(PALETTE)]),
+            "point_first": point_offset,
+            "point_count": 0,
+        }
+        if points:
+            where, colors = session_points(session, t_hs)
+            cloud_positions.append(where)
+            cloud_colors.append(colors)
+            entry["point_count"] = len(where)
+            point_offset += len(where)
+        sessions.append(entry)
         vertex_offset += len(moved)
         index_offset += int(faces.size)
 
@@ -157,8 +180,24 @@ def build_model(store: str | Path, level: str) -> ModelResult:
         handle.write(all_positions.astype("<f4").tobytes())
         handle.write(all_indices.astype("<u4").tobytes())
 
+    # The keyframes' points: positions, then one RGBA per point, so both
+    # blocks stay aligned to four bytes.
+    cloud_path = points_path(store, level)
+    if point_offset:
+        where = np.concatenate(cloud_positions).astype("<f4")
+        rgba = np.full((point_offset, 4), 255, dtype=np.uint8)
+        rgba[:, :3] = np.concatenate(cloud_colors)
+        with cloud_path.open("wb") as handle:
+            handle.write(where.tobytes())
+            handle.write(rgba.tobytes())
+    elif cloud_path.exists():
+        cloud_path.unlink()
+
     data = {
         "level": level,
+        "points": {"data": cloud_path.name, "count": point_offset, "size": VOXEL_M}
+        if point_offset
+        else None,
         "data": data_path.name,
         "vertices": len(all_positions),
         "indices": len(all_indices),
@@ -178,6 +217,8 @@ def build_model(store: str | Path, level: str) -> ModelResult:
         vertices=len(all_positions),
         faces=len(all_indices) // 3,
         skipped=skipped,
+        points=point_offset,
+        points_data=cloud_path if point_offset else None,
     )
 
 
@@ -224,14 +265,16 @@ _PAGE = """<!doctype html>
   <h1>__TITLE__</h1>
   <div><a href="__LEVEL_PAGE__">Back to the plan and the photos</a></div>
   <div class="tools">
-    <label><input type="checkbox" id="floors" checked> Stand the walls on the drawing</label>
+    <label id="pointsRow"><input type="checkbox" id="points" checked> The photos, as colored points</label>
+    <label><input type="checkbox" id="mesh"> The phone's scan, as a surface</label>
+    <label><input type="checkbox" id="floors" checked> The drawing as the floor</label>
     <label>Cut above <input type="range" id="cut"> <span id="cutValue"></span></label>
     <div><button id="top">From above</button> <button id="side">From the side</button></div>
   </div>
   <div id="list"></div>
   <div class="hint">Drag to turn. Scroll or pinch to zoom. Shift-drag, or two fingers, to move.
-  This is the phone's own scan: good for the shape of a room, not for finding a pipe.
-  The photos on the plan page are the record.</div>
+  The points are what the keyframes saw, each where its depth put it. Good for the shape and
+  the look of a room, not for finding a pipe: the photos on the plan page are the record.</div>
 </div>
 <div id="stage"><canvas id="gl"></canvas><div id="note"></div></div>
 <script>
@@ -328,6 +371,25 @@ void main() {
   float light = 0.42 + 0.58 * abs(dot(n, normalize(vec3(0.35, 0.8, 0.5))));
   o = vec4(base * light, 1.0);
 }`;
+// The keyframes' points: each a small square, larger when nearer, in the color
+// its photograph had there.
+const POINT_VS = `#version 300 es
+in vec3 aPos; in vec4 aColor; uniform mat4 uMVP; uniform float uScale;
+out vec3 vColor; out vec3 vPos;
+void main() {
+  vPos = aPos; vColor = aColor.rgb;
+  gl_Position = uMVP * vec4(aPos, 1.0);
+  gl_PointSize = clamp(uScale / max(gl_Position.w, 0.05), 1.5, 24.0);
+}`;
+const POINT_FS = `#version 300 es
+precision highp float;
+in vec3 vColor; in vec3 vPos; uniform float uCut; uniform float uFloor; uniform float uHideFloor;
+out vec4 o;
+void main() {
+  if (vPos.y > uCut) discard;
+  if (uHideFloor > 0.5 && vPos.y < uFloor + 0.06) discard;
+  o = vec4(vColor, 1.0);
+}`;
 const PLAN_VS = `#version 300 es
 in vec3 aPos; in vec2 aUV; uniform mat4 uMVP; out vec2 vUV;
 void main() { vUV = aUV; gl_Position = uMVP * vec4(aPos, 1.0); }`;
@@ -338,7 +400,27 @@ void main() { o = texture(uPlan, vUV); }`;
 
 const shown = DATA.sessions.map(() => true);
 let cut = DATA.high[1] + 0.05;
-let mesh = null, plan = null;
+let mesh = null, plan = null, cloud = null;
+
+function startPoints(buffer) {
+  const count = DATA.points.count;
+  const cloudProgram = program(POINT_VS, POINT_FS);
+  const vao = gl.createVertexArray();
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(buffer, 0, count * 3), gl.STATIC_DRAW);
+  const at = gl.getAttribLocation(cloudProgram, "aPos");
+  gl.enableVertexAttribArray(at);
+  gl.vertexAttribPointer(at, 3, gl.FLOAT, false, 0, 0);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Uint8Array(buffer, count * 12, count * 4), gl.STATIC_DRAW);
+  const color = gl.getAttribLocation(cloudProgram, "aColor");
+  gl.enableVertexAttribArray(color);
+  gl.vertexAttribPointer(color, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+  gl.bindVertexArray(null);
+  cloud = { program: cloudProgram, vao };
+  redraw();
+}
 
 function start(buffer) {
   const positions = new Float32Array(buffer, 0, DATA.vertices * 3);
@@ -415,19 +497,40 @@ function draw() {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
-  gl.useProgram(mesh.program);
-  gl.uniformMatrix4fv(gl.getUniformLocation(mesh.program, "uMVP"), false, mvp);
-  gl.uniform1f(gl.getUniformLocation(mesh.program, "uCut"), cut);
-  gl.uniform1f(gl.getUniformLocation(mesh.program, "uFloor"), DATA.floor);
-  gl.uniform1f(gl.getUniformLocation(mesh.program, "uHideFloor"),
-    plan && document.getElementById("floors").checked ? 1 : 0);
-  gl.bindVertexArray(mesh.vao);
-  DATA.sessions.forEach((session, index) => {
-    if (!shown[index]) return;
-    gl.uniform3fv(gl.getUniformLocation(mesh.program, "uColor"), session.color);
-    gl.drawElements(gl.TRIANGLES, session.count, gl.UNSIGNED_INT, session.first * 4);
-  });
-  gl.bindVertexArray(null);
+  const hideFloor = plan && document.getElementById("floors").checked ? 1 : 0;
+  // The scan as a surface when asked for, or when there are no points to show.
+  if (document.getElementById("mesh").checked || !cloud) {
+    gl.useProgram(mesh.program);
+    gl.uniformMatrix4fv(gl.getUniformLocation(mesh.program, "uMVP"), false, mvp);
+    gl.uniform1f(gl.getUniformLocation(mesh.program, "uCut"), cut);
+    gl.uniform1f(gl.getUniformLocation(mesh.program, "uFloor"), DATA.floor);
+    gl.uniform1f(gl.getUniformLocation(mesh.program, "uHideFloor"), hideFloor);
+    gl.bindVertexArray(mesh.vao);
+    DATA.sessions.forEach((session, index) => {
+      if (!shown[index]) return;
+      gl.uniform3fv(gl.getUniformLocation(mesh.program, "uColor"), session.color);
+      gl.drawElements(gl.TRIANGLES, session.count, gl.UNSIGNED_INT, session.first * 4);
+    });
+    gl.bindVertexArray(null);
+  }
+
+  if (cloud && document.getElementById("points").checked) {
+    gl.useProgram(cloud.program);
+    gl.uniformMatrix4fv(gl.getUniformLocation(cloud.program, "uMVP"), false, mvp);
+    gl.uniform1f(gl.getUniformLocation(cloud.program, "uCut"), cut);
+    gl.uniform1f(gl.getUniformLocation(cloud.program, "uFloor"), DATA.floor);
+    gl.uniform1f(gl.getUniformLocation(cloud.program, "uHideFloor"), hideFloor);
+    // A point the size of its grid cell on screen, and a little over, so
+    // neighbors close up into a surface.
+    gl.uniform1f(gl.getUniformLocation(cloud.program, "uScale"),
+      DATA.points.size * 1.6 * h / (2 * Math.tan(0.45)));
+    gl.bindVertexArray(cloud.vao);
+    DATA.sessions.forEach((session, index) => {
+      if (!shown[index] || !session.point_count) return;
+      gl.drawArrays(gl.POINTS, session.point_first, session.point_count);
+    });
+    gl.bindVertexArray(null);
+  }
 }
 
 // --- The list, the cut and the two views. -----------------------------------
@@ -448,7 +551,9 @@ DATA.sessions.forEach((session, index) => {
   name.textContent = session.room;
   const sub_ = document.createElement("div");
   sub_.className = "sub";
-  sub_.textContent = session.phases.join(" + ") + " · " + session.faces.toLocaleString() + " faces";
+  sub_.textContent = session.phases.join(" + ") + " · " +
+    (session.point_count ? session.point_count.toLocaleString() + " points" :
+     session.faces.toLocaleString() + " faces");
   text.append(name, sub_);
   row.append(box, swatch, text);
   list.append(row);
@@ -465,6 +570,12 @@ function showCut() { document.getElementById("cutValue").textContent = feet(cut 
 cutSlider.addEventListener("input", () => { cut = Number(cutSlider.value); showCut(); redraw(); });
 showCut();
 document.getElementById("floors").addEventListener("change", redraw);
+document.getElementById("points").addEventListener("change", redraw);
+document.getElementById("mesh").addEventListener("change", redraw);
+if (!DATA.points) {
+  document.getElementById("pointsRow").style.display = "none";
+  document.getElementById("mesh").checked = true;
+}
 document.getElementById("top").addEventListener("click", () => { view.yaw = 0; view.pitch = 1.5; redraw(); });
 document.getElementById("side").addEventListener("click", () => { view.yaw = 0.6; view.pitch = 0.5; redraw(); });
 
@@ -524,6 +635,10 @@ if (!gl) {
     say("The model's data did not load. Open this page through the PC's server " +
         "(vividhome serve), not as a file.");
   });
+  if (DATA.points) {
+    fetch(DATA.points.data).then(response => response.ok ? response.arrayBuffer() : null)
+      .then(buffer => { if (buffer) startPoints(buffer); });
+  }
   draw();
 }
 </script>

@@ -158,7 +158,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-23 modules, **407 tests passing** (plus 5 that run only in the contract job), ruff clean.
+24 modules, **410 tests passing** (plus 5 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -376,6 +376,35 @@ stray corner and 3 cm of noise (absorbed), a room that is the wrong size
 **Not built:** the Python matcher, and so any run on a real capture. **Nothing here has seen a
 real mesh**, framed or finished. The owner's tapped framing captures are the
 first evidence it will meet.
+
+## The keyframes in 3D: colored points, 2026-11-13
+
+The owner, on seeing that stage one draws the phone's gray scan: "I was
+hoping to use the keyframes." Each keyframe holds a depth map, a photograph
+through the same lens and the camera's position, so every depth pixel is a
+point in the room and the photograph says what color it is. `points.py` puts
+each one through the capture's placement into the house, merges them on a
+1.5 cm grid, and the level's 3D page draws them as points in their own
+colors. It is now what the page shows first; the gray scan is a checkbox.
+
+No GPU, nothing new recorded, and it is built by the same `model` step, so
+`serve` makes it when a placed capture arrives. It sits between ADR-0036's
+first stage and its second: the same depth maps, not yet fused into a
+surface. Up close it is a cloud of dots, not a photograph; smooth and
+photoreal is the splat stage.
+
+**Verified:** on the synthetic room every un-projected point lies within a
+centimeter of a wall, the floor or the ceiling, which is what catches a
+flipped axis or planar depth read as radial; one point per grid cell; the
+file's layout; the page without points falling back to the scan. Drawn in a
+headless browser, where the printed markers on the synthetic walls appear in
+their places, so the colors come from the photographs. **Not verified:** a
+real capture, where depth is noisier at edges and only high-confidence
+pixels are used. Building a level with points takes a second or two per
+hundred keyframes here; a real 275-keyframe room has not been timed.
+
+Known limits: up to 1.5 million points per capture, 16 bytes each, all sent
+to the page; no thinning by distance.
 
 ## Build 89 and a fresh store: a project end to end, 2026-11-13
 

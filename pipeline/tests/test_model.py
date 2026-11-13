@@ -136,3 +136,89 @@ def test_an_uncalibrated_level_has_no_model(tmp_path: Path):
     add_plan(store, source, "main")
     with pytest.raises(PlanError, match="not calibrated"):
         build_model(store, "main")
+
+
+# --- The keyframes in 3D (points.py) ------------------------------------------
+
+
+def test_every_depth_pixel_lands_on_the_room_it_was_taken_in(tmp_path: Path):
+    """The synthetic room is a box whose size is known, so a point that is not
+    on a wall, the floor or the ceiling means the un-projection is wrong: an
+    axis flipped, planar depth read as radial, the photo misregistered."""
+    from vividhome.points import frame_points
+
+    spec = SynthSpec(keyframes=6)
+    session = Session.load(build(tmp_path / "s", spec).root)
+    seen = 0
+    for frame in session.frames():
+        points, colors = frame_points(session, frame, max_range_m=50.0)
+        assert len(points) > 0.9 * frame.dw * frame.dh, "nearly every depth pixel is valid"
+        assert colors.shape == points.shape
+        assert colors.min() >= 0 and colors.max() <= 255
+        gaps = np.stack(
+            [
+                np.abs(points[:, 0]),
+                np.abs(points[:, 0] - spec.width_m),
+                np.abs(points[:, 1]),
+                np.abs(points[:, 1] - spec.height_m),
+                np.abs(points[:, 2]),
+                np.abs(points[:, 2] - spec.depth_m),
+            ]
+        ).min(axis=0)
+        assert gaps.max() < 0.01, (
+            f"keyframe {frame.i}: a point {gaps.max():.3f} m off every surface"
+        )
+        seen += len(points)
+    assert seen > 20_000
+
+
+def test_points_are_merged_on_a_grid_and_moved_into_the_house(store: Path):
+    from vividhome.points import VOXEL_M, session_points
+
+    session = Session.load(store / "sessions" / "synthetic" / SESSION_ID)
+    alignment = json.loads((store / "alignments" / f"{SESSION_ID}.json").read_text("utf-8"))
+    t_hs = np.array(alignment["T_hs"], dtype=float).reshape(4, 4).T
+    where, colors = session_points(session, t_hs, max_range_m=50.0)
+    assert where.dtype == np.float32 and colors.dtype == np.uint8
+    assert len(where) == len(colors) > 2_000
+
+    # One point per grid cell: no two share a cell.
+    cells = np.floor(where.astype(np.float64) / VOXEL_M).astype(np.int64)
+    assert len(np.unique(cells, axis=0)) >= 0.98 * len(where)
+
+    # Back through the placement they are on the room's box again.
+    spec = SynthSpec()
+    back = (where.astype(np.float64) - t_hs[:3, 3]) @ t_hs[:3, :3]
+    inside = (
+        (back[:, 0] > -0.02)
+        & (back[:, 0] < spec.width_m + 0.02)
+        & (back[:, 2] > -0.02)
+        & (back[:, 2] < spec.depth_m + 0.02)
+    )
+    assert inside.all(), "every point is within the room it was taken in"
+
+    # A cap is honored, evenly.
+    few, _ = session_points(session, t_hs, max_range_m=50.0, limit=1000)
+    assert len(few) == 1000
+
+
+def test_the_3d_page_carries_the_points_and_can_be_built_without_them(store: Path):
+    from vividhome.model import points_path
+
+    result = build_model(store, "main")
+    data = page_data(result.page)
+    cloud = points_path(store, "main")
+    assert result.points > 0 and result.points_data == cloud
+    assert data["points"] == {"data": cloud.name, "count": result.points, "size": 0.015}
+    assert cloud.stat().st_size == result.points * 16, "three floats and an RGBA per point"
+    [session] = data["sessions"]
+    assert (session["point_first"], session["point_count"]) == (0, result.points)
+    raw = cloud.read_bytes()
+    rgba = np.frombuffer(raw, dtype=np.uint8, offset=result.points * 12).reshape(-1, 4)
+    assert (rgba[:, 3] == 255).all()
+
+    # Without them the page falls back to the scan and the old file goes.
+    plain = build_model(store, "main", points=False)
+    assert plain.points == 0 and plain.points_data is None
+    assert page_data(plain.page)["points"] is None
+    assert not cloud.exists()

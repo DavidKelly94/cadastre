@@ -16,6 +16,7 @@ never in the repository, and the checks below assume this file's code is read.
 from __future__ import annotations
 
 import hmac
+import json
 import os
 import re
 import secrets
@@ -25,6 +26,7 @@ from pathlib import Path
 from typing import Any, BinaryIO
 
 from .ingest import IngestError, ingest_inbox
+from .store import DEFAULT_PROJECT, find_session, manifest_project, project_store
 
 __all__ = [
     "INBOX",
@@ -131,14 +133,7 @@ class Inbox:
 
     def in_store(self, session_id: str) -> bool:
         """Whether the store already holds the session, under any project."""
-        sessions = self.store / "sessions"
-        if not sessions.is_dir():
-            return False
-        return any(
-            (project / session_id).is_dir()
-            for project in sessions.iterdir()
-            if project.is_dir() and not project.name.startswith(".")
-        )
+        return find_session(self.store, session_id) is not None
 
     def entry(self, session_id: str) -> Path:
         return self.root / self.check_id(session_id)
@@ -235,11 +230,21 @@ class Inbox:
             )
         for leftover in entry.rglob("*.part"):
             leftover.unlink(missing_ok=True)
+        # The capture says which project it belongs to (section 4), and each
+        # project is a store of its own (ADR-0033): its plans and placements
+        # never meet another project's.
         try:
-            result = ingest_inbox(self.store, entry)
+            manifest = json.loads((entry / session_id / "manifest.json").read_text("utf-8"))
+        except (OSError, ValueError):
+            manifest = {}
+        project = manifest_project(manifest if isinstance(manifest, dict) else {})
+        project = project or DEFAULT_PROJECT
+        try:
+            result = ingest_inbox(project_store(self.store, project), entry)
         except IngestError as error:
             raise UploadError(400, str(error)) from error
         return {
+            "project": project,
             "session_id": result.session_id,
             "ingested": True,
             "validated": result.ok,

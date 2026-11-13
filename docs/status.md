@@ -153,11 +153,12 @@ push to `main` for that reason, and only for that reason).
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session; writes `derived/validate.json` so the index can say what passed |
 | `model` | done | ADR-0036 stage one: each placed capture's mesh in house coordinates, one WebGL page per level on its drawing, linked from the level page; no GPU, nothing from outside the store |
+| `project` | done | `list`, and `delete <slug>` with `--yes`; each project is a store of its own under `projects/` (ADR-0033) |
 | `serve` | done | Local server for the browser pages; `--lan` serves the store to the phone with `/index.json` and Bonjour (ADR-0028), takes captures under `/upload/` with the pairing code into an inbox and ingests them (ADR-0029; tried from a phone 2026-10-02), and redraws a level's page in the background when a capture arrives placed (ADR-0031) |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-22 modules, **399 tests passing** (plus 5 that run only in the contract job), ruff clean.
+23 modules, **407 tests passing** (plus 5 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -375,6 +376,44 @@ stray corner and 3 cm of noise (absorbed), a room that is the wrong size
 **Not built:** the Python matcher, and so any run on a real capture. **Nothing here has seen a
 real mesh**, framed or finished. The owner's tapped framing captures are the
 first evidence it will meet.
+
+## Projects, the PC's half: each project keeps its own, 2026-11-13
+
+ADR-0033, started when the owner asked whether a second project could be made
+yet. It could not: the app has one, and the PC kept one `plans/`, one
+`alignments/` and one `inspect/` for everything, so a rehearsal's "Level 2"
+and the house's would have shared a drawing.
+
+**The PC now keeps each project as a store of its own**, under
+`<store>/projects/<project>/`, laid out inside exactly as a store always was.
+So nothing inside a project changed, and `ingest`, `plan`, `align`, `inspect`
+and `model` work on a project's folder as they did on a store. Only the edges
+know there are several:
+
+- `serve --lan` files an arriving capture by the project its manifest names,
+  draws that project's pages, and lists every project in `/index.json` with
+  paths from the server's root.
+- The command line picks the project first: a session names its own; a level
+  command (`plan`, `inspect`, `model`) takes the only project, or `--project`
+  when there are several, and says so when it has to be told.
+- `vividhome project list`, and `project delete <slug>`, which only says what
+  would go until `--yes`. Nothing on the phone is touched by it.
+
+**No migration**, at the owner's word ("don't worry about preserving what I
+already have on the PC"). A store with captures at its top is still used as
+it is, and `serve --lan` says what it is; a clean start is a new, empty
+`--store` folder.
+
+**Verified:** `test_store.py`, eight tests: two projects with a level called
+`main` keep their own drawing and calibration; a session is found whichever
+project holds it; the index's paths resolve from the root; the command line
+routes, asks when it must, and files a zip by the manifest inside it; a
+project is removed whole and only with `--yes`; an old store still works.
+The server's tests follow a capture into its project's folder.
+
+**Not built yet: the phone's half.** The app still has one project. Until it
+has more, the PC's change is invisible: everything lands under
+`projects/our-house/`.
 
 ## A corner can be marked at the ceiling, written blind, 2026-11-13
 

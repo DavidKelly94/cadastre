@@ -115,13 +115,15 @@ extension Sheet {
   /// Two characters belong together when one follows the other closely along
   /// a line, across the page or up it. A space is allowed to widen the gap, so
   /// `40' - 0"` is one run; a wider gap, a line break or a change of direction
-  /// starts a new one. That is deliberately all: what a run means is decided
-  /// by whoever reads it.
+  /// starts a new one. A character repeated in the same place counts once.
+  /// That is deliberately all: what a run means is decided by whoever reads
+  /// it.
   public static func runs(from glyphs: [Glyph]) -> [Run] {
     var out: [Run] = []
     var text = ""
     var box: Box?
     var last: Box?
+    var lastText = ""
     var vertical: Bool?
     var spaced = false
 
@@ -151,7 +153,17 @@ extension Sheet {
         text = glyph.text
         box = glyph.box
         last = glyph.box
+        lastText = glyph.text
         spaced = false
+        continue
+      }
+      // The same character in the same place again is one character: a PDF
+      // reader repeating itself at the end of a line, or a drawing faking
+      // bold by printing twice. A real double letter stands beside the first.
+      if glyph.text == lastText, !spaced,
+        abs(glyph.box.midX - previous.midX) <= 0.25 * max(previous.width, glyph.box.width),
+        abs(glyph.box.midY - previous.midY) <= 0.25 * max(previous.height, glyph.box.height)
+      {
         continue
       }
 
@@ -186,6 +198,7 @@ extension Sheet {
         box = glyph.box
         last = glyph.box
       }
+      lastText = glyph.text
       spaced = false
     }
     flush()

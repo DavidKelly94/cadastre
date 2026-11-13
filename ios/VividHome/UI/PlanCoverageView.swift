@@ -413,7 +413,7 @@ struct PlanCoverageView: View {
   private var scaleLine: String {
     guard let plan else { return "" }
     if let mpp = plan.metresPerPixel {
-      return String(format: "Scale set: %.1f mm per pixel. Scale, top left, changes it.", mpp * 1000)
+      return "Scale set: \(AppUnits.current.perPixel(mpp)). Scale, top left, changes it."
     }
     return "No scale yet: tap Scale, top left, so captures can be placed on this drawing."
   }

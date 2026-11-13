@@ -15,7 +15,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from . import __version__
+from . import __version__, units
 
 #: Exit code for a subcommand that is registered but not yet implemented.
 NOT_IMPLEMENTED = 2
@@ -73,7 +73,7 @@ def _add_apriltag(sub: argparse._SubParsersAction) -> None:
         "--tag-size",
         type=float,
         default=0.128,
-        help="AprilTag black-square side in metres (the 20 cm marker carries 12.8 cm of tag)",
+        help="AprilTag black-square side in meters (the 20 cm marker carries 12.8 cm of tag)",
     )
     p.add_argument(
         "--check-anchor-frame",
@@ -116,7 +116,7 @@ def _add_plan(sub: argparse._SubParsersAction) -> None:
     calibrate.add_argument(
         "--rotation-deg", type=float, default=0.0, help="angle from image +u to house +x"
     )
-    calibrate.add_argument("--floor-height", type=float, default=0.0, help="level height in metres")
+    calibrate.add_argument("--floor-height", type=float, default=0.0, help="level height in meters")
     calibrate.add_argument(
         "--force",
         action="store_true",
@@ -186,7 +186,7 @@ def _add_corners(sub: argparse._SubParsersAction) -> None:
         "--min-area",
         type=float,
         default=0.5,
-        help="smallest wall plane to keep, in square metres (furniture is smaller)",
+        help="smallest wall plane to keep, in square meters (furniture is smaller)",
     )
 
 
@@ -237,6 +237,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--store",
         default=DEFAULT_STORE,
         help=f"project store directory (default: {DEFAULT_STORE})",
+    )
+    parser.add_argument(
+        "--units",
+        choices=units.CHOICES,
+        default=None,
+        help="how lengths are written on pages and receipts: imperial (the default) "
+        f"or metric; the {units.ENVIRONMENT} environment variable sets it too",
     )
 
     sub = parser.add_subparsers(dest="command", required=True, metavar="command")
@@ -758,6 +765,10 @@ BROKEN_PIPE = 141
 def main(argv: Sequence[str] | None = None) -> int:
     """Parse arguments and dispatch. Returns the process exit code."""
     args = build_parser().parse_args(argv)
+    if args.units:
+        # Through the environment so every writer sees it, the page renderer's
+        # thread under `serve` included.
+        os.environ[units.ENVIRONMENT] = args.units
 
     try:
         return _dispatch(args)

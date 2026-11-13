@@ -250,7 +250,40 @@ struct ContractLine: Codable {
 /// to make the same (fieldcheck.py).
 struct ContractFieldCheck: Codable {
   var check: FieldCheck
+  /// In feet and inches, and in metric: the owner chooses, and both ends
+  /// must write either the same way.
   var lines: [ContractLine]
+  var linesMetric: [ContractLine]
+
+  enum CodingKeys: String, CodingKey {
+    case check, lines
+    case linesMetric = "lines_metric"
+  }
+}
+
+/// One length written every way `Units` writes one, for `units.py` to match.
+struct ContractLength: Codable {
+  var meters: Double
+  var imperialSmall: String
+  var imperialLength: String
+  var imperialArea: String
+  var imperialPerPixel: String
+  var metricSmall: String
+  var metricLength: String
+  var metricArea: String
+  var metricPerPixel: String
+
+  enum CodingKeys: String, CodingKey {
+    case meters
+    case imperialSmall = "imperial_small"
+    case imperialLength = "imperial_length"
+    case imperialArea = "imperial_area"
+    case imperialPerPixel = "imperial_per_pixel"
+    case metricSmall = "metric_small"
+    case metricLength = "metric_length"
+    case metricArea = "metric_area"
+    case metricPerPixel = "metric_per_pixel"
+  }
 }
 
 struct ContractItem: Codable {
@@ -266,9 +299,10 @@ struct Contract: Codable {
   var keyframesTotal: Int
   var checklist: [ContractItem]
   var fieldChecks: [ContractFieldCheck]
+  var lengths: [ContractLength]
 
   enum CodingKeys: String, CodingKey {
-    case snaps, coverage, checklist
+    case snaps, coverage, checklist, lengths
     case rangeM = "range_m"
     case keyframesUsed = "keyframes_used"
     case keyframesTotal = "keyframes_total"
@@ -309,6 +343,13 @@ let footprint = taps.map { (label: $0.label, x: $0.position.x, z: $0.position.z)
 let walls = WallCoverage.coverage(outline: footprint, cameras: cameras)
 func hundredths(_ value: Double) -> Double { (value * 100).rounded() / 100 }
 
+// Lengths from a millimeter to a house, the halfway cases included, written
+// every way the phone writes one.
+let sampleLengths: [Double] =
+  [0, 0.001, 0.003175, 0.00635, 0.0127, 0.0254, 0.068, 0.1, 0.18, 0.3, 0.3048, 0.314, 0.5, 0.8,
+   1.0, 1.9, 2.54, 3.0, 3.1242, 10, 33.2]
+  + (1...40).map { Double($0) * 0.0173 }
+
 // Leave checks of every shape the review screen can show, with the phone's
 // sentences for each; the stills ids are the checklist's.
 let sampleChecks: [FieldCheck] = [
@@ -348,7 +389,18 @@ let contract = Contract(
   rangeM: WallCoverage.rangeMetres, keyframesUsed: cameras.count, keyframesTotal: frames.count,
   checklist: StillsChecklist.all.map { ContractItem(id: $0.id, name: $0.name) },
   fieldChecks: sampleChecks.map { check in
-    ContractFieldCheck(check: check, lines: check.lines.map { ContractLine(text: $0.text, ok: $0.ok) })
+    ContractFieldCheck(
+      check: check,
+      lines: check.lines(in: .imperial).map { ContractLine(text: $0.text, ok: $0.ok) },
+      linesMetric: check.lines(in: .metric).map { ContractLine(text: $0.text, ok: $0.ok) })
+  },
+  lengths: sampleLengths.map { meters in
+    ContractLength(
+      meters: meters,
+      imperialSmall: Units.imperial.small(meters), imperialLength: Units.imperial.length(meters),
+      imperialArea: Units.imperial.area(meters), imperialPerPixel: Units.imperial.perPixel(meters),
+      metricSmall: Units.metric.small(meters), metricLength: Units.metric.length(meters),
+      metricArea: Units.metric.area(meters), metricPerPixel: Units.metric.perPixel(meters))
   })
 let contractEncoder = JSONEncoder()
 contractEncoder.outputFormatting = [.sortedKeys, .prettyPrinted]

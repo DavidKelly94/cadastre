@@ -40,10 +40,10 @@ walls facing inward, then the middle, then again with the phone raised.
 ## 0. American spelling
 
 The owner asked on 2026-11-13 to drop British spellings. `AGENTS.md` now says
-so for everything new. Still to do, in one small pull request: the text the
-owner reads on the phone and in the PC's output ("metres", "colour",
-"storey"). Comments and older documents are converted when they are next
-edited. Names fixed by the format stay: `metres_per_pixel` and its relatives
+so for everything new, and the text the owner reads on the phone and in the
+PC's output was converted with the move to feet and inches the same day (see
+`docs/status.md`). Comments and older documents are converted when they are
+next edited. Names fixed by the format stay: `metres_per_pixel` and its relatives
 are a contract (rule 2), and renaming them is a format version decision
 nobody has asked for.
 

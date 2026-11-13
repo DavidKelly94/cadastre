@@ -161,8 +161,8 @@ def test_the_leave_check_is_shown_per_session(store: Path):
         session = page_data(page)["sessions"][0]
         assert session["field_check"] == manifest["field_check"]
         assert [line["text"] for line in session["field_check_lines"]] == [
-            "Check the corners: 18 cm off",
-            "Walls photographed: 4 of 5; NW–NE wall, 0.8 m not photographed from 1.9 m past NW",
+            "Check the corners: 7 in off",
+            "Walls photographed: 4 of 5; NW–NE wall, 2 ft 7 in not photographed from 6 ft 3 in past NW",
             (
                 "Stills: 7 of 11 on the list; missing Panel with the cover off, Home-run routes, "
                 "Smoke and CO locations"

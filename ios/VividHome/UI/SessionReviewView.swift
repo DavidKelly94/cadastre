@@ -30,7 +30,7 @@ struct SessionReviewView: View {
           // manifest now carries, green or orange, while the wall is still
           // open and a re-shoot is still possible.
           if let check = summary.fieldCheck {
-            ForEach(Array(check.lines.enumerated()), id: \.offset) { _, line in
+            ForEach(Array(check.lines(in: AppUnits.current).enumerated()), id: \.offset) { _, line in
               Label(line.text, systemImage: line.ok ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
                 .foregroundStyle(line.ok ? Tokens.ok : Tokens.warn)
             }
@@ -120,7 +120,7 @@ struct SessionReviewView: View {
           case .good:
             flag(
               "\(summary.alignment.count) landmarks, "
-                + "\(String(format: "%.1f", summary.alignment.spread)) m apart at the widest. "
+                + "\(AppUnits.current.length(summary.alignment.spread)) apart at the widest. "
                 + "Enough to check the fit against the plan.", bad: false)
           }
         } header: {
@@ -175,7 +175,7 @@ struct SessionReviewView: View {
   @ViewBuilder
   private var placementLine: some View {
     if let placement = summary.placement {
-      Label(placement.summary, systemImage: placement.verdict == .placed
+      Label(placement.summary(in: AppUnits.current), systemImage: placement.verdict == .placed
         ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
         .foregroundStyle(placement.verdict == .placed ? Tokens.ok
           : (placement.verdict == .check ? Tokens.warn : Tokens.error))

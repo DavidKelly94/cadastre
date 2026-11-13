@@ -329,7 +329,7 @@ def test_a_plan_that_arrives_with_its_scale_is_not_sent_to_be_calibrated(
 
     [plan] = result.plans
     assert plan.imported
-    assert "its scale came with it (12.7 mm per pixel)" in plan.reason
+    assert "its scale came with it (0.50 in per pixel)" in plan.reason
     assert "plan calibrate" not in plan.reason
     assert load_calibration(tmp_path / "data", "main").is_calibrated
 
@@ -639,7 +639,7 @@ def test_the_phones_placement_is_adopted_with_the_capture(session: Path, tmp_pat
     result = ingest(store, session)
     assert result.alignment is not None and result.alignment.adopted, result.alignment
     assert result.alignment.level == "main", "the server renders this level after adopting"
-    assert "0.021 m" in result.alignment.reason
+    assert "off by 3/4 in" in result.alignment.reason, "0.021 m, as the owner reads it"
     stored = json.loads((store / "alignments" / f"{session.name}.json").read_text(encoding="utf-8"))
     assert stored["source"] == "app" and stored["method"] == "guided"
 

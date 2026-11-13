@@ -52,7 +52,8 @@ final class PlanAlignmentTests: XCTestCase {
     XCTAssertEqual(solution.maxResidual, 0.040931403561, accuracy: 1e-9)
     XCTAssertEqual(solution.residuals[1], 0.040931403561, accuracy: 1e-9)
     XCTAssertEqual(solution.verdict, .placed)
-    XCTAssertEqual(solution.summary, "Placed on the plan, 3 cm")
+    XCTAssertEqual(solution.summary(in: .metric), "Placed on the plan, 3 cm")
+    XCTAssertEqual(solution.summary(in: .imperial), "Placed on the plan, 1 in")
     // The transform applied to a session point lands on its house point.
     let moved = solution.houseXZ(sessionX: session[2].x, z: session[2].z)
     XCTAssertEqual(moved.x, 4, accuracy: 0.03)
@@ -66,7 +67,7 @@ final class PlanAlignmentTests: XCTestCase {
     swapped[1].houseXZ = house[0]
     let bad = try XCTUnwrap(PlanAlignment.solve(pairs: swapped, floorY: 0, floorSource: "assumed-zero", floorHeight: 0))
     XCTAssertEqual(bad.verdict, .notPlaced)
-    XCTAssertTrue(bad.summary.hasPrefix("Not placed"))
+    XCTAssertTrue(bad.summary(in: .imperial).hasPrefix("Not placed"))
     XCTAssertNil(PlanAlignment.solve(pairs: [pairs[0]], floorY: 0, floorSource: "x", floorHeight: 0))
   }
 

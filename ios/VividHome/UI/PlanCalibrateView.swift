@@ -130,13 +130,13 @@ struct PlanCalibrateView: View {
     if let preview, let mpp = preview.metresPerPixel,
       let width = preview.widthMetres(imageWidth: imageWidth)
     {
-      let scaleText = String(format: "%.1f mm per pixel", mpp * 1000)
-      let widthText = String(format: "%.1f m", width)
-      return "\(scaleText); the drawing is \(widthText) wide. A house is tens of metres across."
+      let units = AppUnits.current
+      let sense = units == .imperial ? "A house is 30 to 100 ft across." : "A house is tens of meters across."
+      return "\(units.perPixel(mpp)); the drawing is \(units.length(width)) wide. \(sense)"
     }
     if let mpp = plan.metresPerPixel, let width = plan.widthMetres(imageWidth: imageWidth) {
-      return String(
-        format: "Currently %.1f mm per pixel, %.1f m wide. Saving replaces it.", mpp * 1000, width)
+      let units = AppUnits.current
+      return "Currently \(units.perPixel(mpp)), \(units.length(width)) wide. Saving replaces it."
     }
     return "No scale yet. Place the three points and type the printed distance."
   }

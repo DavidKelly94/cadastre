@@ -100,7 +100,7 @@ struct PlanPlacementView: View {
       } else if plan != nil {
         ContentUnavailableView(
           "This level's plan has no scale yet", systemImage: "ruler",
-          description: Text("Set the scale on the plan screen first; a placement needs metres."))
+          description: Text("Set the scale on the plan screen first; a placement needs a scale."))
       } else {
         ContentUnavailableView("No plan for this level", systemImage: "map")
       }
@@ -154,7 +154,7 @@ struct PlanPlacementView: View {
               if pairIndex != nil { Image(systemName: "checkmark").font(.caption2.weight(.bold)) }
               Text(Self.short(label)).font(.caption.weight(.semibold)).lineLimit(1)
               if let pairIndex, let solution, pairIndex < solution.residuals.count {
-                Text("\(Int((solution.residuals[pairIndex] * 100).rounded())) cm")
+                Text(AppUnits.current.small(solution.residuals[pairIndex]))
                   .font(.caption2.monospacedDigit())
               }
             }
@@ -175,7 +175,7 @@ struct PlanPlacementView: View {
   private var footer: some View {
     VStack(alignment: .leading, spacing: 8) {
       if let solution {
-        Label(solution.summary, systemImage: solution.verdict == .placed
+        Label(solution.summary(in: AppUnits.current), systemImage: solution.verdict == .placed
           ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
           .font(.footnote.weight(.semibold))
           .foregroundStyle(solution.verdict == .placed ? Color.green
@@ -185,7 +185,7 @@ struct PlanPlacementView: View {
           .font(.footnote).foregroundStyle(.secondary)
       }
       if let existing {
-        Text("Already placed (\(existing.method), \(Int((existing.rmsM * 100).rounded())) cm). Replace overwrites it.")
+        Text("Already placed (\(existing.method), \(AppUnits.current.small(existing.rmsM))). Replace overwrites it.")
           .font(.caption).foregroundStyle(.secondary)
       } else {
         Text("Place writes the placement beside the plans; the PC adopts it with the capture.")

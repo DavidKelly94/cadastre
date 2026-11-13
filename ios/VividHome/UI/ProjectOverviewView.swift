@@ -37,6 +37,8 @@ struct ProjectOverviewView: View {
   @State private var namingLevel = false
   @State private var draftLevel = ""
   @State private var draftIndex = 0
+  /// Feet and inches or metric, for every length the app shows.
+  @AppStorage(AppUnits.key) private var unitsChoice = Units.imperial.rawValue
 
   private var store: SessionStore {
     SessionStore(documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
@@ -265,6 +267,14 @@ struct ProjectOverviewView: View {
         } label: {
           Label("Add a level from a plan", systemImage: "square.stack.3d.up")
         }
+      }
+      Section {
+        Picker("Measurements", selection: $unitsChoice) {
+          Text("Feet and inches").tag(Units.imperial.rawValue)
+          Text("Metric").tag(Units.metric.rawValue)
+        }
+      } footer: {
+        Text("What the app shows. Captures are always recorded in meters.")
       }
     } 
     .safeAreaInset(edge: .top) { summary }

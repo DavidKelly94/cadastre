@@ -106,7 +106,7 @@ Rule 3 holds: the ARKit layer gathers faces and draws; every decision is in the 
 Each line is one pull request, and each leaves the app working.
 
 1. `ModelReadiness` in the core and in Python, with the contract comparison. **Built 2026-11-13**, and wired a little further than planned: the capture records `model` at Stop and the review screen shows the fourth line with up to two things to do, since that costs no new screen. "Ground covered" from section 3.1 is not built.
-2. The 3D row, the two lines of gaps, the three-state inset, the leave-check line.
+2. The 3D row, the two lines of gaps, the three-state inset, the leave-check line. **Written 2026-11-13, compiles only**, with two changes from section 3.2 made for the size of the screen: the row shows one line of what is missing, not two, and the inset keeps its wall bands and draws a white line over the stretches seen twice instead of recoloring the wall.
 3. `CornerFinder` and `CornerMatch` in the core, with the Python twin run over the rehearsal capture on the owner's PC.
 4. Proposed marks on the capture screen: draw, confirm, override, the off switch.
 5. Ceiling taps and `end`; the upright check.

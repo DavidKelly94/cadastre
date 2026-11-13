@@ -46,7 +46,8 @@ struct CaptureHUDView: View {
             if showInset {
               PlanInsetView(
                 room: room, guidance: guidance, placement: coordinator.placement,
-                coverage: coordinator.coverage, walk: coordinator.walk, priorWalks: coordinator.priorWalks,
+                coverage: coordinator.coverage, views: coordinator.wallViews, walk: coordinator.walk,
+                priorWalks: coordinator.priorWalks,
                 landmarks: coordinator.landmarks, camera: camera)
             }
             Button {
@@ -221,6 +222,7 @@ struct CaptureHUDView: View {
       }
 
       if !coordinator.checklist.isEmpty { checklistChips }
+      modelRow
 
       HStack(spacing: 20) {
         Button {
@@ -351,6 +353,39 @@ struct CaptureHUDView: View {
         }
       }
     }
+  }
+
+  /// Whether there is enough for a 3D model yet, and the one thing most
+  /// worth doing about it (ADR-0035). It advises: Stop is never held back.
+  private var modelRow: some View {
+    let model = coordinator.model
+    let walls = model?.wallsTwice
+    let percent = walls.map { "Walls \(Int(($0 * 100).rounded()))%" } ?? "Walls –"
+    return VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 6) {
+        Text("3D").font(.caption2.weight(.bold)).foregroundStyle(Tokens.inkSecondary)
+        modelChip(percent, done: (walls ?? 0) >= ModelReadiness.wallsTwiceEnough)
+        modelChip("Floor", done: model?.floor ?? false)
+        modelChip("Ceiling", done: model?.ceiling ?? false)
+        Spacer()
+      }
+      if let first = model?.missing(in: AppUnits.current).first {
+        Text(first)
+          .font(.caption2).foregroundStyle(Tokens.inkSecondary)
+          .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+      }
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  private func modelChip(_ text: String, done: Bool) -> some View {
+    HStack(spacing: 4) {
+      Image(systemName: done ? "checkmark" : "circle.dashed").font(.caption2.weight(.bold))
+      Text(text).font(.caption.weight(.semibold)).lineLimit(1)
+    }
+    .padding(.horizontal, 10).padding(.vertical, 6)
+    .background(done ? Tokens.ok.opacity(0.22) : Tokens.raised, in: Capsule())
+    .foregroundStyle(done ? Tokens.ok : Tokens.ink)
   }
 
   private func takeStill(item: String?, named name: String?) {

@@ -368,11 +368,18 @@ and the review screen shows a fourth line, "Enough for 3D" or what is short,
 with up to two things to do about it. The PC's page shows the same line.
 It advises; nothing blocks Stop.
 
+**While capturing (step 2, written the same day):** a row labeled 3D on the
+capture screen, with Walls and its percentage, Floor and Ceiling ticking as
+each is met, and under it the one thing most worth doing ("Ceiling not seen.
+Tilt up as you walk."). The plan inset draws a white line along each stretch
+of wall seen from two places, over the existing bands. The report is redone
+every fifth keyframe. **Only compiles; nobody has captured with it.**
+
 `readiness.py` measures the same on the PC. **Verified:** `ModelReadinessTests`
 and `test_readiness.py` on a 4 by 3 m room; the contract job compares the two
 on the fixture's room and walk, run locally. **Only compiles:** the wiring in
-the capture and the review screen. **Not built:** the live row on the capture
-screen (step 2), and "ground covered".
+the capture, the capture screen and the review screen. **Not built:**
+"ground covered".
 
 Known limits: every threshold is a first guess; a top-up counts the walls
 together with the room's earlier captures but the floor, ceiling and heights

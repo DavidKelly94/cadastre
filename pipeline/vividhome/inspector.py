@@ -83,6 +83,8 @@ class LevelPage:
     image: str
     image_size: tuple[int, int]
     sessions: list[SessionOverlay]
+    #: The level's 3D page beside this one (ADR-0036), when it has been built.
+    model: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -390,11 +392,16 @@ def build_page(
             overlays.append(overlay)
 
     overlays.sort(key=lambda o: (_phase_rank(o.phases), o.room, o.session_id))
+    target = store / "inspect" / f"{level}.html"
+    model_page = target.with_name(f"{level}-3d.html")
     page = LevelPage(
-        level=level, image=f"../plans/{image_path.name}", image_size=size, sessions=overlays
+        level=level,
+        image=f"../plans/{image_path.name}",
+        image_size=size,
+        sessions=overlays,
+        model=model_page.name if model_page.exists() else None,
     )
 
-    target = store / "inspect" / f"{level}.html"
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(_render(page), encoding="utf-8")
     return target
@@ -414,6 +421,11 @@ def _phase_rank(phases: list[str]) -> int:
 def _render(page: LevelPage) -> str:
     data = json.dumps(page.to_dict(), separators=(",", ":"))
     title = html.escape(f"VividHome — {page.level}")
+    model_link = (
+        f'<div class="model"><a href="{html.escape(page.model)}">See this level in 3D</a></div>'
+        if page.model
+        else ""
+    )
     return f"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -424,6 +436,8 @@ def _render(page: LevelPage) -> str:
   #panel {{ width: 300px; overflow-y: auto; padding: 16px; border-right: 1px solid #8884; }}
   #stage {{ flex: 1; overflow: auto; position: relative; }}
   h1 {{ font-size: 16px; margin: 0 0 12px; }}
+  .model {{ margin: -4px 0 12px; }}
+  .model a {{ color: inherit; }}
   .phase {{ font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
             opacity: .6; margin: 14px 0 4px; }}
   .session {{ padding: 6px 8px; border-radius: 6px; cursor: pointer; }}
@@ -465,7 +479,7 @@ def _render(page: LevelPage) -> str:
     .hint-touch {{ display: none; }}
   }}
 </style>
-<div id="panel"><h1>{title}</h1><div id="list"></div>
+<div id="panel"><h1>{title}</h1>{model_link}<div id="list"></div>
 <div class="hint"><span class="hint-mouse">Hover a dot for a preview, click it for the full
 photo; arrow keys step.</span><span class="hint-touch">Tap a dot for the photo; swipe to step.</span>
 The tick shows which way the camera looked. Diamonds are stills.</div></div>

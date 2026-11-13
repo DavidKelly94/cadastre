@@ -152,11 +152,12 @@ push to `main` for that reason, and only for that reason).
 | `align` | done | Umeyama 2D, rotation and translation only |
 | `inspect` | done | Level page, groups multi-phase sessions by earliest trade; every drawn keyframe and still opens at full resolution, with its look direction |
 | `ingest` | done | Zip-slip and path-traversal guarded; files under the manifest's project; copies `plans/` found beside the sessions, verbatim, for levels the store lacks; takes a whole project folder at once and reports each session; writes `derived/validate.json` so the index can say what passed |
+| `model` | done | ADR-0036 stage one: each placed capture's mesh in house coordinates, one WebGL page per level on its drawing, linked from the level page; no GPU, nothing from outside the store |
 | `serve` | done | Local server for the browser pages; `--lan` serves the store to the phone with `/index.json` and Bonjour (ADR-0028), takes captures under `/upload/` with the pairing code into an inbox and ingests them (ADR-0029; tried from a phone 2026-10-02), and redraws a level's page in the background when a capture arrives placed (ADR-0031) |
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **392 tests passing** (plus 5 that run only in the contract job), ruff clean.
+22 modules, **398 tests passing** (plus 5 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -374,6 +375,34 @@ stray corner and 3 cm of noise (absorbed), a room that is the wrong size
 **Not built:** the Python matcher, and so any run on a real capture. **Nothing here has seen a
 real mesh**, framed or finished. The owner's tapped framing captures are the
 first evidence it will meet.
+
+## 3D on the PC, stage one: the scan in the house, 2026-11-13
+
+ADR-0036's first stage. `vividhome model --level <level>` moves the phone's
+own mesh of every placed capture into house coordinates and writes
+`inspect/<level>-3d.html` with its data beside it: the rooms of a level
+together, standing on the level's drawing, turned with a mouse or a finger.
+Walls take a tint per capture and flat faces stay gray; a *Cut above* slider
+opens a room that has a ceiling; the scan's floor steps aside so the drawing
+shows as the floor. `serve` builds it with the level page whenever a placed
+capture arrives, and the level page links to it, so the phone reaches it
+through *Rendering on the PC* with no change to the app.
+
+The page draws with the browser's own WebGL 2 and loads nothing from outside
+the store, so no library is vendored yet. three.js arrives with the splats
+(ADR-0011), where it is needed.
+
+**Verified:** `test_model.py` checks every vertex against the alignment it
+came through, the drawing's corners against the calibration, and that the
+page reaches nothing outside; and the page was opened in a headless browser
+here on the synthetic room, at desktop and phone widths, and drew it.
+**Not verified:** a real capture's mesh (tens of thousands of faces, not
+688), and the page inside the phone's own web view. The first real look is
+the owner's.
+
+Known limits: the page must be opened through the server, not as a file; the
+whole mesh is sent, with no thinning, so a level of many captures will be
+heavy; the plan page is still where a photo is found.
 
 ## Corner marks proposed from the scan, written blind, 2026-11-13
 

@@ -8,6 +8,8 @@ happens once (Apple account, TestFlight, installing uv) is in
 
 **Measurements.** The phone and the PC write lengths in feet and inches. For metric: on the phone, *Measurements* at the bottom of the project screen; on the PC, add `--units metric` right after `vividhome`. Captures are recorded in meters either way.
 
+**3D.** When a placed capture arrives, the server also draws the level in 3D: the phone's scan of each room, standing on the drawing. Open the level's page and follow *See this level in 3D*, on the PC or through *Rendering on the PC* on the phone. To build it for captures already in the store: `uv run vividhome --store $store model`.
+
 **PowerShell rules.** One command per line. PowerShell 5 does not accept `&&`.
 Paths with spaces go in quotes. Anything in angle brackets is a placeholder you
 replace; nothing below is meant to be typed with the brackets.

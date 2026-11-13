@@ -102,6 +102,9 @@ evidence the corner finder is tuned against.
 
 ## 5a. 3D on the PC, stage one (ADR-0036)
 
+**Stage one built 2026-11-13**; see `docs/status.md`. Steps 1 to 3 below are
+done, with the link on the level page standing in for a change to the app.
+
 1. `vividhome model --level <level>`: each placed capture's `mesh.obj` moved
    into house coordinates, written as one file per level under the project.
 2. A viewer page beside the level page, with its library served by the PC.

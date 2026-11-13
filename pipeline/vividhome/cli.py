@@ -166,6 +166,14 @@ def _add_inspect(sub: argparse._SubParsersAction) -> None:
     )
 
 
+def _add_model(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser(
+        "model",
+        help="build the level's 3D page from the scans of its placed captures",
+    )
+    p.add_argument("--level", help="level slug; omit to build every aligned level")
+
+
 def _add_markers(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("markers", help="generate the printable marker PDF and the bundled PNGs")
     p.add_argument("--out", help="destination PDF path")
@@ -254,6 +262,7 @@ def build_parser() -> argparse.ArgumentParser:
         _add_plan,
         _add_align,
         _add_inspect,
+        _add_model,
         _add_markers,
         _add_synth,
         _add_corners,
@@ -526,6 +535,9 @@ def _run_inspect(args: argparse.Namespace) -> int:
 
     written = []
     for level in levels:
+        # The 3D page first, so the level page can link to it. A level with no
+        # scan to show simply has no such page.
+        _build_model_quietly(args.store, level)
         try:
             written.append(
                 build_page(
@@ -546,6 +558,44 @@ def _run_inspect(args: argparse.Namespace) -> int:
         from .serve import serve
 
         serve(args.store, port=args.port, open_path=f"inspect/{levels[0]}.html")
+    return 0
+
+
+def _build_model_quietly(store: str, level: str) -> None:
+    """Build a level's 3D page when it has anything to show, and say so."""
+    from .model import build_model
+    from .plan import PlanError
+
+    try:
+        result = build_model(store, level)
+    except PlanError:
+        return
+    print(f"wrote {result.page} ({result.sessions} capture(s), {result.faces:,} faces)")
+
+
+def _run_model(args: argparse.Namespace) -> int:
+    from .inspector import build_page, levels_with_alignments
+    from .model import build_model
+    from .plan import PlanError
+
+    levels = [args.level] if args.level else levels_with_alignments(args.store)
+    if not levels:
+        print("no aligned sessions yet; a capture has to be placed first", file=sys.stderr)
+        return 1
+    for level in levels:
+        try:
+            result = build_model(args.store, level)
+        except PlanError as error:
+            print(f"vividhome model: {error}", file=sys.stderr)
+            return 1
+        print(f"wrote {result.page} ({result.sessions} capture(s), {result.faces:,} faces)")
+        for reason in result.skipped:
+            print(f"  left out {reason}")
+        # The level page links to the model, so it is redrawn to gain the link.
+        try:
+            build_page(args.store, level, thumbnails=True)
+        except PlanError as error:
+            print(f"  the level page was not redrawn: {error}", file=sys.stderr)
     return 0
 
 
@@ -750,6 +800,7 @@ _HANDLERS = {
     "plan": _run_plan,
     "align": _run_align,
     "inspect": _run_inspect,
+    "model": _run_model,
     "ingest": _run_ingest,
     "markers": _run_markers,
     "corners": _run_corners,

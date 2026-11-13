@@ -71,6 +71,47 @@ final class PlanAlignmentTests: XCTestCase {
     XCTAssertNil(PlanAlignment.solve(pairs: [pairs[0]], floorY: 0, floorSource: "x", floorHeight: 0))
   }
 
+  /// A corner marked at the ceiling is the right place on the plan and the
+  /// wrong height for a floor (ADR-0034).
+  func testACeilingMarkIsNotTheFloor() {
+    typealias Mark = (kind: LandmarkKind, y: Double, ceiling: Bool)
+    // Two corners at the floor, one at the ceiling: the floor is the floor.
+    let mixed: [Mark] = [(.corner, -1.40, false), (.corner, -1.38, false), (.corner, 1.02, true)]
+    XCTAssertEqual(PlanAlignment.floorY(landmarks: mixed).y, -1.40, accuracy: 1e-9)
+    XCTAssertEqual(PlanAlignment.floorY(landmarks: mixed).source, "lowest-landmark")
+
+    // Every corner at the ceiling: a wall's height below them, and it says so.
+    let above: [Mark] = [(.corner, 1.00, true), (.corner, 1.04, true), (.corner, 1.02, true)]
+    let guessed = PlanAlignment.floorY(landmarks: above)
+    XCTAssertEqual(guessed.y, 1.02 - CornerEnd.nominalWallMeters, accuracy: 1e-9)
+    XCTAssertEqual(guessed.source, "below-ceiling-marks-assumed")
+    let known = PlanAlignment.floorY(landmarks: above, wallHeight: 2.74)
+    XCTAssertEqual(known.y, 1.02 - 2.74, accuracy: 1e-9)
+    XCTAssertEqual(known.source, "below-ceiling-marks")
+
+    XCTAssertEqual(PlanAlignment.floorY(landmarks: [Mark]()).source, "assumed-zero")
+  }
+
+  func testATapWellAboveThePhoneIsAtTheCeiling() {
+    // The phone at chest height, 1.4 m above a floor at -1.4.
+    XCTAssertFalse(CornerEnd.isCeiling(tapY: -1.4, cameraY: 0), "a floor corner")
+    XCTAssertFalse(CornerEnd.isCeiling(tapY: 0.2, cameraY: 0), "a little above the phone is a wall")
+    XCTAssertTrue(CornerEnd.isCeiling(tapY: 1.0, cameraY: 0), "a ceiling corner")
+  }
+
+  func testWhichEndTravelsWithTheLandmark() throws {
+    let record = LandmarkRecord(
+      time: 8.7, index: 60, label: "corner-ne", kind: .corner, position: Vector3(2.31, 1.02, -0.87),
+      method: "raycast_estimated_plane", end: CornerEnd.ceiling)
+    let data = try JSONEncoder().encode(record)
+    XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("\"end\":\"ceiling\""))
+    XCTAssertEqual(try JSONDecoder().decode(LandmarkRecord.self, from: data), record)
+    // A floor mark writes no `end`, and an older line reads as one.
+    let floor = LandmarkRecord(
+      time: 1, index: 1, label: "corner-nw", kind: .corner, position: Vector3(0, -1.4, 0), method: "x")
+    XCTAssertFalse(String(decoding: try JSONEncoder().encode(floor), as: UTF8.self).contains("end"))
+  }
+
   func testTheFloorIsTheFloorLandmarksElseTheLowestOne() {
     let tagged = PlanAlignment.floorY(landmarks: [(.corner, -1.2), (.floor, -1.31), (.floor, -1.29), (.door, -1.25)])
     XCTAssertEqual(tagged.y, -1.30, accuracy: 1e-12)

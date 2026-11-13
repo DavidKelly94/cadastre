@@ -192,6 +192,27 @@ def test_floor_height_says_when_it_is_guessing(tmp_path: Path):
     assert height == pytest.approx(0.0)
 
 
+def test_a_corner_marked_at_the_ceiling_is_not_the_floor(tmp_path: Path):
+    """Section 8, `end`: the mark's place on the plan stands, its height is the
+    ceiling's, and the lowest-landmark guess must not fall for it."""
+    result = build(tmp_path / "s", SynthSpec(keyframes=3))
+    (result.root / "mesh.obj").unlink()
+    (result.root / "mesh_classes.u8").unlink()
+    path = result.root / "landmarks.jsonl"
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    # Mark the first corner at the ceiling, and put a second one below the
+    # floor's level at the ceiling too: neither may decide the floor.
+    records[0]["p_w"][1] = 2.4
+    records[0]["end"] = "ceiling"
+    records[1]["p_w"][1] = -5.0
+    records[1]["end"] = "ceiling"
+    path.write_text("".join(json.dumps(record) + "\n" for record in records), encoding="utf-8")
+
+    height, source = floor_y_session(Session.load(result.root))
+    assert source == "lowest-landmark"
+    assert height == pytest.approx(0.0), "the corners still marked at the floor"
+
+
 def test_t_y_puts_the_session_floor_at_the_level_height(scene, tmp_path: Path):
     truth, store, _ = scene
     session = Session.load(truth.root)

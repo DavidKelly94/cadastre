@@ -28,7 +28,15 @@ public enum CornerProposal {
     /// The height to place confirmed marks at: the lowest the walls of this
     /// fit were seen, which is the floor wherever a wall reaches it.
     public var floor: Double
+    /// How tall the scan saw the walls of this fit: lowest to highest. The
+    /// room's height where a wall was seen from floor to ceiling, and less
+    /// where it was not.
+    public var height: Double
   }
+
+  /// A scan that disagrees with the entered wall height by more than this is
+  /// worth a line on the screen.
+  public static let heightDisagreement = 0.10
 
   /// The fits that agree with every corner already marked by hand. A tapped
   /// corner settles which way round a symmetric room goes; a fit that puts
@@ -76,8 +84,9 @@ public enum CornerProposal {
     guard !open.isEmpty else { return nil }
     let named = placed.union(open.map(\.label))
     let floor = fit.marks.map(\.bottom).min() ?? 0
+    let top = fit.marks.map(\.top).max() ?? floor
     return Shown(
       marks: open, total: corners.count, missing: corners.filter { !named.contains($0) }, ways: ways,
-      floor: floor)
+      floor: floor, height: max(0, top - floor))
   }
 }

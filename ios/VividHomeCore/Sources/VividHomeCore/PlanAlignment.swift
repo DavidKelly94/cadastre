@@ -122,6 +122,43 @@ public enum PlanAlignment {
     }
     return (0, "assumed-zero")
   }
+
+  /// The same, when some corners were marked at the ceiling (ADR-0034).
+  ///
+  /// A ceiling mark is the right place on the plan and the wrong height for
+  /// a floor, so it is left out wherever anything else can say where the
+  /// floor is. When every mark is at the ceiling, the floor is taken to be a
+  /// wall's height below them: the level's own height when the owner has
+  /// entered one, else a nominal eight feet, and the source says which.
+  public static func floorY(
+    landmarks: [(kind: LandmarkKind, y: Double, ceiling: Bool)], wallHeight: Double? = nil
+  ) -> (y: Double, source: String) {
+    let below = landmarks.filter { !$0.ceiling }.map { (kind: $0.kind, y: $0.y) }
+    if !below.isEmpty { return floorY(landmarks: below) }
+    let above = landmarks.filter { $0.ceiling }.map { $0.y }.sorted()
+    guard !above.isEmpty else { return (0, "assumed-zero") }
+    let middle = above.count / 2
+    let median = above.count % 2 == 1 ? above[middle] : (above[middle - 1] + above[middle]) / 2
+    if let wallHeight, wallHeight > 0 { return (median - wallHeight, "below-ceiling-marks") }
+    return (median - CornerEnd.nominalWallMeters, "below-ceiling-marks-assumed")
+  }
+}
+
+/// Which end of a corner a mark is at (ADR-0034, design 2.5). A corner is the
+/// vertical line where two walls meet, so either end is the same point on the
+/// plan; only the floor's height needs to know which was marked.
+public enum CornerEnd {
+  /// The value of a landmark's `end` for a mark at the ceiling.
+  public static let ceiling = "ceiling"
+  /// A tap this far above the phone is at the ceiling: the phone is held at
+  /// chest height, and a floor corner is never above it.
+  public static let aboveCameraMeters = 0.4
+  /// The wall assumed under a ceiling mark when nothing says otherwise.
+  public static let nominalWallMeters = 2.44
+
+  public static func isCeiling(tapY: Double, cameraY: Double) -> Bool {
+    tapY - cameraY >= aboveCameraMeters
+  }
 }
 
 /// Least-squares rigid 2D fit taking points `a` onto points `b`: `umeyama_2d`

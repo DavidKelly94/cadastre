@@ -157,7 +157,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-22 modules, **398 tests passing** (plus 5 that run only in the contract job), ruff clean.
+22 modules, **399 tests passing** (plus 5 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -375,6 +375,37 @@ stray corner and 3 cm of noise (absorbed), a room that is the wrong size
 **Not built:** the Python matcher, and so any run on a real capture. **Nothing here has seen a
 real mesh**, framed or finished. The owner's tapped framing captures are the
 first evidence it will meet.
+
+## A corner can be marked at the ceiling, written blind, 2026-11-13
+
+Fifth step of `capture-guidance-design.md` (ADR-0034), from the owner's
+question whether ceiling corners would help. They do when the floor corner is
+behind something, which at framing is often. A corner tap that lands 0.4 m
+or more above the phone is taken as the ceiling end, with nothing to choose
+on screen, and the message says "at the ceiling". On the plan it is the same
+point. The landmark records `end: ceiling` (section 8, optional), a snap
+moves it sideways onto the corner and leaves its height alone, and the floor's
+height is worked out from the other marks. If every corner is marked at the
+ceiling, the floor is taken as 2.44 m below them and `floor_source` says it
+was assumed; that affects only how high the capture sits, not where.
+
+**Verified on Linux:** the floor ignoring ceiling marks, the all-ceiling
+guess and its label, the 0.4 m rule, the record's round trip; on the PC, that
+`align`'s lowest-landmark guess ignores them. **Only compiles:** the tap
+handling in the capture, which is the most used path in the app; a floor tap
+is below the phone and takes the old path unchanged.
+
+Before this, a ceiling tap would have been snapped down to the bottom of the
+nearest wall faces and used as the floor.
+
+**Wall height (step 6, the same day):** the plan screen's footer takes the
+level's wall height, kept in the plan file as optional `wall_height_m`
+(section 13). It becomes the floor under corners all marked at the ceiling,
+and the proposal bar says when the scan sees the walls more than 0.10 m
+taller or shorter than it. Compiles only.
+
+Not built: the upright check, which has nothing to compare while a corner
+carries one mark.
 
 ## 3D on the PC, stage one: the scan in the house, 2026-11-13
 

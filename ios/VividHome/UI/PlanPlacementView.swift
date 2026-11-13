@@ -69,7 +69,10 @@ struct PlanPlacementView: View {
     guard pairs.count >= 2 else { return nil }
     // The landmark rule, as the guided capture uses it; the mesh route the PC
     // has is not on the phone.
-    let floor = PlanAlignment.floorY(landmarks: landmarks.map { (kind: $0.kind, y: $0.position.y) })
+    let floor = PlanAlignment.floorY(
+      landmarks: landmarks.map {
+        (kind: $0.kind, y: $0.position.y, ceiling: $0.end == CornerEnd.ceiling)
+      })
     return PlanAlignment.solve(
       pairs: pairs, floorY: floor.y, floorSource: floor.source, floorHeight: plan.floorHeight)
   }

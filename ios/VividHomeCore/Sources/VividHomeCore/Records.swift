@@ -528,9 +528,13 @@ public struct LandmarkRecord: Codable, Equatable, Sendable {
   public var kind: LandmarkKind
   public var position: Vector3
   public var method: String
+  /// `ceiling` when a corner was marked at its ceiling end (since 2026-11-13,
+  /// ADR-0034). Absent means the floor end, as every mark was before.
+  public var end: String?
 
   public init(
-    time: Double, index: Int, label: String, kind: LandmarkKind, position: Vector3, method: String
+    time: Double, index: Int, label: String, kind: LandmarkKind, position: Vector3, method: String,
+    end: String? = nil
   ) {
     self.time = time
     self.index = index
@@ -538,6 +542,7 @@ public struct LandmarkRecord: Codable, Equatable, Sendable {
     self.kind = kind
     self.position = position
     self.method = method
+    self.end = end
   }
 
   enum CodingKeys: String, CodingKey {
@@ -547,6 +552,7 @@ public struct LandmarkRecord: Codable, Equatable, Sendable {
     case kind
     case position = "p_w"
     case method
+    case end
   }
 }
 

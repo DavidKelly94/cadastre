@@ -153,10 +153,12 @@ final class PlanTests: XCTestCase {
   /// number, so the plan file does (2026-11-13: a basement added from its
   /// drawing would otherwise have been floor 0 in every manifest).
   func testALevelMadeFromItsPlanKeepsItsNameAndFloorNumber() throws {
-    let plan = PlanFile(level: "basement", image: "basement.png", name: "Basement", index: -1)
+    let plan = PlanFile(
+      level: "basement", image: "basement.png", name: "Basement", index: -1, wallHeight: 2.7432)
     let data = try JSONEncoder().encode(plan)
     let text = String(decoding: data, as: UTF8.self)
     XCTAssertTrue(text.contains("\"index\":-1"), text)
+    XCTAssertTrue(text.contains("\"wall_height_m\":2.7432"), text)
     let back = try JSONDecoder().decode(PlanFile.self, from: data)
     XCTAssertEqual(back, plan)
     XCTAssertEqual(back.levelRef, LevelRef(slug: "basement", name: "Basement", index: -1))
@@ -172,5 +174,7 @@ final class PlanTests: XCTestCase {
     let text = String(decoding: try JSONEncoder().encode(plan), as: UTF8.self)
     XCTAssertFalse(text.contains("\"index\""), text)
     XCTAssertFalse(text.contains("\"name\""), text)
+    XCTAssertFalse(text.contains("wall_height_m"), text)
+    XCTAssertNil(plan.wallHeight)
   }
 }

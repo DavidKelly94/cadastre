@@ -36,6 +36,11 @@ public struct PlanFile: Codable, Equatable, Sendable {
   /// without this every such level was floor 0, which then went into each
   /// capture's manifest for good.
   public var index: Int?
+  /// The level's wall height, floor to ceiling, in meters, when the owner
+  /// has entered it (since 2026-11-13, ADR-0034). A check on what the scan
+  /// measures and the floor under a corner marked at the ceiling; nil when
+  /// nobody has said.
+  public var wallHeight: Double?
 
   /// Calibration is the presence of both numbers, never a stored flag.
   ///
@@ -60,7 +65,8 @@ public struct PlanFile: Codable, Equatable, Sendable {
     source: PlanSource? = nil,
     rooms: [PlanRoom] = [],
     name: String? = nil,
-    index: Int? = nil
+    index: Int? = nil,
+    wallHeight: Double? = nil
   ) {
     self.level = level
     self.image = image
@@ -72,6 +78,7 @@ public struct PlanFile: Codable, Equatable, Sendable {
     self.rooms = rooms
     self.name = name
     self.index = index
+    self.wallHeight = wallHeight
   }
 
   enum CodingKeys: String, CodingKey {
@@ -85,6 +92,7 @@ public struct PlanFile: Codable, Equatable, Sendable {
     case rooms
     case name
     case index
+    case wallHeight = "wall_height_m"
   }
 
   /// Decoding tolerates a plan written by an older `plan add`, which has neither
@@ -102,6 +110,7 @@ public struct PlanFile: Codable, Equatable, Sendable {
     rooms = try c.decodeIfPresent([PlanRoom].self, forKey: .rooms) ?? []
     name = try c.decodeIfPresent(String.self, forKey: .name)
     index = try c.decodeIfPresent(Int.self, forKey: .index)
+    wallHeight = try c.decodeIfPresent(Double.self, forKey: .wallHeight)
   }
 
   /// The level as a capture names it: the typed name and floor number when

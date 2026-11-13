@@ -207,6 +207,8 @@ Two consequences, both of which have already bitten:
 
 **Guided corners ([ADR-0031](adr/0031-the-capture-proves-itself-before-you-leave.md)).** When the room was outlined on the plan (section 13), the app asks for each corner by its outline name and records exactly that as `label`: `corner-nw`, `corner-ne2`, ... A landmark label that equals one of the room's corner names is therefore a correspondence the app has already paired, and section 15's file is the fit it solved from them. Labels of free captures are what the owner typed, as before. `method` is `raycast_estimated_plane` for a tap on the mesh, or `mesh_corner_snap` when the app moved a corner tap to where two mesh wall planes meet the floor, within half a metre of the tap (the rule `corners.py` runs offline, applied at tap time); an undone snap reverts to the raycast value. Since 2026-11-13 ([ADR-0034](adr/0034-placement-from-the-scan-taps-as-the-fallback.md)) it may also be `mesh_corner_proposed`: the app found the corner in its scan, with nobody tapping, showed it as a proposal, and the owner confirmed it. Such a mark sits at the lowest height its walls were seen at. A proposed mark the owner then moves by hand becomes a raycast like any other.
 
+`end` (optional, since 2026-11-13) is `ceiling` when a corner was marked at its ceiling end, which the app decides from the tap being well above the phone. A corner is the vertical line where two walls meet, so the mark's `x` and `z` mean what they always did; its `y` is the ceiling's height, and a reader working out where the floor is leaves such a mark out. Absent means the floor end.
+
 ## 9. Mesh files
 
 `mesh.obj` contains all `ARMeshAnchor` geometries transformed into session (world) coordinates, concatenated: `v x y z` lines (metres) then `f a b c` lines (1-based indices), no normals or texture coordinates required. `mesh_classes.u8` has exactly one byte per `f` line, in the same order, holding the ARKit face classification raw value: `0` none, `1` wall, `2` floor, `3` ceiling, `4` table, `5` seat, `6` window, `7` door. `mesh.json` records `anchors`, `vertices`, `faces` and a `class_histogram`.
@@ -267,6 +269,7 @@ Documents/sessions/<project-slug>/
   "source": { "file": "main.source.pdf", "kind": "pdf", "page": 2 },
   "name": "Main Floor",
   "index": 0,
+  "wall_height_m": 2.7432,
   "rooms": [
     { "room": "kitchen", "x": 1840, "y": 990, "placed_at": "2026-11-03T14:02:11Z",
       "outline": [[1702, 905], [1980, 905], [1980, 1088], [1702, 1088]],
@@ -280,6 +283,7 @@ Documents/sessions/<project-slug>/
 - `rooms[].room` is the `<room>` slug used in session ids, and is how a placement finds its captures.
 - `rooms[].outline` (optional, since 2026-10-03, [ADR-0031](adr/0031-the-capture-proves-itself-before-you-leave.md)) is the room's corners on the drawing, in order around the room, as `[u, v]` pixels like `x`, `y`; `outlined_at` says when. At least three, none repeated, not closed by hand. Corners are named from the outline's geometry, never stored: the compass label the capture protocol uses (`corner-nw`, `corner-ne`, `corner-se`, `corner-sw`, with `2`, `3` suffixes for a second corner in a quadrant), by each corner's bearing from the outline's centre with north up the page. That name is what the app asks the owner to tap in the field and what `landmarks.jsonl` records, so a landmark label is a key into the outline. The outline is the plan's statement of where the corners are; the pin stays the label's position, and moving the pin does not change the outline.
 - `name` and `index` (optional, since 2026-11-13) are the level's name as the owner typed it and which floor it is: 0 the ground floor, -1 a basement, 1 the floor above. They are what a session's manifest records for its level, kept here because a level made from its plan has no session yet to carry them. Absent, the name is the slug and the floor is 0. The pipeline does not use either and writes both back untouched.
+- `wall_height_m` (optional, since 2026-11-13, [ADR-0034](adr/0034-placement-from-the-scan-taps-as-the-fallback.md)) is the level's wall height, floor to ceiling, as the owner entered it. The app uses it as a check on what a scan measures and as the floor under corners marked at the ceiling (section 8, `end`). The pipeline does not use it and writes it back untouched.
 - `source` is omitted when the original was not retained. `kind` is `pdf`, `jpeg` or `heic`; `page` appears only for `pdf`.
 - Readers ignore unknown fields (section 12), so a plan file written by an older `plan add` — with no `source` and no `rooms` — is valid.
 

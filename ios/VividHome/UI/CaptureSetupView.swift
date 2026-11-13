@@ -176,6 +176,7 @@ struct CaptureSetupView: View {
     else { return nil }
     return CaptureCoordinator.GuidedRoom(
       level: levelSlug, floorHeight: plan.floorHeight,
-      corners: corners.map { .init(label: $0.label, x: $0.x, z: $0.z) })
+      corners: corners.map { .init(label: $0.label, x: $0.x, z: $0.z) },
+      wallHeight: plan.wallHeight)
   }
 }

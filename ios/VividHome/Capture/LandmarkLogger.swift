@@ -63,7 +63,8 @@ final class LandmarkLogger {
           label: landmark.label,
           kind: landmark.kind,
           position: landmark.position,
-          method: landmark.method))
+          method: landmark.method,
+          end: landmark.end))
     }
   }
 }
@@ -84,6 +85,9 @@ struct PlacedLandmark: Identifiable, Equatable {
   var method: String = PlacedLandmark.raycastMethod
   /// Where the finger put it before a snap moved it, so the snap can be undone.
   var tapped: Vector3?
+  /// `CornerEnd.ceiling` for a corner marked at its ceiling end (ADR-0034);
+  /// nil for the floor end.
+  var end: String?
 
   static let raycastMethod = "raycast_estimated_plane"
 

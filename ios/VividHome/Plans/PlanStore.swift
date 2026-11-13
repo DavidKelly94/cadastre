@@ -1,6 +1,7 @@
 import Foundation
 import UIKit
 import VividHomeCore
+import VividHomePDF
 
 /// Reading and writing `plans/` beside the sessions, per `docs/session-format.md` §13.
 ///
@@ -181,6 +182,48 @@ final class PlanStore: ObservableObject {
     else { throw Failure.badOutline }
     plans[level] = plan
     try save(plan)
+  }
+
+  // MARK: - Reading the drawing itself (ADR-0032)
+
+  /// What the level's own drawing proposes, and how its points map to the
+  /// stored raster's pixels.
+  struct SheetReading {
+    var proposal: SheetReader.Proposal
+    var pixelsPerPoint: Double
+  }
+
+  /// The original PDF a level was imported from, when it was one.
+  func sheetSource(for level: String) -> (url: URL, page: Int)? {
+    guard let plan = plans[level], let source = plan.source, source.kind == .pdf else { return nil }
+    let url = directory.appendingPathComponent(source.file)
+    guard fileManager.fileExists(atPath: url.path) else { return nil }
+    return (url, max(0, (source.page ?? 1) - 1))
+  }
+
+  /// Read a sheet. Slow enough to keep off the main thread: a CAD export is
+  /// megabytes of drawing instructions. Static so it captures nothing.
+  static func readSheet(at url: URL, page: Int, rasterWidth: Double) -> SheetReading? {
+    guard let data = try? Data(contentsOf: url), let sheet = SheetPDF.sheet(data: data, page: page),
+      sheet.width > 0
+    else { return nil }
+    return SheetReading(proposal: SheetReader.read(sheet), pixelsPerPoint: rasterWidth / sheet.width)
+  }
+
+  /// Write the chosen parts of a reading into the level's plan.
+  @discardableResult
+  func apply(
+    _ reading: SheetReading, to level: String, rooms: Set<String>, setScale: Bool, size: CGSize
+  ) throws -> PlanFile.SheetApplied {
+    guard var plan = plans[level] else { throw Failure.noPlan }
+    let applied = plan.apply(
+      reading.proposal, pixelsPerPoint: reading.pixelsPerPoint,
+      imageSize: (width: Int(size.width), height: Int(size.height)), rooms: rooms, setScale: setScale)
+    plans[level] = plan
+    try save(plan)
+    // The labels the raster reader guessed are superseded by the sheet's own.
+    candidates[level] = (candidates[level] ?? []).filter { plan.placement(of: $0.slug) == nil }
+    return applied
   }
 
   func unplace(room: String, on level: String) throws {

@@ -16,6 +16,10 @@ targets:
     dependencies:
       - package: VividHomeCore
         product: VividHomeCore
+      # The PDF reader for plans (ADR-0032): a static library from the same
+      # package, so nothing is embedded.
+      - package: VividHomeCore
+        product: VividHomePDF
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.vividhome.app

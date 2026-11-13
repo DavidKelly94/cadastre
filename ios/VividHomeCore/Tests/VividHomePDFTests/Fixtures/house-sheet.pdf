@@ -1,0 +1,68 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 800 600] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /W1 6 0 R >> >> >>
+endobj
+4 0 obj
+<<  /Length 1015 >>
+stream
+q 0.5 0 0 0.5 0 0 cm
+1 1 1 rg 0 0 1600 1200 re f
+0.5 0.5 0.5 rg
+200 988 720 12 re f
+200 568 720 12 re f
+200 568 12 432 re f
+908 568 12 432 re f
+554 1000 m 566 1000 l 566 568 l 554 568 l h f
+q 1 0 0 1 734 868 cm /W1 Do Q
+0 0 0 rg 196 1044 m 208 1040 l 196 1036 l h f
+0 0 0 RG 1 w
+200 1060 m 200 1004 l S
+920 1060 m 920 1004 l S
+140 1000 m 196 1000 l S
+140 568 m 196 568 l S
+200 1040 m 920 1040 l S
+Q
+BT /F1 7 Tf 1 0 0 1 144.75 437.55 Tm (101) Tj ET
+BT /F1 7 Tf 1 0 0 1 137.75 425.55 Tm (KITCHEN) Tj ET
+BT /F1 7 Tf 1 0 0 1 214.75 347.55 Tm (102) Tj ET
+BT /F1 7 Tf 1 0 0 1 209.5 335.55 Tm (DINING) Tj ET
+BT /F1 7 Tf 1 0 0 1 394.75 377.55 Tm (103) Tj ET
+BT /F1 7 Tf 1 0 0 1 389.5 365.55 Tm (OFFICE) Tj ET
+BT /F1 7 Tf 1 0 0 1 614.75 397.55 Tm (104) Tj ET
+BT /F1 7 Tf 1 0 0 1 611.25 385.55 Tm (PATIO) Tj ET
+BT /F1 7 Tf 1 0 0 1 266 525.55 Tm (20' - 0") Tj ET
+BT /F1 7 Tf 0 1 -1 0 74.45 378 Tm (12' - 0") Tj ET
+BT /F1 7 Tf 1 0 0 1 592 97.55 Tm (FIRST FLOOR PLAN) Tj ET
+BT /F1 7 Tf 1 0 0 1 599 77.55 Tm (1/4" = 1'-0") Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Type /XObject /Subtype /Form /BBox [0 0 12 120] /Matrix [1 0 0 1 0 0] /Resources << >> /Length 31 >>
+stream
+0.5 0.5 0.5 rg 0 0 12 120 re f
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000272 00000 n 
+0000001339 00000 n 
+0000001436 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1604
+%%EOF

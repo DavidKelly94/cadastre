@@ -91,9 +91,19 @@ another and print the address, so there is nothing to configure.
    list offers to delete exactly those from the phone. Delete only what is
    marked.
 
+## 3b. Let the drawing set itself up, once per level
+
+If the plan was imported as the **PDF the architect's software exported** (not a scan, not a photo), the phone can read the scale and the rooms off it (ADR-0032). Project screen, tap the plan card: a new plan opens straight into **Read the drawing**; later it is the wand button at the top left.
+
+- **Scale.** The note from the title block, and how many of the sheet's own dimensions agree with it. Green means use it. Red means the page was resized somewhere along the way: set the scale by hand (§4).
+- **Rooms.** One row per room the sheet names. Green rooms on the picture get their corners from the walls. Amber ones share a space with no wall between, like a kitchen open to a living room: they are pinned, and you outline them by hand (§4b), as one room or several.
+- Untick anything that looks wrong on the picture, then **Apply**. Nothing is written before that, and nothing leaves the phone.
+
+After this, §4 and §4b are only for what it could not read.
+
 ## 4. Calibrate the plan, once per level
 
-The drawing needs a scale and an origin before captures can be placed on it. Do it **on the phone**, in the room, with nothing else running:
+The drawing needs a scale and an origin before captures can be placed on it. If *Read the drawing* (§3b) set the scale, skip this. Otherwise do it **on the phone**, with nothing else running:
 
 1. Project screen, tap the plan card, then **Scale** at the top left.
 2. Tap one end of a printed dimension line, then drag the ring under the loupe until the crosshair sits on the tick. Pinch to zoom first if the ticks are small.

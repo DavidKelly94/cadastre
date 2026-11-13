@@ -26,6 +26,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: sudo xcode-select -s /Applications/Xcode_26.6.app
+      # The PDF reader (ADR-0032) needs Apple's frameworks, so this is the only
+      # runner its tests can run on; the rest of the package's tests come along,
+      # on macOS as well as on Linux. The RUN and PROPOSAL lines are the
+      # reader's own account of the fixture, kept in the log on purpose.
+      - name: Test the package, PDF reader included
+        run: |
+          set -o pipefail
+          swift test --package-path ios/VividHomeCore 2>&1 \
+            | tee package-test.log | grep -E "error|RUN |PROPOSAL |failed|Executed"
       - run: brew install xcodegen
       - run: xcodegen generate --spec ios/project.yml --project ios
       # pipefail is load-bearing: the exit status of a pipeline is the LAST
@@ -40,4 +49,8 @@ jobs:
             | tee build.log | grep -E "error:|warning: unre|BUILD"
       - uses: actions/upload-artifact@v7
         if: failure()
-        with: { name: ios-check-log, path: build.log }
+        with:
+          name: ios-check-log
+          path: |
+            build.log
+            package-test.log

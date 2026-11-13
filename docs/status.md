@@ -111,6 +111,9 @@ on TestFlight as builds 62 to 71. Build 71 was walked on 2026-10-03 (see the
 entry below); the fixes from it are in the next build. Walk that one on the
 real house plan, in this order, and write what breaks into this file:
 
+0. New on 2026-11-13: import the level's PDF, tap the plan card, and *Read
+   the drawing* should propose the scale and the rooms (ADR-0032). If it does,
+   steps 1 and 2 are only for what it missed. Screenshot the screen either way.
 1. Plan card → *Scale*: three points and the printed distance (walked once on
    build 56; confirm it still fits).
 2. Tap the room's pin → *Outline the corners*: tap its corners in order, Save;
@@ -297,6 +300,50 @@ belongs to a room nothing else knows about. Once a room is on the plan it is
 picked from a list; typing is the exception, for a room that is genuinely new.
 The plan screen can name one, which is also the right moment since you are
 looking at the drawing.
+
+## The drawing sets itself up: on the phone, written blind, 2026-11-13
+
+ADR-0032's second and third pieces. `SheetPDF`, in a new Apple-only target of
+the package (`VividHomePDF`), walks a PDF page's drawing instructions into the
+core's `Sheet`: the transform stack, paths, fills with their colour, strokes,
+forms drawn inside the page, and the text a character at a time from PDFKit.
+*Read the drawing* on the plan screen (the wand, or automatically for a fresh
+PDF with nothing set up) shows the scale with its agreement, the outlines
+over the drawing, a row per room, and applies what is left ticked.
+
+**What is verified and what is not.** The geometry is tested on Linux and was
+run on the owner's sheet. The PDF reader cannot be compiled here; the macOS
+runner now runs the package's tests, and `SheetPDFTests` reads a hand-made
+PDF of a known house (`make_house_sheet.py`) and checks the walls, a wall
+inside a form, the text and the whole proposal. **The owner's real PDF has
+not been through the Swift PDF reader on any machine**: the first run of that
+is on the phone. The screen's footer prints what the reader saw (pieces of
+text, dimensions, wall shapes), so a screenshot says where it went wrong.
+For the owner's sheet the numbers to expect are about 448, 172 and 87.
+
+## The drawing sets itself up: the reading, 2026-11-13
+
+ADR-0032, first of three pieces. The owner called setup click heavy: about
+eighty taps a level for work the architect already did. `SheetReader` in the
+core package reads a vector sheet handed to it as plain numbers (characters
+with their boxes, filled shapes, stroked lines, in page points): the scale
+from the title-block note and the page size, tested against the sheet's own
+dimensions; the rooms from their labels and room numbers; each outline by
+filling out from the label to the wall shapes, closing over wall stubs, and
+walking the edge into corners. `PlanFile.apply` writes the chosen parts into
+the fields the Scale and Outline screens already write. Fourteen tests on a
+synthetic sheet.
+
+**Run on the owner's real first-floor sheet, locally and uncommitted:** scale
+`1/4" = 1'-0"` with 162 of 162 dimensions agreeing (a wrong scale matches 19
+to 39 of them by chance, against a bar of 60%), and 14 of 18 rooms outlined
+with 4 to 14 corners; living, kitchen, dining and entry come out as one open
+space and are pinned only. `VIVIDHOME_SHEET_JSON` runs the same on any sheet.
+
+**The reader and the screen followed the same day** (entries above).
+**Decided without the owner:** rooms sharing a space are pinned
+and not outlined; an existing scale is never replaced; more than 16 corners is
+not offered as an outline; the house origin is the top-left of its walls.
 
 ## An empty house can start from the drawing, 2026-11-12
 

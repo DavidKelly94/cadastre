@@ -31,7 +31,7 @@ def test_a_placed_capture_with_a_gap_and_missing_stills():
         "checked_at": "2026-10-03T18:00:00Z",
         "together": [],
     }
-    assert lines(check) == [
+    assert lines(check, "metric") == [
         {"text": "Placed on the plan, 0 cm", "ok": True},
         {
             "text": "Walls photographed: 3 of 4; NE–SE wall, 3.0 m not photographed from 1.0 m past NE",
@@ -71,7 +71,15 @@ def test_check_untapped_and_more_than_three_missing():
         },
         "stills": {"done": 7, "total": 11, "missing": ["panel", "home-runs", "smoke-co", "boxes"]},
     }
-    first, second, third = lines(check)
+    # Feet and inches unless told otherwise: the owner builds in them.
+    assert [line["text"] for line in lines(check)][:2] == [
+        "Check the corners: 7 in off",
+        (
+            "Walls photographed: 4 of 5; NW–NE wall, 2 ft 7 in not photographed from 6 ft 3 in"
+            " past NW (+1 more)"
+        ),
+    ]
+    first, second, third = lines(check, "metric")
     assert first == {"text": "Check the corners: 18 cm off", "ok": False}
     assert second["text"] == (
         "Walls photographed: 4 of 5; NW–NE wall, 0.8 m not photographed from 1.9 m past NW (+1 more)"
@@ -86,9 +94,12 @@ def test_check_untapped_and_more_than_three_missing():
         "text": "Not placed: tap two corners",
         "ok": False,
     }
-    assert lines({"placement": {"status": "not_placed", "rms_m": 0.314}})[0]["text"] == (
+    assert lines({"placement": {"status": "not_placed", "rms_m": 0.314}}, "metric")[0]["text"] == (
         "Not placed: 31 cm off, a corner is wrong"
     )
+    assert lines({"placement": {"status": "not_placed", "rms_m": 0.314}}, "imperial")[0][
+        "text"
+    ] == ("Not placed: 1 ft off, a corner is wrong")
     assert short_corner("corner-ne2") == "NE2"
     assert short_corner("kitchen corner 1") == "KITCHEN CORNER 1"
     assert lines({})[0]["text"] == "Not placed yet: no outline for this room"

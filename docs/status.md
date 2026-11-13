@@ -156,7 +156,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **373 tests passing** (plus 3 that run only in the contract job), ruff clean.
+19 modules, **388 tests passing** (plus 4 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -353,6 +353,37 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## Feet and inches, 2026-11-13
+
+The owner asked for imperial measurements, or a choice. Both: every length
+the owner reads is written in feet and inches unless metric is chosen. What
+is recorded does not change; captures, plans and thresholds stay in meters,
+and the format's field names stay as they are.
+
+- **One place writes a length on each side**: `Units` in the Swift core and
+  `vividhome/units.py`, with the rounding spelled out so the two agree. A fit
+  reads "2 3/4 in" (nearest quarter inch) or "7 cm"; a length along a wall
+  "3 ft 11 in" or "1.2 m"; an area in square feet; a plan's scale in inches
+  per pixel.
+- **The phone:** *Measurements* at the bottom of the project screen, feet and
+  inches by default. The fit readout, the leave check, the snap message, the
+  placement screen, the plan's scale and *Read the drawing* all follow it.
+- **The PC:** `--units metric`, or the `VIVIDHOME_UNITS` environment
+  variable; imperial by default. The level page's leave-check lines and the
+  receipts under `serve` follow it. The diagnostic commands (`align`,
+  `corners`, `coverage`, `plan calibrate`) still print metric: they are for
+  checking the numbers the format stores.
+- The page the PC draws uses the PC's setting, not the phone's.
+
+**Verified:** `UnitsTests` and `test_units.py`; the contract job now compares
+61 lengths written eight ways and every sample leave check in both units,
+run locally against the fixture. **Only compiles:** the picker and the
+screens that read it.
+
+User-visible British spellings went in the same pass ("storey" became
+"floor", "metres" in help text). Comments and older documents are converted
+as they are edited, per `AGENTS.md`.
+
 ## A level made from its plan knows which floor it is, 2026-11-13
 
 The owner's house has a basement, and said yes to this. *Add a level from a
@@ -366,7 +397,7 @@ name, floor 0. The pipeline writes both fields back untouched.
 **Verified:** the round trip and the older file, on Linux
 (`testALevelMadeFromItsPlanKeepsItsNameAndFloorNumber`,
 `testAnOlderPlanFileReadsAsFloorZeroUnderItsSlug`); the PC keeping the fields
-through `plan calibrate` (pytest). **Only compiles:** the sheet.
+through `plan calibrate` (pytest). Compiled in CI and shipped in build 82; not yet used by the owner.
 
 The same screens now say "floor" where they said "storey".
 

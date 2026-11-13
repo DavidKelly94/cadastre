@@ -106,7 +106,7 @@ struct CaptureHUDView: View {
         if let placement = coordinator.placement {
           // Placed live against the outline (ADR-0031): the residual, not a
           // geometry word, because the plan is now part of the fit.
-          readout("FIT", "\(Int((placement.rms * 100).rounded())) cm", tone: placement.hudColour)
+          readout("FIT", AppUnits.current.small(placement.rms), tone: placement.hudColour)
         } else {
           readout("FIT", coordinator.alignment.verdict.hudWord, tone: coordinator.alignment.hudColour)
         }
@@ -119,7 +119,7 @@ struct CaptureHUDView: View {
           .frame(maxWidth: .infinity, alignment: .leading)
       }
       if reasonText == nil, let placement = coordinator.placement {
-        Text(placement.summary).font(.caption2).foregroundStyle(placement.hudColour)
+        Text(placement.summary(in: AppUnits.current)).font(.caption2).foregroundStyle(placement.hudColour)
           .frame(maxWidth: .infinity, alignment: .leading)
       } else if reasonText == nil, let advice = coordinator.alignment.advice {
         // Tracking trouble outranks it: a limited-tracking frame is worth fixing
@@ -396,7 +396,7 @@ struct CaptureHUDView: View {
     case .placed(let label):
       show("Marked \(label)")
     case .snapped(let label, let moved):
-      show("Marked \(label) · snapped to the corner, \(Int((moved * 100).rounded())) cm")
+      show("Marked \(label) · snapped to the corner, \(AppUnits.current.small(moved))")
     case .selected(let label):
       show("\(label) selected — tap where it should be")
     case .moved(let label):

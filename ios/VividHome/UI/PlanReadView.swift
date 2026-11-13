@@ -180,7 +180,7 @@ struct PlanReadView: View {
         }
         if across > 0, scale.check != .disagrees {
           Text(
-            "That makes the building \(Self.feet(across)) (\(String(format: "%.1f", across)) m) across its walls.")
+            "That makes the building \(AppUnits.current.length(across)) across its walls.")
             .font(.footnote).foregroundStyle(.secondary)
         }
       }
@@ -209,8 +209,8 @@ struct PlanReadView: View {
       }
       var text = "\(room.outline.count) corners"
       if let scale = reading.proposal.scale, scale.check != .disagrees {
-        let squareFeet = room.areaPoints * pow(scale.metresPerPoint / 0.3048, 2)
-        text += " · \(Int(squareFeet.rounded())) sq ft"
+        let squareMeters = room.areaPoints * scale.metresPerPoint * scale.metresPerPoint
+        text += " · \(AppUnits.current.area(squareMeters))"
       }
       switch state {
       case .missing: return text + "." + removed
@@ -248,11 +248,6 @@ struct PlanReadView: View {
       set: { on in
         if on { chosen.insert(slug) } else { chosen.remove(slug) }
       })
-  }
-
-  static func feet(_ metres: Double) -> String {
-    let inches = (metres / 0.0254).rounded()
-    return "\(Int(inches) / 12) ft \(Int(inches) % 12) in"
   }
 
   // MARK: - Work

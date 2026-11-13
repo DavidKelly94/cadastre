@@ -101,4 +101,20 @@ def test_the_checklist_and_the_leave_checks_sentences_read_the_same_on_both_ends
     assert {item["id"]: item["name"] for item in swift["checklist"]} == CHECKLIST
     assert len(swift["field_checks"]) >= 5
     for sample in swift["field_checks"]:
-        assert lines(sample["check"]) == sample["lines"], sample["check"]
+        assert lines(sample["check"], "imperial") == sample["lines"], sample["check"]
+        assert lines(sample["check"], "metric") == sample["lines_metric"], sample["check"]
+
+
+def test_a_length_is_written_the_same_way_on_both_ends(swift: dict):
+    """Feet and inches or metric, the owner's choice, from the same meters.
+    The table runs from a millimeter to a house, with the halfway cases in."""
+    from vividhome import units
+
+    assert len(swift["lengths"]) >= 40
+    for sample in swift["lengths"]:
+        meters = sample["meters"]
+        for name in ("imperial", "metric"):
+            assert units.small(meters, name) == sample[f"{name}_small"], meters
+            assert units.length(meters, name) == sample[f"{name}_length"], meters
+            assert units.area(meters, name) == sample[f"{name}_area"], meters
+            assert units.per_pixel(meters, name) == sample[f"{name}_per_pixel"], meters

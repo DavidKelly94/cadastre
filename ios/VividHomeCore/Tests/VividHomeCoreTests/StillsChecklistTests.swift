@@ -81,7 +81,7 @@ final class StillsChecklistTests: XCTestCase {
     XCTAssertEqual(
       check.stills, FieldCheck.Stills(done: 5, total: 8, missing: ["low-voltage", "smoke-co", "exterior-penetrations"]))
 
-    let lines = check.lines
+    let lines = check.lines(in: .metric)
     XCTAssertEqual(lines.count, 3)
     XCTAssertEqual(lines[0], FieldCheck.Line(text: "Placed on the plan, 0 cm", ok: true))
     XCTAssertEqual(
@@ -101,9 +101,9 @@ final class StillsChecklistTests: XCTestCase {
       checkedAt: "2026-10-03T18:00:00Z")
     XCTAssertEqual(check.placement.status, "free")
     XCTAssertNil(check.walls)
-    XCTAssertEqual(check.lines[0].text, "Not placed yet: no outline for this room")
-    XCTAssertEqual(check.lines[1].text, "Walls photographed: unknown until the capture is placed")
-    XCTAssertEqual(check.lines[2], FieldCheck.Line(text: "Stills: no list for these trades", ok: true))
+    XCTAssertEqual(check.lines(in: .metric)[0].text, "Not placed yet: no outline for this room")
+    XCTAssertEqual(check.lines(in: .metric)[1].text, "Walls photographed: unknown until the capture is placed")
+    XCTAssertEqual(check.lines(in: .metric)[2], FieldCheck.Line(text: "Stills: no list for these trades", ok: true))
   }
 
   func testAGuidedCaptureWithOneCornerAsksForTwo() {
@@ -112,8 +112,8 @@ final class StillsChecklistTests: XCTestCase {
       checklist: StillsChecklist.items(for: [.framing]), taken: StillsChecklist.items(for: [.framing]).map(\.id),
       checkedAt: "2026-10-03T18:00:00Z")
     XCTAssertEqual(check.placement, FieldCheck.Placement(status: "untapped", rmsM: nil, corners: 1))
-    XCTAssertEqual(check.lines[0], FieldCheck.Line(text: "Not placed: tap two corners", ok: false))
-    XCTAssertEqual(check.lines[2], FieldCheck.Line(text: "Stills: 10 of 10 on the list", ok: true))
+    XCTAssertEqual(check.lines(in: .metric)[0], FieldCheck.Line(text: "Not placed: tap two corners", ok: false))
+    XCTAssertEqual(check.lines(in: .metric)[2], FieldCheck.Line(text: "Stills: 10 of 10 on the list", ok: true))
   }
 
   func testTheFileHasTheDocumentedKeysAndRoundTrips() throws {
@@ -134,9 +134,9 @@ final class StillsChecklistTests: XCTestCase {
     let gap = try XCTUnwrap((walls["gaps"] as? [[String: Any]])?.first)
     XCTAssertEqual(Set(gap.keys), ["wall", "from_m", "length_m"])
     XCTAssertEqual(try JSONDecoder().decode(FieldCheck.self, from: data), check)
-    XCTAssertEqual(check.lines[0], FieldCheck.Line(text: "Check the corners: 18 cm off", ok: false))
+    XCTAssertEqual(check.lines(in: .metric)[0], FieldCheck.Line(text: "Check the corners: 18 cm off", ok: false))
     XCTAssertEqual(
-      check.lines[1].text, "Walls photographed: 4 of 5; NW–NE wall, 0.8 m not photographed from 1.9 m past NW")
+      check.lines(in: .metric)[1].text, "Walls photographed: 4 of 5; NW–NE wall, 0.8 m not photographed from 1.9 m past NW")
   }
 
   func testAStillNamesItsItemOnlyWhenItHasOne() throws {

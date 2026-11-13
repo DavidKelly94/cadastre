@@ -6,6 +6,8 @@ stumbled that day is written down here so it does not happen twice. Setup that
 happens once (Apple account, TestFlight, installing uv) is in
 [owner-setup.md](owner-setup.md); this is what you do every visit.
 
+**Measurements.** The phone and the PC write lengths in feet and inches. For metric: on the phone, *Measurements* at the bottom of the project screen; on the PC, add `--units metric` right after `vividhome`. Captures are recorded in meters either way.
+
 **PowerShell rules.** One command per line. PowerShell 5 does not accept `&&`.
 Paths with spaces go in quotes. Anything in angle brackets is a placeholder you
 replace; nothing below is meant to be typed with the brackets.

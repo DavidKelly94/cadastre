@@ -518,10 +518,10 @@ struct SessionDetailView: View {
   private var alignmentText: String {
     if let placement {
       let how = placement.method == "guided" ? "during capture" : "by pairing"
-      return "Aligned \(how), \(Int((placement.rmsM * 100).rounded())) cm"
+      return "Aligned \(how), \(AppUnits.current.small(placement.rmsM))"
     }
     if alignedOnPC == true { return "Aligned on the PC" }
-    if let line = row.manifest?.fieldCheck?.placementLine.text { return line }
+    if let line = row.manifest?.fieldCheck?.placementLine(in: AppUnits.current).text { return line }
     return "Not aligned"
   }
 

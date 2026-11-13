@@ -160,23 +160,24 @@ public struct FieldCheck: Codable, Equatable, Sendable {
       checkedAt: checkedAt, together: together)
   }
 
-  /// The three lines, in the order the review screen shows them.
-  public var lines: [Line] {
-    [placementLine, wallsLine, stillsLine]
+  /// The three lines, in the order the review screen shows them, with
+  /// lengths written the way the owner reads them.
+  public func lines(in units: Units) -> [Line] {
+    [placementLine(in: units), wallsLine(in: units), stillsLine]
   }
 
-  public var placementLine: Line {
-    let centimetres = Int(((placement.rmsM ?? 0) * 100).rounded())
+  public func placementLine(in units: Units) -> Line {
+    let fit = units.small(placement.rmsM ?? 0)
     switch placement.status {
-    case "placed": return Line(text: "Placed on the plan, \(centimetres) cm", ok: true)
-    case "check": return Line(text: "Check the corners: \(centimetres) cm off", ok: false)
-    case "not_placed": return Line(text: "Not placed: \(centimetres) cm off, a corner is wrong", ok: false)
+    case "placed": return Line(text: "Placed on the plan, \(fit)", ok: true)
+    case "check": return Line(text: "Check the corners: \(fit) off", ok: false)
+    case "not_placed": return Line(text: "Not placed: \(fit) off, a corner is wrong", ok: false)
     case "untapped": return Line(text: "Not placed: tap two corners", ok: false)
     default: return Line(text: "Not placed yet: no outline for this room", ok: false)
     }
   }
 
-  public var wallsLine: Line {
+  public func wallsLine(in units: Units) -> Line {
     guard let walls else {
       return Line(text: "Walls photographed: unknown until the capture is placed", ok: false)
     }
@@ -184,8 +185,8 @@ public struct FieldCheck: Codable, Equatable, Sendable {
     if let worst = walls.gaps.first {
       let corners = worst.wall.components(separatedBy: "->").map(Self.short)
       let wallName = corners.count == 2 ? "\(corners[0])–\(corners[1]) wall" : worst.wall
-      text += "; \(wallName), \(Self.metres(worst.lengthM)) not photographed"
-        + " from \(Self.metres(worst.fromM)) past \(corners.first ?? "its first corner")"
+      text += "; \(wallName), \(units.length(worst.lengthM)) not photographed"
+        + " from \(units.length(worst.fromM)) past \(corners.first ?? "its first corner")"
       if walls.gaps.count > 1 { text += " (+\(walls.gaps.count - 1) more)" }
     }
     return Line(text: text, ok: walls.photographed == walls.total)
@@ -206,10 +207,6 @@ public struct FieldCheck: Codable, Equatable, Sendable {
   static func short(_ label: String) -> String {
     let trimmed = label.hasPrefix("corner-") ? String(label.dropFirst("corner-".count)) : label
     return trimmed.uppercased()
-  }
-
-  static func metres(_ value: Double) -> String {
-    String(format: "%.1f m", value)
   }
 
   /// Gap metres to the nearest decimetre, which is the coverage cell.

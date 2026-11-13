@@ -60,13 +60,14 @@ public enum PlanAlignment {
       (tHs[0] * x + tHs[8] * z + tHs[12], tHs[2] * x + tHs[10] * z + tHs[14])
     }
 
-    /// One line for the HUD and the review: "placed, 6 cm" or "check, 18 cm".
-    public var summary: String {
-      let centimetres = Int((rms * 100).rounded())
+    /// One line for the HUD and the review: "Placed on the plan, 2 1/4 in"
+    /// or "Check the corners: 18 cm off".
+    public func summary(in units: Units) -> String {
+      let fit = units.small(rms)
       switch verdict {
-      case .placed: return "Placed on the plan, \(centimetres) cm"
-      case .check: return "Check the corners: \(centimetres) cm off"
-      case .notPlaced: return "Not placed: \(centimetres) cm off, a corner is wrong"
+      case .placed: return "Placed on the plan, \(fit)"
+      case .check: return "Check the corners: \(fit) off"
+      case .notPlaced: return "Not placed: \(fit) off, a corner is wrong"
       }
     }
   }

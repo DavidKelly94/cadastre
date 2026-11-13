@@ -10,8 +10,10 @@ side's wording has to land on both, which is the point.
 
 from __future__ import annotations
 
-import math
 from typing import Any
+
+from vividhome.units import default as default_units
+from vividhome.units import length, small
 
 __all__ = ["CHECKLIST", "EVERY_PHASE", "PHASE_ITEMS", "lines", "short_corner"]
 
@@ -93,30 +95,21 @@ def short_corner(label: str) -> str:
     return trimmed.upper()
 
 
-def _centimetres(metres: float | None) -> int:
-    # Swift's .rounded() is to-nearest-away-from-zero; Python's round() is not.
-    return math.floor((metres or 0.0) * 100 + 0.5)
-
-
-def _metres(value: float) -> str:
-    return f"{value:.1f} m"
-
-
-def _placement_line(placement: dict[str, Any]) -> dict[str, Any]:
+def _placement_line(placement: dict[str, Any], units: str) -> dict[str, Any]:
     status = placement.get("status")
-    centimetres = _centimetres(placement.get("rms_m"))
+    fit = small(placement.get("rms_m"), units)
     if status == "placed":
-        return {"text": f"Placed on the plan, {centimetres} cm", "ok": True}
+        return {"text": f"Placed on the plan, {fit}", "ok": True}
     if status == "check":
-        return {"text": f"Check the corners: {centimetres} cm off", "ok": False}
+        return {"text": f"Check the corners: {fit} off", "ok": False}
     if status == "not_placed":
-        return {"text": f"Not placed: {centimetres} cm off, a corner is wrong", "ok": False}
+        return {"text": f"Not placed: {fit} off, a corner is wrong", "ok": False}
     if status == "untapped":
         return {"text": "Not placed: tap two corners", "ok": False}
     return {"text": "Not placed yet: no outline for this room", "ok": False}
 
 
-def _walls_line(walls: dict[str, Any] | None) -> dict[str, Any]:
+def _walls_line(walls: dict[str, Any] | None, units: str) -> dict[str, Any]:
     if not isinstance(walls, dict):
         return {"text": "Walls photographed: unknown until the capture is placed", "ok": False}
     photographed = int(walls.get("photographed", 0))
@@ -130,8 +123,8 @@ def _walls_line(walls: dict[str, Any] | None) -> dict[str, Any]:
             f"{corners[0]}–{corners[1]} wall" if len(corners) == 2 else str(worst.get("wall", ""))
         )
         text += (
-            f"; {wall_name}, {_metres(float(worst.get('length_m', 0)))} not photographed"
-            f" from {_metres(float(worst.get('from_m', 0)))} past "
+            f"; {wall_name}, {length(float(worst.get('length_m', 0)), units)} not photographed"
+            f" from {length(float(worst.get('from_m', 0)), units)} past "
             + (corners[0] if corners else "its first corner")
         )
         if len(gaps) > 1:
@@ -153,12 +146,18 @@ def _stills_line(stills: dict[str, Any]) -> dict[str, Any]:
     return {"text": text, "ok": not missing}
 
 
-def lines(check: dict[str, Any]) -> list[dict[str, Any]]:
+def lines(check: dict[str, Any], units: str | None = None) -> list[dict[str, Any]]:
     """The three lines of the review screen, from a manifest's ``field_check``.
 
     Each is ``{"text": ..., "ok": bool}``, green when ok and orange otherwise, in
-    the order the screen shows them: placement, walls, stills.
+    the order the screen shows them: placement, walls, stills. Lengths are
+    written in ``units`` (``imperial`` or ``metric``), or the default.
     """
+    units = units or default_units()
     placement = check.get("placement") if isinstance(check.get("placement"), dict) else {}
     stills = check.get("stills") if isinstance(check.get("stills"), dict) else {}
-    return [_placement_line(placement), _walls_line(check.get("walls")), _stills_line(stills)]
+    return [
+        _placement_line(placement, units),
+        _walls_line(check.get("walls"), units),
+        _stills_line(stills),
+    ]

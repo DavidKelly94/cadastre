@@ -21,6 +21,7 @@ import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from . import units
 from .plan import PlanCalibration, alignments_using, plan_paths
 from .session import Session, SessionError
 from .validate import Report, validate_session, write_report
@@ -255,7 +256,7 @@ def _import_plans(store_root: Path, session_root: Path) -> list[PlanImport]:
         # redo work that is done (seen 2026-11-13, on a plan the drawing set up).
         scale = raw.get("metres_per_pixel")
         if isinstance(scale, int | float) and scale > 0 and raw.get("origin_px") is not None:
-            state = f"its scale came with it ({scale * 1000:.1f} mm per pixel)"
+            state = f"its scale came with it ({units.per_pixel(scale, units.default())})"
         else:
             state = f"calibrate it with 'vividhome plan calibrate --level {level}'"
         results.append(
@@ -331,10 +332,13 @@ def _import_alignment(
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, target)
     rms = raw.get("rms_m")
-    how = f"{float(rms):.3f} m" if isinstance(rms, (int, float)) else "no residual given"
+    if isinstance(rms, (int, float)):
+        how = f"off by {units.small(float(rms), units.default())}"
+    else:
+        how = "no fit given"
     return AlignmentImport(
         True,
-        f"placed by the app, residual {how}; 'vividhome align' replaces it deliberately",
+        f"placed by the app, {how}; 'vividhome align' replaces it deliberately",
         level,
     )
 

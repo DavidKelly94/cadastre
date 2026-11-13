@@ -353,6 +353,25 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## A second level can start from its drawing, 2026-11-13
+
+Found preparing a rehearsal for the owner, not by them: *Import a plan* lived
+on a level, and a level exists once it has a capture or a plan, so a house
+with its main floor set up had no way to bring in the next floor's drawing
+short of recording on that floor first. The empty house had the same gap and
+got a button for it; the house with one level did not. The level list now
+ends with *Add a level from a plan*, which names the level and opens the same
+import. **Only compiles.**
+
+**The rehearsal.** The owner measured a room at home (123 by 127 inches, a
+58 inch window centred in the north wall). A to-scale one-room PDF made from
+those numbers, in the same hand-written form as the package's fixture, reads
+through the core as: scale `1/2" = 1'-0"` agreeing with 5 of 5 dimensions, one
+room, four corners, within a centimetre of the tape. It is not in the
+repository: it is a one-off, and the owner imports it as its own level. What
+it is for is the first placed capture end to end from a drawing that set
+itself up, with the PC drawing the level's page, before framing.
+
 ## Back to the drawing, and an undo that undoes, 2026-11-13
 
 The owner applied build 78's reading, redrew one outline by hand, and reported

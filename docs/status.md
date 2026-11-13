@@ -340,8 +340,14 @@ their own. The reader now takes each character from the page's own string and
 only its box from the selection, and the core counts a character given twice
 in one place once (`testACharacterGivenTwiceInOnePlaceCountsOnce`), which also
 covers a drawing that fakes bold by printing twice. The hand-made fixture never
-showed this on the macOS runner, so the fix is **verified in the core on Linux
-and compiled in CI, not yet seen on the phone**.
+showed this on the macOS runner, so the fix was verified in the core on Linux
+and compiled in CI before it reached the phone.
+
+**Seen fixed on the phone, build 78.** The owner read the same sheet again:
+the scale shows as `1/4" = 1'-0"`, the rooms as *Bedroom 2* and *Bath 2*, and
+164 of 164 dimensions agree (the stray one-letter runs had been hiding a few).
+Not yet walked: *Apply*, the plan screen after it, and a capture in a room
+whose outline came from the drawing.
 
 **If the build 77 proposal was applied**, rooms were pinned under the doubled
 names (`bedroom-22`). Remove those pins, or clear the house, before reading

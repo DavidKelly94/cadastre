@@ -22,6 +22,10 @@ import VividHomeCore
 /// where to go next.
 struct ProjectOverviewView: View {
   let project: String
+  /// The project's name as the owner gave it, and the way back to the list
+  /// of projects (ADR-0033).
+  var projectName: String = ""
+  var onShowProjects: (() -> Void)? = nil
   @ObservedObject var plans: PlanStore
   @ObservedObject var link: PCLink
   let onPick: (LevelRef, String) -> Void
@@ -103,9 +107,14 @@ struct ProjectOverviewView: View {
           list
         }
       }
-      .navigationTitle(digest?.name ?? "Project")
+      .navigationTitle(projectName.isEmpty ? (digest?.name ?? "Project") : projectName)
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
+        if let onShowProjects {
+          ToolbarItem(placement: .topBarLeading) {
+            Button("Projects", systemImage: "square.grid.2x2", action: onShowProjects)
+          }
+        }
         ToolbarItem(placement: .topBarLeading) {
           Button("PC", systemImage: "desktopcomputer") { showingPC = true }
         }

@@ -242,6 +242,7 @@ Everything above describes one session. A **floor plan** is not session data: it
 
 ```
 Documents/sessions/<project-slug>/
+  project.json           OPTIONAL, the project's name (ADR-0033)
   plans/
     <level>.png            plan raster; RGB, long edge <= 4096 px
     <level>.source.pdf     OPTIONAL, the imported file kept verbatim (.pdf, .jpg or .heic)
@@ -250,6 +251,8 @@ Documents/sessions/<project-slug>/
 ```
 
 `<level>` is the same slug used in a session id.
+
+`project.json` (optional, since 2026-11-13, [ADR-0033](adr/0033-projects-are-made-named-and-removed-in-the-app.md)) is `{"name": "Our house", "created_at": "2026-11-13T18:00:00Z"}`: what the owner calls the project, which can change, where the folder's name is its slug, which cannot. A folder without one is a project all the same and reads under its slug. Only the app writes it; the pipeline takes a capture's project from its manifest (section 4) and does not read this file.
 
 **The pipeline's store does not mirror this layout.** On the PC a plan lives at `<store>/plans/<level>.png` and `<level>.json` — one `plans/` directory for the whole store rather than one per project — and it gets there one of two ways. `vividhome ingest` copies `plans/` when it finds one **beside the session it is ingesting**, which is the layout above: ingest the session from inside its project folder, or zip the project folder rather than the session alone. Otherwise `vividhome plan add` imports a PDF or image directly on the PC. `ingest` copies the raster, the JSON and the retained original verbatim, and only for a level the store has no plan for yet: a plan already in the store may be calibrated and have alignments solved against it, and replacing its raster underneath them would move every session drawn on it. Replacing one deliberately is `plan add`; `ingest --force` re-files a session and does not extend to plans. Two consequences worth knowing rather than discovering:
 

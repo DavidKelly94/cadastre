@@ -72,7 +72,8 @@ a pipeline test that `plan calibrate` keeps them.
 
 **The PC's half built 2026-11-13** (steps 1 and 5 below), as a store per
 project under `projects/` with no migration, at the owner's word. See
-`docs/status.md`. Steps 2 to 4, the phone's half, follow.
+`docs/status.md`. Steps 2 to 4, the phone's half, were written the same day
+and compile only.
 
 Steps, each its own pull request:
 

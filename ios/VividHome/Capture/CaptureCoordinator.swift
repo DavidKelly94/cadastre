@@ -175,10 +175,14 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
   private var phases: [CapturePhase] = []
   private var guide: GuidedRoom?
 
-  /// The one project, until the Projects screen exists. Shared with PlanStore,
-  /// which has to find `plans/` beside the same sessions.
-  static let projectSlug = "our-house"
-  private let project = SlugRef(slug: CaptureCoordinator.projectSlug, name: "Our house")
+  /// The project being captured into (ADR-0033): the one the owner opened.
+  /// `PlanStore` is made for the same one, so it finds `plans/` beside these
+  /// sessions.
+  private let project: SlugRef
+
+  init(project: SlugRef = SlugRef(slug: "our-house", name: "Our house")) {
+    self.project = project
+  }
 
   private var documents: URL {
     FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]

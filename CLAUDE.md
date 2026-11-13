@@ -45,7 +45,8 @@ Claude-specific additions.
   configuration. Start here to write code.
 - `docs/session-format.md` — the on-disk contract between the app and the pipeline.
 - `docs/adr/` — architecture decision records, with the index in `README.md`.
-- `docs/design/` — system, iOS app, pipeline and viewer design.
+- `docs/design/` — system, iOS app, pipeline and viewer design;
+  `capture-guidance-design.md` is the one for ADR-0034 and ADR-0035.
 - `.harness.yml` — deviations from the shared harness defaults (CI stacks, extra
   gate commands, review instructions).
 - `.claude/settings.json` — the Bash permission allowlist plus the marketplace and

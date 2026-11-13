@@ -6,9 +6,11 @@ may run against my token limits". Each item below is sized so that a session
 starting cold can pick it up from this page, the ADR it names and
 `docs/status.md`. Nothing here is a record of work done; `docs/status.md` is.
 
-The five ADRs are **Proposed**. An item is not started until the owner has
-accepted its ADR; the acceptance is a one-line change to the ADR's status and
-the index.
+The owner accepted all five ADRs later the same day, after changing
+ADR-0034: the phone proposes corner marks and the owner confirms them, every
+proposal can be overridden by hand, and ceiling corners count. The detail for
+items 3 and 4 is in `docs/design/capture-guidance-design.md`, which also sets
+the order they are built in.
 
 ## Where things stand
 
@@ -26,7 +28,7 @@ the index.
 | 0 | American spelling | none | no |
 | 1 | A floor number for a level made from a plan | none | yes, before the basement is added |
 | 2 | Projects: make, name, delete | [0033](adr/0033-projects-are-made-named-and-removed-in-the-app.md) | useful, not required |
-| 3 | Placement from the scan | [0034](adr/0034-placement-from-the-scan-taps-as-the-fallback.md) | no: it needs framing captures as evidence |
+| 3 | Proposed corner marks, confirmed by the owner | [0034](adr/0034-placement-from-the-scan-taps-as-the-fallback.md) | no: taps already place a capture |
 | 4 | A capture complete enough for 3D | [0035](adr/0035-a-capture-complete-enough-for-3d.md) | **yes if possible**: it changes what is recorded |
 | 5a | 3D on the PC, stage one | [0036](adr/0036-3d-on-the-pc-in-stages-opened-from-the-phone.md) | no |
 | 5b | Exterior | [0037](adr/0037-the-exterior-is-captured-one-face-at-a-time.md) | no, unless sheathing goes on first |
@@ -87,28 +89,16 @@ project, moves nothing, and deletes it.
 **Open question for the owner.** Whether the rehearsal level already beside
 the main floor is deleted by hand once, or migrated into its own project.
 
-## 3. Placement from the scan (ADR-0034)
+## 3 and 4. Capture guidance (ADR-0034, ADR-0035)
 
-1. Run `vividhome corners` on the rehearsal capture on the owner's PC and
-   compare with its taps. This costs one command and decides whether the
-   prototype's wall finding survives a real, furnished room.
-2. Add the fit itself: wall planes to outline, every way round, scored.
-   Offline, in the pipeline, reported beside the tapped placement and never
-   replacing it.
-3. Run it on the first framing captures. **This is the test that matters**:
-   open studs may defeat it.
-4. Only if 3 holds: the same fit in the Swift core, then live in the capture.
-5. Heading in the manifest, if step 2 shows symmetry is common.
+Built in the order of `docs/design/capture-guidance-design.md` section 5:
+the completeness measure and its screen first, because they change what a
+framing capture contains; then the corner finder, the proposed marks with
+their override, ceiling taps, and wall height. Seven pull requests, each
+leaving the app working.
 
-## 4. A capture complete enough for 3D (ADR-0035)
-
-1. Core: the viewpoint measure, from camera positions and the room outline,
-   with tests on synthetic walks (turning on the spot fails, a perimeter
-   walk passes).
-2. Pipeline: the same measure, added to the contract job that already
-   compares Swift and Python on coverage.
-3. App: the three pattern chips and the leave-check line.
-4. Run the measure on the rehearsal capture, which should fail it.
+The first framing captures are made with taps, as today. They are the
+evidence the corner finder is tuned against.
 
 ## 5a. 3D on the PC, stage one (ADR-0036)
 
@@ -127,6 +117,5 @@ the main floor is deleted by hand once, or migrated into its own project.
 
 ## What the owner decides
 
-- Accept, change or reject each of ADR-0033 to ADR-0037.
-- The go-ahead for item 1.
-- Item 2's open question.
+- The go-ahead for item 1 (the basement's floor number), still open.
+- Item 2's open question (the rehearsal level).

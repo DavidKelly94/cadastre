@@ -357,10 +357,13 @@ the drawing again.
 
 After the rehearsal the owner asked for the plan and the ADRs before any more
 is built, so that the work survives a session ending. `docs/next-steps.md`
-has the order and the steps; ADR-0033 to ADR-0037 are **Proposed** and none
-is accepted: projects in the app, placement from the scan, a capture
-complete enough for 3D, 3D on the PC in stages, and the exterior. Nothing in
-them is built. The owner also asked for American spelling from here on, which
+has the order and the steps. ADR-0033 to ADR-0037 were proposed and, the same
+day, **accepted** by the owner: projects in the app, corner marks proposed
+from the scan and confirmed by the owner (changed from a PC-side fit at the
+owner's direction, with a manual override and ceiling corners),
+a capture complete enough for 3D, 3D on the PC in stages, and the exterior.
+`docs/design/capture-guidance-design.md` has the detail for the two capture
+items. **Nothing in any of them is built.** The owner also asked for American spelling from here on, which
 is now a convention in `AGENTS.md`; the text already on screen has not been
 converted yet.
 

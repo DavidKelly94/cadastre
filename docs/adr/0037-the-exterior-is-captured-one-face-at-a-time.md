@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, 2026-11-13. Extends [ADR-0005](0005-short-room-sessions-offline-registration.md).
+Accepted, 2026-11-13, by the owner the day it was proposed ("the ADRs look pretty good"). Extends [ADR-0005](0005-short-room-sessions-offline-registration.md).
 
 ## Context
 

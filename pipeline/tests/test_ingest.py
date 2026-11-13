@@ -319,6 +319,21 @@ def test_a_plan_beside_the_session_comes_across_verbatim(tmp_path: Path, session
     assert loaded.extra["rooms"] == PLACEMENTS
 
 
+def test_a_plan_that_arrives_with_its_scale_is_not_sent_to_be_calibrated(
+    tmp_path: Path, session: Path
+):
+    """A plan the drawing set up on the phone (ADR-0032) arrives calibrated;
+    the receipt used to tell the owner to calibrate it all the same."""
+    plan_beside(session, "main", metres_per_pixel=0.0127, origin_px=[40.0, 30.0])
+    result = ingest(tmp_path / "data", session)
+
+    [plan] = result.plans
+    assert plan.imported
+    assert "its scale came with it (12.7 mm per pixel)" in plan.reason
+    assert "plan calibrate" not in plan.reason
+    assert load_calibration(tmp_path / "data", "main").is_calibrated
+
+
 def test_the_phone_side_is_left_alone_when_the_plan_comes_across(tmp_path: Path, session: Path):
     plans = plan_beside(session, "main", rooms=PLACEMENTS)
     before = {p.name: p.read_bytes() for p in plans.iterdir()}

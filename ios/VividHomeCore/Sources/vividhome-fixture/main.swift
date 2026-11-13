@@ -291,6 +291,43 @@ struct ContractItem: Codable {
   var name: String
 }
 
+/// Corners found with nobody tapping and matched to an outline (ADR-0034),
+/// for `corners.py` to match the same candidates the same ways.
+struct ContractProposal: Codable {
+  struct Point: Codable {
+    var label: String
+    var x: Double
+    var z: Double
+  }
+  struct Way: Codable {
+    var marks: [Point]
+    var rmsM: Double
+
+    enum CodingKeys: String, CodingKey {
+      case marks
+      case rmsM = "rms_m"
+    }
+  }
+  /// Whether the candidates are the ones `CornerFinder` found in this
+  /// session's mesh, which the pipeline should then find there too.
+  var fromMesh: Bool
+  var outline: [Point]
+  var candidates: [[Double]]
+  var ways: [Way]
+  var missing: [String]
+
+  enum CodingKeys: String, CodingKey {
+    case outline, candidates, ways, missing
+    case fromMesh = "from_mesh"
+  }
+}
+
+/// An outline on a drawing and the names the phone gives its corners.
+struct ContractNames: Codable {
+  var points: [[Double]]
+  var names: [String]
+}
+
 struct Contract: Codable {
   var snaps: [ContractSnap]
   var coverage: [ContractWall]
@@ -303,9 +340,12 @@ struct Contract: Codable {
   /// Enough for 3D, measured on this room and this walk (ADR-0035), for
   /// `readiness.py` to measure the same.
   var readiness: ModelReadiness.Report
+  var proposals: [ContractProposal]
+  var cornerNames: [ContractNames]
 
   enum CodingKeys: String, CodingKey {
-    case snaps, coverage, checklist, lengths, readiness
+    case snaps, coverage, checklist, lengths, readiness, proposals
+    case cornerNames = "corner_names"
     case rangeM = "range_m"
     case keyframesUsed = "keyframes_used"
     case keyframesTotal = "keyframes_total"
@@ -397,6 +437,56 @@ let sampleChecks: [FieldCheck] = [
     model: .init(wallsTwice: nil, floor: true, ceiling: false, heights: false, gaps: [])),
 ]
 
+// Proposed marks (ADR-0034). First this room, found in its whole mesh with
+// nobody tapping, against its outline where the house has it: a quarter turn
+// and a shift away from where the scan started. A rectangle goes on two ways
+// round, and both are reported. Then an L with one corner unseen and a
+// cabinet's corner in the scan, which goes on one way and has a corner left
+// to tap.
+func turned(_ x: Double, _ z: Double, by degrees: Double, dx: Double, dz: Double) -> (x: Double, z: Double) {
+  let angle = degrees * .pi / 180
+  return (cos(angle) * x - sin(angle) * z + dx, sin(angle) * x + cos(angle) * z + dz)
+}
+func proposal(
+  candidates: [CornerFinder.Candidate], outline: [(label: String, x: Double, z: Double)], fromMesh: Bool
+) -> ContractProposal {
+  let found = CornerMatch.propose(candidates: candidates, outline: outline)
+  let ways = found.map { [$0.fit] + $0.alternatives } ?? []
+  return ContractProposal(
+    fromMesh: fromMesh,
+    outline: outline.map { .init(label: $0.label, x: $0.x, z: $0.z) },
+    candidates: candidates.map { [$0.x, $0.z] },
+    ways: ways.map { way in
+      .init(marks: way.marks.map { .init(label: $0.label, x: $0.x, z: $0.z) }, rmsM: way.rms)
+    },
+    missing: found?.missing ?? outline.map(\.label))
+}
+let wholeMesh = faces.map {
+  CornerSnap.Face(
+    a: vertices[$0.a], b: vertices[$0.b], c: vertices[$0.c], classification: $0.classification)
+}
+let roomInHouse = corners.map { corner -> (label: String, x: Double, z: Double) in
+  let point = turned(corner.x, corner.z, by: 90, dx: 12, dz: -3)
+  return (corner.label, point.x, point.z)
+}
+let ell: [(Double, Double)] = [(0, 0), (6, 0), (6, 3), (3, 3), (3, 6), (0, 6)]
+let ellOutline = ell.enumerated().map { (label: "c\($0.offset)", x: $0.element.0, z: $0.element.1) }
+let ellScan =
+  ell.prefix(5).map { point -> CornerFinder.Candidate in
+    let moved = turned(point.0, point.1, by: 137, dx: -2, dz: 9.5)
+    return .init(x: moved.x, z: moved.z, bottom: 0, top: 2.4, support: 3)
+  } + [CornerFinder.Candidate(x: 40, z: 40, bottom: 0, top: 0.9, support: 0.6)]
+let proposals = [
+  proposal(candidates: CornerFinder.candidates(faces: wholeMesh), outline: roomInHouse, fromMesh: true),
+  proposal(candidates: ellScan, outline: ellOutline, fromMesh: false),
+]
+let namedOutlines: [[[Double]]] = [
+  [[100, 100], [500, 100], [500, 400], [100, 400]],
+  [[500, 400], [500, 100], [100, 100], [100, 400]],
+  [[0, 0], [400, 0], [400, 150], [250, 150], [250, 400], [0, 400]],
+  [[10, 10], [300, 40], [150, 280]],
+]
+
 let contract = Contract(
   snaps: snaps,
   coverage: walls.map { wall in
@@ -422,7 +512,9 @@ let contract = Contract(
   },
   readiness: ModelReadiness.report(
     views: frames.map { ModelReadiness.View(pose: $0.poseWorldFromCamera) },
-    walls: ModelReadiness.wallViews(outline: footprint, cameras: cameras)))
+    walls: ModelReadiness.wallViews(outline: footprint, cameras: cameras)),
+  proposals: proposals,
+  cornerNames: namedOutlines.map { .init(points: $0, names: RoomOutline.cornerNames(for: $0)) })
 let contractEncoder = JSONEncoder()
 contractEncoder.outputFormatting = [.sortedKeys, .prettyPrinted]
 try contractEncoder.encode(contract).write(to: contractPath)
@@ -432,6 +524,9 @@ for snap in snaps {
   print("  \(snap.label): \(moved)")
 }
 print("  enough for 3D: \(contract.readiness.line(in: .imperial).text)")
+for found in proposals {
+  print("  proposal: \(found.ways.first?.marks.count ?? 0) of \(found.outline.count) corners, \(found.ways.count) way(s)")
+}
 for wall in contract.coverage {
   print("  \(wall.start) -> \(wall.end): photographed \(Int((wall.photographedFraction * 100).rounded()))%")
 }

@@ -16,6 +16,11 @@ measurement error. A confident candidate in the wrong place is the failure the
 roadmap warns about, which is why the report scores against the owner's taps
 rather than trusting itself.
 
+Since ADR-0034 the phone does propose corners, matched to the room's outline
+and confirmed by the owner. ``match_outline`` is that matching, step for step,
+so a capture whose corners were tapped says what the phone would have proposed
+there and how far each proposal was from the tap of the same name.
+
 The geometry is two-dimensional. ARKit's ``+y`` is up and gravity-aligned
 (section 3), so a wall is a line in the x-z plane and a corner is where two lines
 meet at floor height.
@@ -25,6 +30,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from itertools import combinations
 from pathlib import Path
@@ -32,18 +38,26 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from . import units
 from .mesh import FLOOR, WALL, Mesh, read_mesh
+from .plan import PlanError, load_calibration, plan_to_house
 from .session import Landmark, Session
 
 __all__ = [
     "CornerCandidate",
     "CornerReport",
+    "OutlineFit",
+    "OutlineMatch",
     "WallPlane",
     "compare_with_landmarks",
+    "compare_with_outline",
     "corner_candidates",
+    "corner_names",
     "find_walls",
     "floor_height",
+    "match_outline",
     "propose_corners",
+    "room_outline",
     "write_candidates",
 ]
 
@@ -55,6 +69,17 @@ FULL_SUPPORT_M2 = 1.0
 #: The roadmap's acceptance distance: a proposal the owner would accept with a
 #: drag under this counts as a hit.
 ACCEPT_M = 0.20
+
+#: With less wall-classed surface than this, ARKit has not recognized the walls
+#: (open framing) and every vertical face is used instead. The phone's
+#: ``CornerFinder.minimumClassedArea``.
+MIN_CLASSED_AREA_M2 = 2.0
+
+#: How close a candidate must land to an outline corner to be it, and how much
+#: two fits' errors may differ and still be equally good. The phone's
+#: ``CornerMatch.tolerance`` and ``CornerMatch.sameFit``.
+MATCH_TOLERANCE_M = 0.15
+SAME_FIT_M = 0.03
 
 
 @dataclass(frozen=True)
@@ -125,6 +150,13 @@ class CornerReport:
     walls: list[WallPlane] = field(default_factory=list)
     candidates: list[CornerCandidate] = field(default_factory=list)
     against_landmarks: dict | None = None
+    #: Which faces the walls were fitted to: the wall-classified ones, or every
+    #: vertical face when ARKit classified too little wall to go on.
+    wall_source: str = "wall-classified"
+    #: What the phone would have proposed against the room's outline, and how
+    #: far each proposal was from the owner's tap of that corner. None when the
+    #: store has no outline for the room.
+    against_outline: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -133,9 +165,11 @@ class CornerReport:
             "floor_y": round(self.floor_y, 4),
             "floor_source": self.floor_source,
             "wall_faces": self.wall_faces,
+            "wall_source": self.wall_source,
             "walls": [wall.to_dict() for wall in self.walls],
             "candidates": [candidate.to_dict() for candidate in self.candidates],
             "against_landmarks": self.against_landmarks,
+            "against_outline": self.against_outline,
             "note": (
                 "Candidates, not measurements. Nothing here says a corner is where the "
                 "owner would tap it; a candidate reaches landmarks.jsonl only by being "
@@ -151,6 +185,11 @@ class CornerReport:
                 f"floor at y = {self.floor_y:.3f} m ({self.floor_source})"
             ),
         ]
+        if self.wall_source != "wall-classified":
+            lines.append(
+                "  too little of the scan was classified as wall, so every vertical face "
+                "was used, as the phone does in open framing"
+            )
         for wall in self.walls:
             lines.append(
                 f"  {wall.id:<3} azimuth {wall.azimuth_deg:6.1f} deg  offset {wall.offset_m:7.3f} m"
@@ -181,11 +220,46 @@ class CornerReport:
                 f"  candidates with no tap within {against['stray_m']:.2f} m: "
                 + (", ".join(stray) if stray else "none")
             )
+        lines.extend(self._outline_lines())
         lines.append(
             "  Candidates, not measurements: nothing here says a corner is where the "
             "owner would tap it."
         )
         return "\n".join(lines)
+
+    def _outline_lines(self) -> list[str]:
+        """What the phone would have proposed, in the owner's units."""
+        outline = self.against_outline
+        if outline is None:
+            return ["  no outline for this room in the store, so no proposal to check"]
+        room, total = outline["room"], outline["corners"]
+        if not outline["found"]:
+            return [
+                (
+                    f"  against the outline of {room} ({total} corners): the scan's corners "
+                    "do not fit it, so the phone would have proposed nothing"
+                )
+            ]
+        chosen = units.default()
+        ways = outline["ways"]
+        lines = [
+            f"  against the outline of {room}: the phone would have proposed "
+            f"{outline['found']} of {total} corners"
+            + (f", {ways} ways round" if ways > 1 else "")
+            + f" (fit {units.small(outline['rms_m'], chosen)})"
+        ]
+        if ways > 1 and outline["way"] is not None:
+            lines.append(
+                f"  way {outline['way']} of {ways} is the one the taps agree with"
+                + ("" if outline["way"] == 1 else ", not the one it would have shown first")
+            )
+        for mark in outline["marks"]:
+            distance = mark["tap_distance_m"]
+            tail = "no tap" if distance is None else f"{units.small(distance, chosen)} from the tap"
+            lines.append(f"  {mark['label']:<12} {mark['candidate']:<3} {tail}")
+        if outline["missing"]:
+            lines.append("  not found, to tap by hand: " + ", ".join(outline["missing"]))
+        return lines
 
 
 def _fold(theta: NDArray[np.float64] | float) -> NDArray[np.float64]:
@@ -211,6 +285,7 @@ def find_walls(
     max_tilt: float = 0.2,
     angle_tol_deg: float = 10.0,
     offset_tol_m: float = 0.15,
+    any_class: bool = False,
 ) -> list[WallPlane]:
     """Cluster wall-classified faces into vertical planes.
 
@@ -221,9 +296,12 @@ def find_walls(
     ``min_area_m2`` of wall are dropped: furniture ARKit calls "wall" is small.
     ``max_tilt`` is the largest vertical component a face normal may have and
     still count as wall — a sloped ceiling classified as wall is not a wall.
+    ``any_class`` takes every vertical face, whatever ARKit called it: open
+    framing is rarely classified as wall.
     """
     normals, areas, centroids = mesh.normals(), mesh.areas(), mesh.centroids()
-    wall = (mesh.classes == WALL) & (areas > 0) & (np.abs(normals[:, 1]) <= max_tilt)
+    classed = np.ones(len(mesh.faces), dtype=bool) if any_class else mesh.classes == WALL
+    wall = classed & (areas > 0) & (np.abs(normals[:, 1]) <= max_tilt)
     index = np.flatnonzero(wall)
     if index.size == 0:
         return []
@@ -438,13 +516,257 @@ def compare_with_landmarks(
     return attached, summary
 
 
-def propose_corners(session: Session, *, min_area_m2: float = 0.5) -> CornerReport:
-    """Run the whole chain on one session: walls, floor, candidates, score."""
+def corner_names(points: Sequence[Sequence[float]]) -> list[str]:
+    """Names for an outline's corners, in the same order (section 13).
+
+    The compass label by each corner's bearing from the outline's center, north
+    up the page, with ``2``, ``3`` for a second corner in a quadrant. The
+    phone's ``RoomOutline.cornerNames``: the name it asks for in the field and
+    writes to ``landmarks.jsonl``.
+    """
+    if len(points) < 3 or any(len(point) != 2 for point in points):
+        return []
+    cx = sum(float(point[0]) for point in points) / len(points)
+    cy = sum(float(point[1]) for point in points) / len(points)
+    seen: dict[str, int] = {}
+    names = []
+    for point in points:
+        quadrant = ("n" if point[1] <= cy else "s") + ("w" if point[0] <= cx else "e")
+        seen[quadrant] = seen.get(quadrant, 0) + 1
+        suffix = "" if seen[quadrant] == 1 else str(seen[quadrant])
+        names.append(f"corner-{quadrant}{suffix}")
+    return names
+
+
+def room_outline(store: str | Path, level: str, room: str) -> list[tuple[str, float, float]] | None:
+    """A room's corners in house meters, by name; None when the store's plan
+    for the level is missing or uncalibrated, or the room has no outline."""
+    try:
+        calibration = load_calibration(store, level)
+    except (PlanError, OSError, ValueError, KeyError):
+        return None
+    if not calibration.is_calibrated:
+        return None
+    rooms = calibration.extra.get("rooms")
+    for entry in rooms if isinstance(rooms, list) else []:
+        if not isinstance(entry, dict) or entry.get("room") != room:
+            continue
+        points = entry.get("outline")
+        if not isinstance(points, list):
+            return None
+        try:
+            names = corner_names(points)
+            return [
+                (name, *plan_to_house(calibration, float(point[0]), float(point[1])))
+                for name, point in zip(names, points, strict=True)
+            ] or None
+        except (TypeError, ValueError, IndexError):
+            return None
+    return None
+
+
+@dataclass(frozen=True)
+class OutlineFit:
+    """One way a scan's corners fit an outline: ``(label, candidate index)`` for
+    each corner found, in the outline's order."""
+
+    marks: tuple[tuple[str, int], ...]
+    rms_m: float
+
+
+@dataclass(frozen=True)
+class OutlineMatch:
+    fit: OutlineFit
+    #: Outline corners the scan did not find: the ones to tap by hand.
+    missing: tuple[str, ...]
+    #: Other ways round that fit as well: the owner is asked, nothing chooses.
+    alternatives: tuple[OutlineFit, ...] = ()
+
+    @property
+    def ways(self) -> tuple[OutlineFit, ...]:
+        return (self.fit, *self.alternatives)
+
+
+def match_outline(
+    candidates: Sequence[tuple[float, float]], outline: Sequence[tuple[str, float, float]]
+) -> OutlineMatch | None:
+    """Match corners found in a scan to a room's outline (ADR-0034).
+
+    The phone's ``CornerMatch.propose``, step for step. A capture sits on its
+    plan by a turn and a shift, never a mirror, and two matched corners fix
+    both: every pair of candidates is tried against every pair of outline
+    corners the same distance apart, and the motion that lands the most
+    candidates on outline corners wins. A rectangle fits two ways round and a
+    square four; those come back as alternatives. None with fewer than two
+    candidates landing on corners.
+    """
+    if len(candidates) < 2 or len(outline) < 2:
+        return None
+    seen: set[tuple[tuple[int, int], ...]] = set()
+    fits: list[tuple[dict[int, int], float]] = []
+
+    for i, (ix, iz) in enumerate(candidates):
+        for j, (jx, jz) in enumerate(candidates):
+            if j == i:
+                continue
+            between = math.hypot(jx - ix, jz - iz)
+            if between <= 0.3:
+                continue
+            for a, (_, ax, az) in enumerate(outline):
+                for b, (_, bx, bz) in enumerate(outline):
+                    if b == a or abs(math.hypot(bx - ax, bz - az) - between) > MATCH_TOLERANCE_M:
+                        continue
+                    # The turn that lines the pair up, and the shift that lays
+                    # one midpoint on the other.
+                    turn = math.atan2(bz - az, bx - ax) - math.atan2(jz - iz, jx - ix)
+                    c, s = math.cos(turn), math.sin(turn)
+                    mx, mz = (ix + jx) / 2, (iz + jz) / 2
+                    tx = (ax + bx) / 2 - (c * mx - s * mz)
+                    tz = (az + bz) / 2 - (s * mx + c * mz)
+
+                    # Each candidate to the nearest outline corner within
+                    # reach, nearest pairs first, one candidate per corner.
+                    pairs = []
+                    for index, (x, z) in enumerate(candidates):
+                        hx, hz = c * x - s * z + tx, s * x + c * z + tz
+                        for corner, (_, px, pz) in enumerate(outline):
+                            distance = math.hypot(hx - px, hz - pz)
+                            if distance <= MATCH_TOLERANCE_M:
+                                pairs.append((distance, corner, index))
+                    pairs.sort(key=lambda pair: pair[0])
+                    assignment: dict[int, int] = {}
+                    used: set[int] = set()
+                    total = 0.0
+                    for distance, corner, index in pairs:
+                        if corner in assignment or index in used:
+                            continue
+                        assignment[corner] = index
+                        used.add(index)
+                        total += distance * distance
+                    if len(assignment) < 2:
+                        continue
+                    key = tuple(sorted(assignment.items()))
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    fits.append((assignment, math.sqrt(total / len(assignment))))
+
+    if not fits:
+        return None
+    fits.sort(key=lambda scored: (-len(scored[0]), scored[1]))
+    best, best_rms = fits[0]
+
+    def fit(assignment: dict[int, int], rms: float) -> OutlineFit:
+        return OutlineFit(
+            marks=tuple((outline[corner][0], assignment[corner]) for corner in sorted(assignment)),
+            rms_m=rms,
+        )
+
+    return OutlineMatch(
+        fit=fit(best, best_rms),
+        missing=tuple(label for corner, (label, _, _) in enumerate(outline) if corner not in best),
+        alternatives=tuple(
+            fit(assignment, rms)
+            for assignment, rms in fits[1:]
+            if len(assignment) == len(best) and rms - best_rms <= SAME_FIT_M
+        ),
+    )
+
+
+def compare_with_outline(
+    candidates: list[CornerCandidate],
+    outline: Sequence[tuple[str, float, float]],
+    landmarks: list[Landmark],
+    *,
+    room: str,
+) -> dict:
+    """What the phone would have proposed for this room, held against the taps.
+
+    A proposal names scan corners for outline corners; the owner's tap of the
+    same name is where that corner really was, in the same frame. So each
+    proposed mark gets its horizontal distance from its tap, which is the
+    measurement ADR-0034 asks for before proposals are trusted. When the room
+    fits more than one way round, the way reported is the one nearest the
+    taps, and ``way`` says which of the ways the phone would have offered that
+    is (1 is the one it shows first); without taps to choose by it is the
+    first, and ``way`` is None.
+    """
+    match = match_outline([(c.p_w[0], c.p_w[2]) for c in candidates], outline)
+    base = {"room": room, "corners": len(outline)}
+    if match is None:
+        return {
+            **base,
+            "found": 0,
+            "ways": 0,
+            "way": None,
+            "rms_m": None,
+            "marks": [],
+            "missing": [label for label, _, _ in outline],
+        }
+
+    taps = {landmark.label: landmark for landmark in landmarks if landmark.kind == "corner"}
+
+    def distances(fit: OutlineFit) -> list[float | None]:
+        return [
+            _horizontal(candidates[index].p_w, taps[label].p_w) if label in taps else None
+            for label, index in fit.marks
+        ]
+
+    def disagreement(fit: OutlineFit) -> float | None:
+        known = [distance for distance in distances(fit) if distance is not None]
+        return sum(known) / len(known) if known else None
+
+    scored = [(disagreement(fit), number) for number, fit in enumerate(match.ways, start=1)]
+    judged = [(score, number) for score, number in scored if score is not None]
+    way = min(judged)[1] if judged else None
+    shown = match.ways[(way or 1) - 1]
+    found = {label for label, _ in shown.marks}
+    return {
+        **base,
+        "found": len(shown.marks),
+        "ways": len(match.ways),
+        "way": way,
+        "rms_m": round(shown.rms_m, 4),
+        "marks": [
+            {
+                "label": label,
+                "candidate": candidates[index].id,
+                "tap_distance_m": None if distance is None else round(distance, 3),
+            }
+            for (label, index), distance in zip(shown.marks, distances(shown), strict=True)
+        ],
+        "missing": [label for label, _, _ in outline if label not in found],
+    }
+
+
+def propose_corners(
+    session: Session, *, min_area_m2: float = 0.5, store: str | Path | None = None
+) -> CornerReport:
+    """Run the whole chain on one session: walls, floor, candidates, score.
+
+    With ``store``, and an outline for the session's room on its level's plan
+    there, the candidates are also matched to that outline the way the phone
+    does it live, and each proposal is held against the owner's tap.
+    """
     mesh = read_mesh(session)
     walls = find_walls(mesh, min_area_m2=min_area_m2)
+    wall_source = "wall-classified"
+    if sum(wall.area_m2 for wall in walls) < MIN_CLASSED_AREA_M2:
+        every = find_walls(mesh, min_area_m2=min_area_m2, any_class=True)
+        if every:
+            walls, wall_source = every, "every vertical face"
     floor_y, floor_source = floor_height(mesh, walls)
     candidates = corner_candidates(walls, floor_y)
-    candidates, against = compare_with_landmarks(candidates, list(session.landmarks()))
+    landmarks = list(session.landmarks())
+    candidates, against = compare_with_landmarks(candidates, landmarks)
+
+    against_outline = None
+    level, room = (_slug(session.manifest.get(key)) for key in ("level", "room"))
+    if store is not None and level and room:
+        outline = room_outline(store, level, room)
+        if outline is not None:
+            against_outline = compare_with_outline(candidates, outline, landmarks, room=room)
+
     return CornerReport(
         session_id=session.session_id,
         floor_y=floor_y,
@@ -453,7 +775,15 @@ def propose_corners(session: Session, *, min_area_m2: float = 0.5) -> CornerRepo
         walls=walls,
         candidates=candidates,
         against_landmarks=against,
+        wall_source=wall_source,
+        against_outline=against_outline,
     )
+
+
+def _slug(value: object) -> str | None:
+    """The slug of a manifest's ``level`` or ``room`` (section 4)."""
+    slug = value.get("slug") if isinstance(value, dict) else None
+    return str(slug) if slug else None
 
 
 def write_candidates(session: Session, report: CornerReport) -> Path:

@@ -47,7 +47,24 @@ struct PlanCoverageView: View {
   /// data: nothing here has reached the file (rule 9).
   private var suggestions: [PlanLabelReader.Candidate] {
     let placed = Set(plan?.rooms.map(\.room) ?? [])
-    return (store.candidates[level] ?? []).filter { !placed.contains($0.slug) }
+    // A room the PDF itself names is offered from there, outline and all.
+    let drawn = Set(store.readings[level]?.proposal.rooms.map(\.slug) ?? [])
+    return (store.candidates[level] ?? []).filter { !placed.contains($0.slug) && !drawn.contains($0.slug) }
+  }
+
+  /// Rooms the drawing names that are not on the plan: never taken from it,
+  /// or removed since. One tap puts each back as drawn (ADR-0032).
+  private var offered: [SheetReader.Room] {
+    guard let plan, let reading = store.readings[level] else { return [] }
+    return reading.proposal.rooms.filter { plan.placement(of: $0.slug) == nil }
+  }
+
+  /// Whether the tapped pin's outline could be put back from the drawing.
+  private var pickedDiffersFromDrawing: Bool {
+    guard let picked, store.drawnOutline(of: picked, on: level) != nil,
+      let state = store.sheetState(of: picked, on: level)
+    else { return false }
+    return state == .byHand || state == .pinned
   }
 
   /// Rooms this level knows about that are not on the plan yet.
@@ -59,7 +76,9 @@ struct PlanCoverageView: View {
     let placed = Set(plan?.rooms.map(\.room) ?? [])
     var known = Set(coverage.keys)
     if let currentRoom { known.insert(currentRoom) }
-    return known.subtracting(placed).sorted()
+    // Offered from the drawing instead, where one tap also brings the outline.
+    let drawn = Set(offered.map(\.slug))
+    return known.subtracting(placed).subtracting(drawn).sorted()
   }
 
   var body: some View {
@@ -105,6 +124,14 @@ struct PlanCoverageView: View {
           outlining = picked
           picked = nil
         }
+        if pickedDiffersFromDrawing {
+          Button("Put back the drawing's outline") {
+            if let picked, let plan, let image = store.image(for: plan) {
+              try? store.restore(room: picked, on: level, size: image.size)
+            }
+            picked = nil
+          }
+        }
         Button("Remove from the plan", role: .destructive) {
           if let picked { try? store.unplace(room: picked, on: level) }
           picked = nil
@@ -119,6 +146,9 @@ struct PlanCoverageView: View {
       .navigationDestination(isPresented: $reading) {
         PlanReadView(store: store, level: level)
       }
+      // Read once in the background, so a removed room can be offered back
+      // and a changed outline restored without opening the reading screen.
+      .task { _ = await store.sheetReading(for: level) }
       .onAppear {
         // A fresh PDF with nothing set up yet: offer the reading straight
         // away, once, since it is what the owner came here to do by hand.
@@ -233,9 +263,11 @@ struct PlanCoverageView: View {
       Text(
         arming != nil
           ? "Tap where \(arming ?? "") is"
-          : (suggestions.isEmpty
-            ? (unplaced.isEmpty ? "Every room is placed" : "Not on the plan yet")
-            : "Read off the drawing — tap to place, then drag to correct"))
+          : (!offered.isEmpty
+            ? "On the drawing, not on the plan: tap to put back"
+            : (suggestions.isEmpty
+              ? (unplaced.isEmpty ? "Every room is placed" : "Not on the plan yet")
+              : "Read off the drawing — tap to place, then drag to correct")))
         .font(.caption.weight(.semibold))
         .foregroundStyle(arming == nil ? Color.secondary : Color.accentColor)
       ScrollView(.horizontal, showsIndicators: false) {
@@ -251,6 +283,24 @@ struct PlanCoverageView: View {
               .foregroundStyle(Color.accentColor)
           }
           .buttonStyle(.plain)
+
+          ForEach(offered, id: \.slug) { room in
+            Button {
+              guard let plan, let image = store.image(for: plan) else { return }
+              try? store.restore(room: room.slug, on: level, size: image.size)
+            } label: {
+              HStack(spacing: 5) {
+                Image(systemName: "wand.and.stars").font(.caption2)
+                Text(room.slug)
+              }
+              .font(.footnote.weight(.semibold))
+              .padding(.horizontal, 12).padding(.vertical, 8)
+              .background(Color.accentColor.opacity(0.14), in: Capsule())
+              .overlay(Capsule().strokeBorder(Color.accentColor.opacity(0.45), style: StrokeStyle(lineWidth: 1, dash: [3, 2])))
+              .foregroundStyle(Color.accentColor)
+            }
+            .buttonStyle(.plain)
+          }
 
           ForEach(suggestions) { candidate in
             Button {

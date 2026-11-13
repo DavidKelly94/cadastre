@@ -101,6 +101,12 @@ If the plan was imported as the **PDF the architect's software exported** (not a
 
 After this, §4 and §4b are only for what it could not read.
 
+**Putting a room back as drawn.** The drawing stays the reference after it has been applied, and there are three ways back to it:
+
+- *One room's outline.* Tap its pin and choose **Put back the drawing's outline**, or open its outline and tap **As drawn** (then Save).
+- *A room you removed.* It reappears in the row under the plan with a wand beside its name. One tap puts back its pin and its outline.
+- *Everything.* The wand, top left. Each room says where it stands: *On the plan as drawn*, *Changed by hand*, or *Not on the plan*. Rooms changed by hand are left unticked so a second reading never undoes your work by accident; **Tick all** then **Apply** brings the whole plan back to the drawing.
+
 ## 4. Calibrate the plan, once per level
 
 The drawing needs a scale and an origin before captures can be placed on it. If *Read the drawing* (§3b) set the scale, skip this. Otherwise do it **on the phone**, with nothing else running:
@@ -143,7 +149,7 @@ on the same line.
 
 ## 4b. Outline the rooms, once per room, at home
 
-The capture will ask you to tap each corner of the room by name, and align the capture to the plan before you leave. For that it needs to know where the corners are on the drawing. On the phone: project screen, the plan card, then tap the room's pin and choose *Outline the corners* (the row of rooms under *Outline the corners* does the same). Tap its inside corners in order around the room, drag any under the loupe, Save. The footer names them: NW, NE, SE, SW. Three corners minimum; an L-shaped room has six. The capture setup screen also links here when the room you picked has no outline yet.
+The capture will ask you to tap each corner of the room by name, and align the capture to the plan before you leave. For that it needs to know where the corners are on the drawing. On the phone: project screen, the plan card, then tap the room's pin and choose *Outline the corners* (the row of rooms under *Outline the corners* does the same). Tap its inside corners in order around the room, drag any under the loupe, Save. **Undo** steps back through what you did on this screen, one change at a time, and stops at what the room had when you opened it. The footer names them: NW, NE, SE, SW. Three corners minimum; an L-shaped room has six. The capture setup screen also links here when the room you picked has no outline yet.
 
 Two words that are easy to mix up: a room is *pinned* on the plan (the dot that says which room is which), and a capture is *aligned* to it (its walk put on the drawing). A pinned room with no outline records a free capture, which the capture's detail screen says under *Alignment*, with the way to align it afterwards.
 

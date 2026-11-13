@@ -340,12 +340,57 @@ their own. The reader now takes each character from the page's own string and
 only its box from the selection, and the core counts a character given twice
 in one place once (`testACharacterGivenTwiceInOnePlaceCountsOnce`), which also
 covers a drawing that fakes bold by printing twice. The hand-made fixture never
-showed this on the macOS runner, so the fix is **verified in the core on Linux
-and compiled in CI, not yet seen on the phone**.
+showed this on the macOS runner, so the fix was verified in the core on Linux
+and compiled in CI before it reached the phone.
+
+**Seen fixed on the phone, build 78.** The owner read the same sheet again:
+the scale shows as `1/4" = 1'-0"`, the rooms as *Bedroom 2* and *Bath 2*, and
+164 of 164 dimensions agree (the stray one-letter runs had been hiding a few).
+Not yet walked: *Apply*, the plan screen after it, and a capture in a room
+whose outline came from the drawing.
 
 **If the build 77 proposal was applied**, rooms were pinned under the doubled
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
+
+## Back to the drawing, and an undo that undoes, 2026-11-13
+
+The owner applied build 78's reading, redrew one outline by hand, and reported
+two things.
+
+**"Undo keeps removing corners."** *Undo last* on the outline screen deleted
+the final corner whatever had just happened, so dragging a corner of a room
+read off the drawing and then undoing lost a different corner, and kept going
+until the room was gone. Undo is now a history (`EditHistory`, in the core):
+the state before each tap, drag or clear, stepped back one at a time, stopping
+at what the screen opened with. *Start again* can be undone too. The placement
+screen's *Undo last* is unchanged: there a point and its landmark label are
+removed together, which is what it says.
+
+**"Restore a room, or re-sync with the drawings."** Reading the drawing again
+already did this, but the screen opened with every room unticked and said only
+"Replaces the outline it has", and a removed room had no way back short of it.
+Now the plan knows how each room stands against the drawing
+(`PlanFile.sheetState`: missing, pinned, as drawn, by hand), and:
+
+- the outline screen has *As drawn*;
+- a tapped pin offers *Put back the drawing's outline* when it differs;
+- a room the drawing names that is not on the plan sits in the tray with a
+  wand, and one tap puts back its pin and outline;
+- *Read the drawing* says per room *On the plan as drawn*, *Changed by hand* or
+  *Not on the plan*, leaves hand-changed rooms unticked, and has *Tick all*.
+
+Applying a room that is already as drawn writes nothing. The sheet is read
+once per level per launch and shared between the screens.
+
+**Verified:** the history and the comparison, on Linux
+(`EditHistoryTests`, `testAPlanKnowsWhichRoomsStandAsDrawnAndPutsOneBack`).
+**Only compiles:** every screen change above, until the owner has tried it.
+
+**Decided without the owner:** a second reading never replaces a hand-changed
+outline unless the owner ticks it; "as drawn" means corner for corner in the
+same order within a pixel and a half, since the corner names come from the
+order.
 
 ## The drawing sets itself up: the reading, 2026-11-13
 

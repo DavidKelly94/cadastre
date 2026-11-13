@@ -52,12 +52,53 @@ extension PlanFile {
         else { continue }
         applied.pinned.append(room.slug)
       }
-      guard room.status == .outlined, room.outline.count <= SheetReader.maximumCorners else { continue }
-      let points = room.outline.map { [$0.x * pixelsPerPoint, $0.y * pixelsPerPoint] }
+      guard let points = Self.outlinePixels(of: room, pixelsPerPoint: pixelsPerPoint) else { continue }
+      // Already as drawn: leave it, and the time it was outlined, alone.
+      if sheetState(of: room, pixelsPerPoint: pixelsPerPoint) == .asDrawn { continue }
       if outline(room: room.slug, points: points, in: imageSize, at: date) {
         applied.outlined.append(room.slug)
       }
     }
     return applied
+  }
+
+  /// How a room on the plan stands against the same room on the drawing.
+  public enum SheetState: Equatable, Sendable {
+    /// Not on the plan: never taken from the drawing, or removed since.
+    case missing
+    /// On the plan with no outline.
+    case pinned
+    /// Outlined exactly as the drawing has it.
+    case asDrawn
+    /// Outlined differently: by hand, or the drawing has no outline to give.
+    case byHand
+  }
+
+  /// The outline a proposal offers for a room, in plan pixels, or nil when
+  /// the drawing has no walls round it or more corners than can be tapped.
+  public static func outlinePixels(of room: SheetReader.Room, pixelsPerPoint: Double) -> [[Double]]? {
+    guard room.status == .outlined, room.outline.count >= RoomOutline.minimumCorners,
+      room.outline.count <= SheetReader.maximumCorners
+    else { return nil }
+    return room.outline.map { [$0.x * pixelsPerPoint, $0.y * pixelsPerPoint] }
+  }
+
+  /// Compare a room on the plan with what the drawing proposes for it.
+  ///
+  /// "As drawn" is corner for corner within a pixel and a half, in the same
+  /// order: the names a capture asks for come from the order, so the same
+  /// corners started somewhere else are a different outline.
+  public func sheetState(of room: SheetReader.Room, pixelsPerPoint: Double) -> SheetState {
+    guard let placed = placement(of: room.slug) else { return .missing }
+    guard let outline = placed.outline else { return .pinned }
+    guard let drawn = Self.outlinePixels(of: room, pixelsPerPoint: pixelsPerPoint),
+      drawn.count == outline.count
+    else { return .byHand }
+    for (mine, theirs) in zip(outline, drawn) {
+      guard mine.count == 2, abs(mine[0] - theirs[0]) <= 1.5, abs(mine[1] - theirs[1]) <= 1.5 else {
+        return .byHand
+      }
+    }
+    return .asDrawn
   }
 }

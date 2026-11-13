@@ -28,6 +28,9 @@ struct PlanPointCanvas: View {
   let colour: (Int) -> Color
   /// A label beside each point, by index; shorter than `points` is fine.
   let labels: [String]
+  /// Called just before the canvas changes `points`: once for a tap, once at
+  /// the start of a drag. For a screen that keeps an undo history.
+  var willChange: (() -> Void)? = nil
 
   @State private var dragging: Int?
   @State private var zoom: CGFloat = 1
@@ -49,6 +52,7 @@ struct PlanPointCanvas: View {
             .frame(width: fitted.width, height: fitted.height)
             .onTapGesture { point in
               guard maxPoints.map({ points.count < $0 }) ?? true, scale > 0 else { return }
+              willChange?()
               points.append(CGPoint(x: point.x / scale, y: point.y / scale))
             }
           lines(scale: scale)
@@ -150,6 +154,7 @@ struct PlanPointCanvas: View {
     .gesture(
       DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
         .onChanged { value in
+          if dragging != index { willChange?() }
           dragging = index
           guard scale > 0 else { return }
           points[index] = CGPoint(x: value.location.x / scale, y: value.location.y / scale)

@@ -392,6 +392,10 @@ real scan rather than the 688-face synthetic room. **Not yet seen:** the 3D
 page drawn in a browser from that scan, the proposed corner rings, and
 anything in framing.
 
+The owner had to ask how to send a capture: the list of captures was only
+under *Past captures* at the bottom of a room's setup screen. The project
+screen now has **Captures** at the top, as a word. Compiles only.
+
 ## Projects, the PC's half: each project keeps its own, 2026-11-13
 
 ADR-0033, started when the owner asked whether a second project could be made

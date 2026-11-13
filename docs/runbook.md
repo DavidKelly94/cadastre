@@ -86,7 +86,7 @@ another and print the address, so there is nothing to configure.
 ## 3. After a visit: send the captures
 
 1. Window A running, phone on the home Wi-Fi.
-2. In the app: Captures, then **Send N captures to the PC**, then **Send**. One
+2. In the app: **Captures** at the top of the project screen, then **Send N captures to the PC**, then **Send**. One
    capture at a time is the same button inside the capture. On cellular the
    sheet says the size first and asks.
 3. Each row ends *On the PC and validated.* The plan you imported in the app

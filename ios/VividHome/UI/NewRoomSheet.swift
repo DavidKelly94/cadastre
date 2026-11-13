@@ -66,13 +66,13 @@ struct NewRoomSheet: View {
             // "Ground" and "Lower" all mean below, and nothing in the string
             // says so.
             Stepper(
-              "Storey \(newLevelIndex)", value: $newLevelIndex, in: -2...60)
+              "Floor \(newLevelIndex)", value: $newLevelIndex, in: -2...60)
           }
         } header: {
           Text("Level")
         } footer: {
           if creatingLevel {
-            Text("Storey orders the levels: 0 is the ground floor, negatives are below it.")
+            Text("The floor number orders the levels: 0 is the ground floor, -1 a basement.")
           }
         }
       }

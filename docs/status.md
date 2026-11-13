@@ -156,7 +156,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **372 tests passing** (plus 3 that run only in the contract job), ruff clean.
+19 modules, **373 tests passing** (plus 3 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -352,6 +352,23 @@ whose outline came from the drawing.
 **If the build 77 proposal was applied**, rooms were pinned under the doubled
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
+
+## A level made from its plan knows which floor it is, 2026-11-13
+
+The owner's house has a basement, and said yes to this. *Add a level from a
+plan* now asks for the name and the floor number together (a sheet in place
+of the alert, which could not hold a stepper), and the plan file keeps both
+as optional `name` and `index` (section 13). A capture on that level records
+them in its manifest, so a basement is floor -1 from its first capture. An
+older plan file, the main floor's included, reads as before: its slug as a
+name, floor 0. The pipeline writes both fields back untouched.
+
+**Verified:** the round trip and the older file, on Linux
+(`testALevelMadeFromItsPlanKeepsItsNameAndFloorNumber`,
+`testAnOlderPlanFileReadsAsFloorZeroUnderItsSlug`); the PC keeping the fields
+through `plan calibrate` (pytest). **Only compiles:** the sheet.
+
+The same screens now say "floor" where they said "storey".
 
 ## What is next is written down, not started, 2026-11-13
 

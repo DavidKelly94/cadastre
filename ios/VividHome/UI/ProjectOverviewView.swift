@@ -32,9 +32,11 @@ struct ProjectOverviewView: View {
   @State private var showingPC = false
   @State private var rendering: RenderingTarget?
   @State private var planSheet: PlanSheet?
-  /// Naming the first level, to import its plan before anything is recorded.
+  /// Naming a level and saying which floor it is, to import its plan before
+  /// anything is recorded there.
   @State private var namingLevel = false
   @State private var draftLevel = ""
+  @State private var draftIndex = 0
 
   private var store: SessionStore {
     SessionStore(documents: FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
@@ -56,7 +58,8 @@ struct ProjectOverviewView: View {
       var section =
         byLevel[slug]
         ?? LevelSection(
-          slug: slug, name: SessionID.displayName(slug: slug), index: 0, rooms: [], unwalked: [])
+          slug: slug, name: plan.levelRef.name, index: plan.levelRef.index, rooms: [],
+          unwalked: [])
       let walked = Set(section.rooms.map(\.room))
       section.unwalked = placed.filter { !walked.contains($0) }.sorted()
       byLevel[slug] = section
@@ -89,6 +92,7 @@ struct ProjectOverviewView: View {
           } actions: {
             Button("Import a plan") {
               draftLevel = ""
+              draftIndex = 0
               namingLevel = true
             }
             .buttonStyle(.borderedProminent)
@@ -107,17 +111,42 @@ struct ProjectOverviewView: View {
           Button("New room", systemImage: "plus") { adding = true }
         }
       }
-      .alert("Name the level", isPresented: $namingLevel) {
-        TextField("Level 1", text: $draftLevel)
-        Button("Cancel", role: .cancel) {}
-        Button("Import") {
-          let name = draftLevel.trimmingCharacters(in: .whitespaces)
-          guard let slug = SessionID.slug(name) else { return }
-          planSheet = .importPlan(
-            LevelSection(slug: slug, name: name, index: 1, rooms: [], unwalked: []))
+      .sheet(isPresented: $namingLevel) {
+        // A sheet, not an alert: the floor number is asked for with the name,
+        // and an alert cannot hold a stepper. Without the number a level made
+        // from its plan was floor 0, a basement included.
+        NavigationStack {
+          Form {
+            Section {
+              TextField("Basement", text: $draftLevel)
+                .textInputAutocapitalization(.words)
+              Stepper("Floor \(draftIndex)", value: $draftIndex, in: -5...60)
+            } footer: {
+              Text(
+                "The name as you would say it: Main Floor, Basement, Upstairs. "
+                  + "The floor number orders the levels: 0 is the ground floor, "
+                  + "-1 a basement, 1 the floor above.")
+            }
+          }
+          .navigationTitle("New level")
+          .navigationBarTitleDisplayMode(.inline)
+          .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+              Button("Cancel") { namingLevel = false }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+              Button("Choose its plan") {
+                let name = draftLevel.trimmingCharacters(in: .whitespaces)
+                guard let slug = SessionID.slug(name) else { return }
+                namingLevel = false
+                planSheet = .importPlan(
+                  LevelSection(slug: slug, name: name, index: draftIndex, rooms: [], unwalked: []))
+              }
+              .disabled(SessionID.slug(draftLevel) == nil)
+            }
+          }
         }
-      } message: {
-        Text("The storey the drawing shows, as you would say it: Level 1, Basement, Upstairs.")
+        .presentationDetents([.medium])
       }
       .sheet(isPresented: $adding) {
         NewRoomSheet(levels: knownLevels) { level, room in
@@ -147,7 +176,7 @@ struct ProjectOverviewView: View {
             plans.reload()
           }
         case .importPlan(let section):
-          PlanImportView(store: plans, levelName: section.name) {
+          PlanImportView(store: plans, levelName: section.name, levelIndex: section.index) {
             planSheet = nil
             plans.reload()
           }
@@ -231,6 +260,7 @@ struct ProjectOverviewView: View {
       Section {
         Button {
           draftLevel = ""
+          draftIndex = 0
           namingLevel = true
         } label: {
           Label("Add a level from a plan", systemImage: "square.stack.3d.up")

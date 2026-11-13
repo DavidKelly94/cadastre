@@ -66,7 +66,7 @@ writes back fields it does not model.
 that a level made from a plan carries its number into a capture's manifest;
 a pipeline test that `plan calibrate` keeps them.
 
-**Waiting on.** The owner's go-ahead; asked 2026-11-13.
+**Done 2026-11-13**, on the owner's yes that day. See `docs/status.md`.
 
 ## 2. Projects (ADR-0033)
 
@@ -86,8 +86,8 @@ Steps, each its own pull request:
 **Verified by.** Linux tests for 1 to 3; the owner makes a "Rehearsal"
 project, moves nothing, and deletes it.
 
-**Open question for the owner.** Whether the rehearsal level already beside
-the main floor is deleted by hand once, or migrated into its own project.
+The rehearsal level beside the main floor is deleted by hand by the owner,
+not migrated.
 
 ## 3 and 4. Capture guidance (ADR-0034, ADR-0035)
 
@@ -117,5 +117,5 @@ evidence the corner finder is tuned against.
 
 ## What the owner decides
 
-- The go-ahead for item 1 (the basement's floor number), still open.
-- Item 2's open question (the rehearsal level).
+Nothing is waiting on the owner. The rehearsal level is theirs to delete by
+hand (answered 2026-11-13), so the migration in item 2 moves nothing.

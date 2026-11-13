@@ -384,6 +384,15 @@ struct CaptureHUDView: View {
         Text("This room fits \(proposal.ways) ways round. Check the names on the rings.")
           .font(.caption2).foregroundStyle(Tokens.warn)
       }
+      if let expected = coordinator.guidedRoom?.wallHeight,
+        abs(proposal.height - expected) > CornerProposal.heightDisagreement
+      {
+        // Not a fault by itself: a wall seen only partway up measures short.
+        Text(
+          "The scan sees the walls \(AppUnits.current.length(proposal.height)) tall; "
+            + "the plan says \(AppUnits.current.length(expected)).")
+          .font(.caption2).foregroundStyle(Tokens.inkSecondary)
+      }
       if !proposal.missing.isEmpty {
         Text("The scan cannot see \(names). Tap \(proposal.missing.count == 1 ? "it" : "them") yourself.")
           .font(.caption2).foregroundStyle(Tokens.inkSecondary)

@@ -187,6 +187,7 @@ final class CornerFinderTests: XCTestCase {
     XCTAssertEqual(shown.total, 4)
     XCTAssertEqual(shown.ways, 2)
     XCTAssertEqual(shown.floor, 0)
+    XCTAssertEqual(shown.height, 2.4, accuracy: 1e-9, "floor to ceiling, as the scan saw it")
     // Everything already marked: nothing to propose.
     XCTAssertNil(
       CornerProposal.shown(

@@ -398,8 +398,14 @@ is below the phone and takes the old path unchanged.
 Before this, a ceiling tap would have been snapped down to the bottom of the
 nearest wall faces and used as the floor.
 
-Not built: wall height on a level (step 6), and the upright check, which has
-nothing to compare while a corner carries one mark.
+**Wall height (step 6, the same day):** the plan screen's footer takes the
+level's wall height, kept in the plan file as optional `wall_height_m`
+(section 13). It becomes the floor under corners all marked at the ceiling,
+and the proposal bar says when the scan sees the walls more than 0.10 m
+taller or shorter than it. Compiles only.
+
+Not built: the upright check, which has nothing to compare while a corner
+carries one mark.
 
 ## 3D on the PC, stage one: the scan in the house, 2026-11-13
 

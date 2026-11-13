@@ -63,6 +63,8 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     var level: String
     var floorHeight: Double
     var corners: [Corner]
+    /// The level's wall height when the owner has entered one (ADR-0034).
+    var wallHeight: Double? = nil
   }
 
   /// Which corners the HUD still asks for.
@@ -605,7 +607,7 @@ final class CaptureCoordinator: ObservableObject, ARAnchorObserver {
     let floor = PlanAlignment.floorY(
       landmarks: landmarks.map {
         (kind: $0.kind, y: $0.position.y, ceiling: $0.end == CornerEnd.ceiling)
-      })
+      }, wallHeight: guide.wallHeight)
     placement = PlanAlignment.solve(
       pairs: pairs, floorY: floor.y, floorSource: floor.source, floorHeight: guide.floorHeight)
     recomputeCoverage()

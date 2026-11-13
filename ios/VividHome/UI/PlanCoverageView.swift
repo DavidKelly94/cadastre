@@ -38,6 +38,9 @@ struct PlanCoverageView: View {
   /// The screen that reads the scale and the rooms off the drawing is open.
   @State private var reading = false
   @State private var offeredReading = false
+  /// Entering the level's wall height (ADR-0034).
+  @State private var askingWallHeight = false
+  @State private var draftWallHeight = ""
 
   private static let space = "plan"
 
@@ -157,6 +160,27 @@ struct PlanCoverageView: View {
         else { return }
         offeredReading = true
         reading = true
+      }
+      .alert("Wall height", isPresented: $askingWallHeight) {
+        TextField(AppUnits.current == .imperial ? "9' 0\"" : "2.74", text: $draftWallHeight)
+        Button("Cancel", role: .cancel) {}
+        Button("Forget it", role: .destructive) { try? store.setWallHeight(nil, on: level) }
+        Button("Save") {
+          let text = draftWallHeight.trimmingCharacters(in: .whitespaces)
+          // A bare number is feet for an owner who reads in feet; anywhere
+          // else in the app it would be meters, so it is settled here.
+          let meters: Double?
+          if AppUnits.current == .imperial, let feet = Double(text) {
+            meters = feet * 0.3048
+          } else {
+            meters = PlanDistance.metres(from: text)
+          }
+          if let meters, meters > 1, meters < 10 { try? store.setWallHeight(meters, on: level) }
+        }
+      } message: {
+        Text(
+          "Floor to ceiling on this level, as the drawings give it. It is a check on what the "
+            + "scan measures, and the floor under a corner marked at the ceiling.")
       }
       .alert("Name the room", isPresented: $naming) {
         TextField("Kitchen", text: $draftRoom)
@@ -403,6 +427,17 @@ struct PlanCoverageView: View {
       Text(scaleLine)
         .font(.footnote)
         .foregroundStyle(plan?.isCalibrated == true ? Color.secondary : Color.orange)
+      Button {
+        draftWallHeight = ""
+        askingWallHeight = true
+      } label: {
+        Text(
+          plan?.wallHeight.map { "Walls \(AppUnits.current.length($0)) tall. Tap to change." }
+            ?? "Wall height not set. Tap to enter it."
+        )
+        .font(.footnote)
+      }
+      .buttonStyle(.plain).foregroundStyle(Color.accentColor)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .padding(16)

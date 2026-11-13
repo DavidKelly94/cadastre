@@ -198,6 +198,14 @@ final class PlanStore: ObservableObject {
     try save(plan)
   }
 
+  /// The level's wall height, floor to ceiling, or nil to forget it.
+  func setWallHeight(_ meters: Double?, on level: String) throws {
+    guard var plan = plans[level] else { throw Failure.noPlan }
+    plan.wallHeight = meters
+    plans[level] = plan
+    try save(plan)
+  }
+
   // MARK: - Reading the drawing itself (ADR-0032)
 
   /// What the level's own drawing proposes, and how its points map to the

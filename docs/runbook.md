@@ -93,6 +93,8 @@ another and print the address, so there is nothing to configure.
 
 ## 3b. Let the drawing set itself up, once per level
 
+**Getting a drawing in.** An empty house offers *Import a plan* in the middle of the screen. Once the house has a level, each further floor comes in through *Add a level from a plan* at the bottom of the project screen: name the storey, choose its PDF.
+
 If the plan was imported as the **PDF the architect's software exported** (not a scan, not a photo), the phone can read the scale and the rooms off it (ADR-0032). Project screen, tap the plan card: a new plan opens straight into **Read the drawing**; later it is the wand button at the top left.
 
 - **Scale.** The note from the title block, and how many of the sheet's own dimensions agree with it. Green means use it. Red means the page was resized somewhere along the way: set the scale by hand (§4).

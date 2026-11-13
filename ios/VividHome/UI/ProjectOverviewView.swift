@@ -223,6 +223,18 @@ struct ProjectOverviewView: View {
           Text(section.name)
         }
       }
+      // A level appears once it has a capture or a plan, and a plan could
+      // only be imported onto a level that was already there: with one floor
+      // set up, the next floor's drawing had no way in short of recording
+      // on it first.
+      Section {
+        Button {
+          draftLevel = ""
+          namingLevel = true
+        } label: {
+          Label("Add a level from a plan", systemImage: "square.stack.3d.up")
+        }
+      }
     } 
     .safeAreaInset(edge: .top) { summary }
   }

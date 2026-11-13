@@ -112,6 +112,8 @@ class Renderer:
 
     def _run(self) -> None:
         from .inspector import build_page
+        from .model import build_model
+        from .plan import PlanError
 
         while True:
             self._wake.wait()
@@ -123,6 +125,13 @@ class Renderer:
                     level = self._pending.pop(0)
                     self._busy = True
                 try:
+                    # The 3D page first (ADR-0036), so the level page links to
+                    # it; a level with no scan to show has none.
+                    try:
+                        model = build_model(self._store, level)
+                        print(f"rendered inspect/{model.page.name}: {model.faces:,} faces in 3D")
+                    except PlanError:
+                        pass
                     path = build_page(self._store, level, thumbnails=self._thumbnails)
                     print(f"rendered inspect/{path.name}; the phone's rendering is current")
                 except Exception as error:  # noqa: BLE001 - the server must not die for a page

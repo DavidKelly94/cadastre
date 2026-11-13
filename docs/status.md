@@ -411,9 +411,23 @@ routes, asks when it must, and files a zip by the manifest inside it; a
 project is removed whole and only with `--yes`; an old store still works.
 The server's tests follow a capture into its project's folder.
 
-**Not built yet: the phone's half.** The app still has one project. Until it
-has more, the PC's change is invisible: everything lands under
-`projects/our-house/`.
+**The phone's half, written the same day, compiles only.** The app has a
+list of projects: open one, make one by naming it, rename it, delete it with
+everything in it. A project is a folder under `sessions/` with its name in an
+optional `project.json` (section 13); the slug is the folder's name and never
+changes. Deleting asks for the project's name to be typed, and says first how
+many of its captures the PC has not confirmed it holds. Each project gets its
+own plans and its own capture state, made afresh when it is opened.
+
+`ProjectCatalog` in the core does the listing, making, renaming and deleting
+and is tested on Linux (five tests, on real folders). The screens are not
+tested and have not been on a phone.
+
+One difference from ADR-0033's first decision, toward fewer taps on site: the
+app reopens the project last used and shows the list when none is chosen or
+the chosen one is gone, with *Projects* on the project screen as the way
+back. A phone with captures from before this shows them as a project called
+by its slug, "Our House".
 
 ## A corner can be marked at the ceiling, written blind, 2026-11-13
 

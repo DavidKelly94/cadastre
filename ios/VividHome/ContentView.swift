@@ -2,18 +2,59 @@ import ARKit
 import SwiftUI
 import VividHomeCore
 
-/// The app's route: the house, then one room of it.
+/// The app's root: the projects on this phone, then one of them (ADR-0033).
+///
+/// The project last opened is remembered, so the app comes back to the house
+/// being built rather than to a list of one; *Projects* on the project screen
+/// is the way back to the list, and a project that is no longer there lands
+/// on it too.
+struct ContentView: View {
+  /// The PC on the home network, when there is one (ADR-0028). One for the
+  /// whole app: it is the same PC whichever project is open.
+  @StateObject private var link = PCLink()
+  @AppStorage(ContentView.projectKey) private var projectSlug = ""
+
+  static let projectKey = "project"
+
+  private var sessionsRoot: URL {
+    FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+      .appendingPathComponent("sessions", isDirectory: true)
+  }
+
+  var body: some View {
+    if let project = ProjectCatalog.project(projectSlug, in: sessionsRoot) {
+      // A new identity per project: its plans, its capture state and its
+      // screens are made afresh, never carried over from another building.
+      ProjectRootView(project: project.ref, link: link) { projectSlug = "" }
+        .id(project.slug)
+    } else {
+      ProjectListView(link: link, root: sessionsRoot) { projectSlug = $0 }
+    }
+  }
+}
+
+/// One project's route: the house, then one room of it.
 ///
 /// The project screen chooses the level and the room; everything below it —
 /// setup, capture, review — is the leaf. Before it existed a level was a text
 /// field here, which is why only one level was ever reachable and a two-storey
 /// house could not be recorded as one building.
-struct ContentView: View {
-  @StateObject private var coordinator = CaptureCoordinator()
-  @StateObject private var plans = PlanStore(project: CaptureCoordinator.projectSlug)
-  /// The PC on the home network, when there is one (ADR-0028).
-  @StateObject private var link = PCLink()
+struct ProjectRootView: View {
+  let project: SlugRef
+  @ObservedObject private var link: PCLink
+  let onShowProjects: () -> Void
+  @StateObject private var coordinator: CaptureCoordinator
+  @StateObject private var plans: PlanStore
   @State private var sheet: Sheet?
+
+  init(project: SlugRef, link: PCLink, onShowProjects: @escaping () -> Void) {
+    self.project = project
+    self.onShowProjects = onShowProjects
+    _link = ObservedObject(wrappedValue: link)
+    _coordinator = StateObject(wrappedValue: CaptureCoordinator(project: project))
+    _plans = StateObject(wrappedValue: PlanStore(project: project.slug))
+  }
+
   /// Nil until the house screen chooses one, which keeps that screen the root
   /// rather than something reachable only by backing out of capture.
   ///
@@ -58,7 +99,9 @@ struct ContentView: View {
               onBackToProject: { self.chosen = nil })
           } else {
             ProjectOverviewView(
-              project: CaptureCoordinator.projectSlug,
+              project: project.slug,
+              projectName: project.name,
+              onShowProjects: onShowProjects,
               plans: plans,
               link: link,
               onPick: { level, room in
@@ -96,7 +139,7 @@ struct ContentView: View {
           coverage: plans.coverage(forLevel: chosen?.level.slug ?? ""),
           currentRoom: chosen?.room.slug) { sheet = nil; plans.reload() }
       case .sessions:
-        SessionListView(project: CaptureCoordinator.projectSlug, link: link, plans: plans) { sheet = nil }
+        SessionListView(project: project.slug, link: link, plans: plans) { sheet = nil }
       }
     }
   }

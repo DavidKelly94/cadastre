@@ -321,6 +321,32 @@ is on the phone. The screen's footer prints what the reader saw (pieces of
 text, dimensions, wall shapes), so a screenshot says where it went wrong.
 For the owner's sheet the numbers to expect are about 448, 172 and 87.
 
+## The drawing sets itself up: build 77 read the owner's sheet, 2026-11-13
+
+**It works on the phone.** The owner imported the Main floor PDF into build 77
+and *Read the drawing* found the scale note, agreed it with 158 of 158
+dimensions (Linux through PyMuPDF tested 162; PDFKit groups a few strings
+differently), and drew the outlines where the Linux run put them: the bedrooms,
+baths, closets, garage and office outlined, the living, kitchen, dining and
+entry as one open-plan space. That is the first run of the Swift PDF reader on
+a real drawing, so the claim "written blind" above no longer holds for this
+sheet.
+
+**One fault, fixed here.** The last character of every line came through
+twice: the scale showed as `1'-0""` and a room as *Bedroom 22*. PDFKit's
+one-character selection at a line break answered with the character before it.
+Narrow characters joined the run they ended, wide ones became a stray run of
+their own. The reader now takes each character from the page's own string and
+only its box from the selection, and the core counts a character given twice
+in one place once (`testACharacterGivenTwiceInOnePlaceCountsOnce`), which also
+covers a drawing that fakes bold by printing twice. The hand-made fixture never
+showed this on the macOS runner, so the fix is **verified in the core on Linux
+and compiled in CI, not yet seen on the phone**.
+
+**If the build 77 proposal was applied**, rooms were pinned under the doubled
+names (`bedroom-22`). Remove those pins, or clear the house, before reading
+the drawing again.
+
 ## The drawing sets itself up: the reading, 2026-11-13
 
 ADR-0032, first of three pieces. The owner called setup click heavy: about

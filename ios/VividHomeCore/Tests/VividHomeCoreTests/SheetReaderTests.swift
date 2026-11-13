@@ -108,6 +108,21 @@ final class SheetReaderTests: XCTestCase {
 
   // MARK: - Scale
 
+  /// Build 77 on the owner's sheet: the PDF reader gave the last character of
+  /// every line twice, in the same place. Narrow ones joined the run they
+  /// ended, so the scale read `1'-0""` and a bedroom was `BEDROOM 22`.
+  func testACharacterGivenTwiceInOnePlaceCountsOnce() {
+    var glyphs: [Sheet.Glyph] = []
+    for text in ["BEDROOM 2", "1/4\" = 1'-0\"", "HALL", "WIC"] {
+      let word = word(text, at: 100, Double(glyphs.count) * 2 + 40)
+      glyphs += word
+      glyphs.append(word[word.count - 1])
+      glyphs.append(line)
+    }
+    let texts = Sheet.runs(from: glyphs).map(\.text)
+    XCTAssertEqual(texts, ["BEDROOM 2", "1/4\" = 1'-0\"", "HALL", "WIC"])
+  }
+
   func testScaleNotesReadAsARatio() throws {
     XCTAssertEqual(try XCTUnwrap(SheetScale.ratio(from: "1/4\" = 1'-0\"")), 48, accuracy: 1e-9)
     XCTAssertEqual(try XCTUnwrap(SheetScale.ratio(from: "SCALE: 1/8\" = 1'-0\"")), 96, accuracy: 1e-9)

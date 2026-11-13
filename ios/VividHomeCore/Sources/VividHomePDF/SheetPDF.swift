@@ -47,30 +47,57 @@
         glyphs: glyphs(of: page, in: box), fills: fills, segments: segments)
     }
 
-    /// Every character with its box, in the page's reading order. Taken one
-    /// selection at a time so a character and its bounds always come from the
-    /// same place.
+    /// Every character with its box, in the page's reading order.
+    ///
+    /// The character comes from the page's own string and only its box from a
+    /// one-character selection. Asking the selection for its text as well is
+    /// what build 77 did, and on the owner's sheet the selection made at a
+    /// line break answered with the character before it, so every line ended
+    /// twice: `1'-0""`, `BEDROOM 22`. When the string and the character count
+    /// do not line up, the selection's text is all there is, and the core
+    /// drops a character printed twice in one place.
     static func glyphs(of page: PDFPage, in box: CGRect) -> [Sheet.Glyph] {
       var out: [Sheet.Glyph] = []
       let lineBreak = Sheet.Glyph(text: "\n", box: Sheet.Box(minX: 0, minY: 0, maxX: 0, maxY: 0))
-      for index in 0..<page.numberOfCharacters {
-        guard let selection = page.selection(for: NSRange(location: index, length: 1)),
-          let text = selection.string, !text.isEmpty
-        else {
-          out.append(lineBreak)
+      let count = page.numberOfCharacters
+      let whole = (page.string ?? "") as NSString
+      let aligned = whole.length == count
+      for index in 0..<count {
+        let range = NSRange(location: index, length: 1)
+        var text: String
+        if aligned {
+          text = whole.substring(with: range)
+          if text.contains(where: { $0.isNewline }) {
+            out.append(lineBreak)
+            continue
+          }
+        } else {
+          text = ""
+        }
+        guard let selection = page.selection(for: range) else {
+          if !aligned { out.append(lineBreak) }
           continue
         }
-        let bounds = selection.bounds(for: page)
-        let shown = text.filter { !$0.isNewline }
-        if !shown.isEmpty {
+        var breaks = false
+        if !aligned {
+          let selected = selection.string ?? ""
+          if selected.isEmpty {
+            out.append(lineBreak)
+            continue
+          }
+          text = String(selected.filter { !$0.isNewline })
+          breaks = text.count != selected.count
+        }
+        if !text.isEmpty {
+          let bounds = selection.bounds(for: page)
           out.append(
             Sheet.Glyph(
-              text: String(shown),
+              text: text,
               box: Sheet.Box(
                 minX: Double(bounds.minX - box.minX), minY: Double(box.maxY - bounds.maxY),
                 maxX: Double(bounds.maxX - box.minX), maxY: Double(box.maxY - bounds.minY))))
         }
-        if shown.count != text.count { out.append(lineBreak) }
+        if breaks { out.append(lineBreak) }
       }
       return out
     }

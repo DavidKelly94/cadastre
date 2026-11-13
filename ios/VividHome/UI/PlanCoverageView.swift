@@ -92,7 +92,7 @@ struct PlanCoverageView: View {
             description: Text("Add one and captures on this level can be placed on it."))
         }
       }
-      .navigationTitle(plan?.level.capitalized ?? "Level")
+      .navigationTitle(plan.map { SessionID.displayName(slug: $0.level) } ?? "Level")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .topBarLeading) {

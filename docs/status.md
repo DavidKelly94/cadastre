@@ -156,7 +156,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **371 tests passing** (plus 3 that run only in the contract job), ruff clean.
+19 modules, **372 tests passing** (plus 3 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -374,6 +374,35 @@ room in framing against the architect's sheet, which is still to walk.
 (`calibrate it with 'vividhome plan calibrate --level …'`) although both
 arrived with their scale. It now says `its scale came with it (N mm per
 pixel)` for a plan that has one and keeps the hint for one that does not.
+
+**The page, seen on both screens.** The owner opened the level's page on the
+PC and through *Rendering on the PC* on the phone: the room at 7 cm, the four
+corner taps, the walk, a photo opening full size with its keyframe and time,
+and the phone's Captures list marking the capture *on the PC*. Two things
+came out of the screenshots, both fixed here:
+
+- **The hover preview was on its side.** The lightbox turned a photo taken
+  with the phone upright; the thumbnail was written as stored. Thumbnails are
+  now turned when they are written, and a turned one carries the turn in its
+  file name so the sideways ones already in `derived/thumbs/` are not reused.
+  `vividhome inspect --level <level>` redraws a page made before this.
+- **The level read "Level-2".** A level made from a plan has only its slug,
+  and that was shown capitalised and then written as the level's name into
+  the capture's manifest. It now reads "Level 2" (`SessionID.displayName`).
+  The rehearsal capture keeps the old spelling, which is harmless: the slug
+  is the key.
+
+**Open, and the owner's to decide before a second real floor is captured:**
+a level made from a plan is given storey 0, because the plan file has nowhere
+to keep a storey and *Add a level from a plan* does not ask for one. The main
+floor is storey 0, so nothing captured so far is wrong, but a basement or an
+upper floor started from its drawing would record 0 in every manifest, and
+manifests are immutable. Fixing it means an optional `storey` (and `name`) in
+`plans/<level>.json`, which is a change to section 13 of the format.
+
+Two corner taps sit a few centimetres into the wall on the page, which is
+what a 7 cm fit looks like in a furnished room measured with a tape; nothing
+to fix.
 
 ## A second level can start from its drawing, 2026-11-13
 

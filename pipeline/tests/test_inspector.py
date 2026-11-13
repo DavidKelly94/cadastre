@@ -297,6 +297,49 @@ def test_the_display_turn_follows_the_cameras_up_axis():
     assert _turn(floor) == 0, "pointed at the floor: no meaningful roll"
 
 
+def test_the_hover_preview_is_turned_like_the_photo(tmp_path: Path):
+    """The lightbox turned the photo upright and the preview did not: a capture
+    made with the phone held upright previewed on its side."""
+    from vividhome.inspector import _thumbnail, _upright
+
+    # A stored landscape frame with its top-left corner marked.
+    stored = Image.new("RGB", (40, 30), (0, 0, 0))
+    stored.paste((255, 0, 0), (0, 0, 8, 8))
+
+    def red(image, x: int, y: int) -> bool:
+        r, g, b = image.getpixel((x, y))
+        return r > 200 and g < 60 and b < 60
+
+    assert _upright(stored, 0) is stored
+    right = _upright(stored, 90)
+    assert right.size == (30, 40)
+    assert red(right, 27, 2), "a quarter turn clockwise puts the stored top-left at the top-right"
+    left = _upright(stored, 270)
+    assert left.size == (30, 40)
+    assert red(left, 2, 37), "and the other way puts it at the bottom-left"
+    assert red(_upright(stored, 180), 37, 27)
+
+    class OneImage:
+        def resolve(self, relative: str) -> Path:
+            return tmp_path / relative
+
+    wide = Image.new("RGB", (640, 480), (10, 20, 30))
+    wide.save(tmp_path / "frame.jpg", "JPEG")
+    thumbs = tmp_path / "thumbs"
+    thumbs.mkdir()
+    # Written sideways by an earlier version: must not be what the page shows.
+    Image.new("RGB", (320, 240)).save(thumbs / "000001.jpg", "JPEG")
+
+    turned = _thumbnail(OneImage(), "frame.jpg", thumbs, "000001.jpg", 270)
+    assert turned == "derived/thumbs/000001-t270.jpg"
+    with Image.open(thumbs / "000001-t270.jpg") as image:
+        assert image.size == (240, 320)
+    level = _thumbnail(OneImage(), "frame.jpg", thumbs, "000002.jpg", 0)
+    assert level == "derived/thumbs/000002.jpg"
+    with Image.open(thumbs / "000002.jpg") as image:
+        assert image.size == (320, 240)
+
+
 def test_every_photo_says_how_to_turn_it(store: Path):
     data = page_data(build_page(store, "main", thumbnails=False, thumbnail_stride=1))
     session = data["sessions"][0]

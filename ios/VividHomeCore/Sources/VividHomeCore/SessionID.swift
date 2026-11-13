@@ -132,6 +132,18 @@ public struct SessionID: Equatable, Sendable {
     return out.isEmpty ? nil : out
   }
 
+  /// A slug as a name to show, for something that has only its slug:
+  /// `level-2` reads "Level 2", `main-floor` reads "Main Floor".
+  ///
+  /// A level created from a plan has no typed name anywhere, only the slug its
+  /// plan file is named for, and showing that capitalised gave "Level-2" on
+  /// the project screen and then in every capture's manifest for the level.
+  public static func displayName(slug: String) -> String {
+    slug.split(separator: "-").map { word in
+      word.prefix(1).uppercased() + word.dropFirst()
+    }.joined(separator: " ")
+  }
+
   /// Generates a random `id6` from the base-32 alphabet.
   public static func makeID6<G: RandomNumberGenerator>(using generator: inout G) -> String {
     String((0..<id6Length).map { _ in id6Alphabet.randomElement(using: &generator)! })

@@ -109,4 +109,13 @@ final class SessionIDTests: XCTestCase {
     XCTAssertEqual(id?.room, "electrical")
     XCTAssertEqual(id?.id6, "k3x7qa")
   }
+
+  func testASlugReadsAsANameWhenItIsAllThereIs() {
+    XCTAssertEqual(SessionID.displayName(slug: "level-2"), "Level 2")
+    XCTAssertEqual(SessionID.displayName(slug: "main-floor"), "Main Floor")
+    XCTAssertEqual(SessionID.displayName(slug: "basement"), "Basement")
+    XCTAssertEqual(SessionID.displayName(slug: ""), "")
+    // What was typed comes back, case aside, for any ordinary name.
+    XCTAssertEqual(SessionID.displayName(slug: SessionID.slug("Level 2") ?? ""), "Level 2")
+  }
 }

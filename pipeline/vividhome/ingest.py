@@ -250,12 +250,19 @@ def _import_plans(store_root: Path, session_root: Path) -> list[PlanImport]:
                 shutil.copyfile(original_path, target_original)
                 files.append(target_original.name)
 
+        # A plan the phone set up, from the drawing or by hand, arrives with
+        # its scale. Telling the owner to calibrate that one sends them to
+        # redo work that is done (seen 2026-11-13, on a plan the drawing set up).
+        scale = raw.get("metres_per_pixel")
+        if isinstance(scale, int | float) and scale > 0 and raw.get("origin_px") is not None:
+            state = f"its scale came with it ({scale * 1000:.1f} mm per pixel)"
+        else:
+            state = f"calibrate it with 'vividhome plan calibrate --level {level}'"
         results.append(
             PlanImport(
                 level,
                 True,
-                f"copied from beside the session ({', '.join(files)}); "
-                f"calibrate it with 'vividhome plan calibrate --level {level}'",
+                f"copied from beside the session ({', '.join(files)}); {state}",
                 files,
             )
         )

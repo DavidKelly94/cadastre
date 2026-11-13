@@ -156,7 +156,7 @@ push to `main` for that reason, and only for that reason).
 | `corners` | prototype | Room side of roadmap item 5, offline: wall planes from the mesh, adjacent intersections, scored against the tapped corners. Right on the synthetic room; not yet run on a real capture |
 | `coverage` | prototype | Per-wall meshed and photographed coverage against the tapped corners, reported as gaps in metres from a corner. Right on the synthetic room; not yet run on a real capture |
 
-19 modules, **370 tests passing** (plus 3 that run only in the contract job), ruff clean.
+19 modules, **371 tests passing** (plus 3 that run only in the contract job), ruff clean.
 
 ## Swift core (`ios/VividHomeCore/`) — complete
 
@@ -353,6 +353,28 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## The rehearsal: a drawing to the PC's page, end to end, 2026-11-13
+
+The owner ran it at home on build 80. *Add a level from a plan* took the
+one-room PDF as its own level, *Read the drawing* set it up, a guided capture
+of the measured room was placed on the phone, and with `serve --lan` running
+the PC printed, in order: the capture received and validated; both levels'
+plans copied from beside it, the main floor's included; the placement adopted
+at a residual of **0.068 m**; and the level's page rendered for the phone. No
+command was typed on the PC and no click page was opened.
+
+That is the first time each of these has happened on real hardware: a second
+level added from its drawing, a scale and an outline that both came from a
+drawing carrying a real capture to *placed*, and the PC adopting a plan the
+drawing set up. 6.8 cm is inside the 10 cm that counts as placed, on a room
+measured with a tape and drawn without its door; it says nothing yet about a
+room in framing against the architect's sheet, which is still to walk.
+
+**One fault, fixed here.** The receipt told the owner to calibrate both plans
+(`calibrate it with 'vividhome plan calibrate --level …'`) although both
+arrived with their scale. It now says `its scale came with it (N mm per
+pixel)` for a plan that has one and keeps the hint for one that does not.
+
 ## A second level can start from its drawing, 2026-11-13
 
 Found preparing a rehearsal for the owner, not by them: *Import a plan* lived
@@ -361,7 +383,7 @@ with its main floor set up had no way to bring in the next floor's drawing
 short of recording on that floor first. The empty house had the same gap and
 got a button for it; the house with one level did not. The level list now
 ends with *Add a level from a plan*, which names the level and opens the same
-import. **Only compiles.**
+import. Used by the owner on build 80 for the rehearsal above.
 
 **The rehearsal.** The owner measured a room at home (123 by 127 inches, a
 58 inch window centred in the north wall). A to-scale one-room PDF made from

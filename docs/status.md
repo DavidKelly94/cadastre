@@ -353,6 +353,45 @@ whose outline came from the drawing.
 names (`bedroom-22`). Remove those pins, or clear the house, before reading
 the drawing again.
 
+## Back to the drawing, and an undo that undoes, 2026-11-13
+
+The owner applied build 78's reading, redrew one outline by hand, and reported
+two things.
+
+**"Undo keeps removing corners."** *Undo last* on the outline screen deleted
+the final corner whatever had just happened, so dragging a corner of a room
+read off the drawing and then undoing lost a different corner, and kept going
+until the room was gone. Undo is now a history (`EditHistory`, in the core):
+the state before each tap, drag or clear, stepped back one at a time, stopping
+at what the screen opened with. *Start again* can be undone too. The placement
+screen's *Undo last* is unchanged: there a point and its landmark label are
+removed together, which is what it says.
+
+**"Restore a room, or re-sync with the drawings."** Reading the drawing again
+already did this, but the screen opened with every room unticked and said only
+"Replaces the outline it has", and a removed room had no way back short of it.
+Now the plan knows how each room stands against the drawing
+(`PlanFile.sheetState`: missing, pinned, as drawn, by hand), and:
+
+- the outline screen has *As drawn*;
+- a tapped pin offers *Put back the drawing's outline* when it differs;
+- a room the drawing names that is not on the plan sits in the tray with a
+  wand, and one tap puts back its pin and outline;
+- *Read the drawing* says per room *On the plan as drawn*, *Changed by hand* or
+  *Not on the plan*, leaves hand-changed rooms unticked, and has *Tick all*.
+
+Applying a room that is already as drawn writes nothing. The sheet is read
+once per level per launch and shared between the screens.
+
+**Verified:** the history and the comparison, on Linux
+(`EditHistoryTests`, `testAPlanKnowsWhichRoomsStandAsDrawnAndPutsOneBack`).
+**Only compiles:** every screen change above, until the owner has tried it.
+
+**Decided without the owner:** a second reading never replaces a hand-changed
+outline unless the owner ticks it; "as drawn" means corner for corner in the
+same order within a pixel and a half, since the corner names come from the
+order.
+
 ## The drawing sets itself up: the reading, 2026-11-13
 
 ADR-0032, first of three pieces. The owner called setup click heavy: about

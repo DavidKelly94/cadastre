@@ -51,6 +51,14 @@ final class PlanStore: ObservableObject {
   /// gone when the app restarts, which is correct: an unaccepted suggestion is
   /// not data.
   @Published private(set) var candidates: [String: [PlanLabelReader.Candidate]] = [:]
+  /// What each level's PDF says about itself (ADR-0032), once it has been
+  /// read. Kept so the plan screen, the outline screen and a second reading
+  /// do not each parse the sheet again; gone when the app restarts, and
+  /// dropped when the level's drawing is imported again.
+  @Published private(set) var readings: [String: SheetReading] = [:]
+
+  /// Readings under way, by level.
+  private var reads: [String: Task<SheetReading?, Never>] = [:]
 
   private let project: String
   private let fileManager = FileManager.default
@@ -134,6 +142,7 @@ final class PlanStore: ObservableObject {
     plan.image = name
     plan.source = storedSource
     plans[level] = plan
+    readings[level] = nil
     try save(plan)
 
     // Read the drawing's own labels. A plan names its rooms — that is what it
@@ -208,6 +217,51 @@ final class PlanStore: ObservableObject {
       sheet.width > 0
     else { return nil }
     return SheetReading(proposal: SheetReader.read(sheet), pixelsPerPoint: rasterWidth / sheet.width)
+  }
+
+  /// The level's reading, from memory or by reading the sheet now, off the
+  /// main thread. Nil for a plan that is not a readable PDF.
+  @MainActor
+  func sheetReading(for level: String) async -> SheetReading? {
+    if let known = readings[level] { return known }
+    // Two screens asking at once share one reading.
+    if let running = reads[level] { return await running.value }
+    guard let plan = plans[level], let source = sheetSource(for: level), let image = image(for: plan)
+    else { return nil }
+    let width = Double(image.size.width)
+    let task = Task.detached(priority: .userInitiated) {
+      PlanStore.readSheet(at: source.url, page: source.page, rasterWidth: width)
+    }
+    reads[level] = task
+    let found = await task.value
+    reads[level] = nil
+    if let found { readings[level] = found }
+    return found
+  }
+
+  /// A room as the drawing has it, in plan pixels: nil when the level has not
+  /// been read, the drawing does not name the room, or has no walls round it.
+  func drawnOutline(of room: String, on level: String) -> [[Double]]? {
+    guard let reading = readings[level],
+      let drawn = reading.proposal.rooms.first(where: { $0.slug == room })
+    else { return nil }
+    return PlanFile.outlinePixels(of: drawn, pixelsPerPoint: reading.pixelsPerPoint)
+  }
+
+  /// How a room on the plan stands against the drawing, when the drawing has
+  /// been read and names it.
+  func sheetState(of room: String, on level: String) -> PlanFile.SheetState? {
+    guard let plan = plans[level], let reading = readings[level],
+      let drawn = reading.proposal.rooms.first(where: { $0.slug == room })
+    else { return nil }
+    return plan.sheetState(of: drawn, pixelsPerPoint: reading.pixelsPerPoint)
+  }
+
+  /// Put one room back as the drawing has it: its pin if it was removed, its
+  /// outline if the drawing has one.
+  func restore(room: String, on level: String, size: CGSize) throws {
+    guard let reading = readings[level] else { return }
+    try apply(reading, to: level, rooms: [room], setScale: false, size: size)
   }
 
   /// Write the chosen parts of a reading into the level's plan.

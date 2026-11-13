@@ -10,6 +10,10 @@ import VividHomeCore
 /// room over the drawing, and writes what the owner leaves ticked. Nothing is
 /// written before Apply, and the Scale and Outline screens remain for
 /// whatever this gets wrong.
+///
+/// Opened again on a plan that is already set up, it is how the plan is
+/// brought back to the drawing: each room says whether it still stands as
+/// drawn, was changed by hand or was removed, and ticking it puts it back.
 struct PlanReadView: View {
   @ObservedObject var store: PlanStore
   let level: String
@@ -70,16 +74,30 @@ struct PlanReadView: View {
         }
         Section {
           ForEach(reading.proposal.rooms, id: \.slug) { room in
-            Toggle(isOn: binding(for: room.slug)) {
+            let settled = isSettled(room, reading: reading, plan: plan)
+            Toggle(isOn: settled ? .constant(true) : binding(for: room.slug)) {
               VStack(alignment: .leading, spacing: 2) {
                 Text(room.name.capitalized)
                 Text(detail(room, reading: reading, plan: plan))
                   .font(.caption).foregroundStyle(.secondary)
               }
             }
+            .disabled(settled)
           }
         } header: {
-          Text("Rooms")
+          HStack {
+            Text("Rooms")
+            Spacer()
+            // The whole plan back to the drawing in one tap, then Apply.
+            if hasUnticked(reading, plan: plan) {
+              Button("Tick all") {
+                chosen = Set(
+                  reading.proposal.rooms
+                    .filter { !isSettled($0, reading: reading, plan: plan) }.map(\.slug))
+              }
+              .font(.caption)
+            }
+          }
         } footer: {
           Text(
             "Green rooms get their corners from the walls on the drawing. Amber ones share a space "
@@ -93,7 +111,15 @@ struct PlanReadView: View {
 
   /// The drawing with what was found drawn over it.
   private func overlay(_ reading: PlanStore.SheetReading, image: UIImage) -> some View {
-    GeometryReader { outer in
+    // Rooms already on the plan as drawn are shown as taken, like ticked ones.
+    var settled: Set<String> = []
+    if let plan {
+      for room in reading.proposal.rooms where isSettled(room, reading: reading, plan: plan) {
+        settled.insert(room.slug)
+      }
+    }
+    let taken = settled
+    return GeometryReader { outer in
       let fitted = PlanCoverageView.fit(image.size, into: outer.size)
       let scale = image.size.width == 0 ? 1 : fitted.width / image.size.width
       let k = scale * reading.pixelsPerPoint
@@ -108,7 +134,7 @@ struct PlanReadView: View {
             }
             path.closeSubpath()
             let tone: Color = room.status == .outlined ? .green : .orange
-            let on = chosen.contains(room.slug)
+            let on = chosen.contains(room.slug) || taken.contains(room.slug)
             context.fill(path, with: .color(tone.opacity(on ? 0.22 : 0.06)))
             context.stroke(path, with: .color(tone.opacity(on ? 0.95 : 0.4)), lineWidth: 1.5)
           }
@@ -171,22 +197,48 @@ struct PlanReadView: View {
   }
 
   private func detail(_ room: SheetReader.Room, reading: PlanStore.SheetReading, plan: PlanFile) -> String {
-    let had = plan.placement(of: room.slug)?.outline != nil ? " Replaces the outline it has." : ""
+    let state = plan.sheetState(of: room, pixelsPerPoint: reading.pixelsPerPoint)
+    // On a plan nothing has been taken from yet, "not on the plan" is every
+    // row and says nothing.
+    let removed = state == .missing && !plan.rooms.isEmpty ? " Not on the plan: tick to put it back." : ""
+    let pinned = state == .missing ? "" : " On the plan."
     switch room.status {
     case .outlined:
       guard room.outline.count <= SheetReader.maximumCorners else {
-        return "\(room.outline.count) corners is too many to tap round: pinned only."
+        return "\(room.outline.count) corners is too many to tap round: pinned only." + removed + pinned
       }
       var text = "\(room.outline.count) corners"
       if let scale = reading.proposal.scale, scale.check != .disagrees {
         let squareFeet = room.areaPoints * pow(scale.metresPerPoint / 0.3048, 2)
         text += " · \(Int(squareFeet.rounded())) sq ft"
       }
-      return text + "." + had
+      switch state {
+      case .missing: return text + "." + removed
+      case .pinned: return text + ". Pinned without an outline: tick to add it."
+      case .asDrawn: return text + ". On the plan as drawn."
+      case .byHand: return text + ". Changed by hand: tick to put the drawing's outline back."
+      }
     case .openPlan:
-      return "Open to \(room.sharedWith.joined(separator: ", ")): pinned, not outlined."
+      return "Open to \(room.sharedWith.joined(separator: ", ")): pinned, not outlined." + removed + pinned
     case .notEnclosed:
-      return "Not enclosed by walls on the drawing: pinned only."
+      return "Not enclosed by walls on the drawing: pinned only." + removed + pinned
+    }
+  }
+
+  /// Nothing the drawing could add or change: the room is on the plan as
+  /// drawn, or is on the plan and the drawing has no outline to give it.
+  private func isSettled(_ room: SheetReader.Room, reading: PlanStore.SheetReading, plan: PlanFile) -> Bool {
+    switch plan.sheetState(of: room, pixelsPerPoint: reading.pixelsPerPoint) {
+    case .missing: return false
+    case .asDrawn: return true
+    case .pinned, .byHand:
+      return PlanFile.outlinePixels(of: room, pixelsPerPoint: reading.pixelsPerPoint) == nil
+    }
+  }
+
+  private func hasUnticked(_ reading: PlanStore.SheetReading, plan: PlanFile) -> Bool {
+    reading.proposal.rooms.contains {
+      !chosen.contains($0.slug) && !isSettled($0, reading: reading, plan: plan)
     }
   }
 
@@ -207,19 +259,20 @@ struct PlanReadView: View {
 
   private func load() async {
     guard reading == nil else { return }
-    guard let plan, let source = store.sheetSource(for: level), let image = store.image(for: plan) else {
+    guard let plan else {
       loading = false
       return
     }
-    let width = Double(image.size.width)
-    let found = await Task.detached(priority: .userInitiated) {
-      PlanStore.readSheet(at: source.url, page: source.page, rasterWidth: width)
-    }.value
+    let found = await store.sheetReading(for: level)
     reading = found
     if let found {
-      // Everything on, except an outline that would replace one drawn by hand.
+      // Everything the drawing can still give, except an outline that would
+      // replace one changed by hand: that one is the owner's to tick.
       chosen = Set(
-        found.proposal.rooms.filter { plan.placement(of: $0.slug)?.outline == nil }.map(\.slug))
+        found.proposal.rooms.filter { room in
+          !isSettled(room, reading: found, plan: plan)
+            && plan.sheetState(of: room, pixelsPerPoint: found.pixelsPerPoint) != .byHand
+        }.map(\.slug))
       useScale = !plan.isCalibrated && found.proposal.scale?.check == .agrees
     }
     loading = false

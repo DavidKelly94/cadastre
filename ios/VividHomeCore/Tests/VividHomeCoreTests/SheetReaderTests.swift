@@ -365,4 +365,52 @@ final class SheetReaderTests: XCTestCase {
     XCTAssertFalse(applied.scaleSet)
     XCTAssertFalse(plan.isCalibrated)
   }
+
+  /// Reading the drawing a second time is how a room is put back: the plan
+  /// has to know which rooms still stand as drawn and which were changed.
+  func testAPlanKnowsWhichRoomsStandAsDrawnAndPutsOneBack() throws {
+    let proposal = SheetReader.read(house())
+    let office = try XCTUnwrap(proposal.rooms.first { $0.slug == "office" })
+    let kitchen = try XCTUnwrap(proposal.rooms.first { $0.slug == "kitchen" })
+    var plan = PlanFile(level: "main", image: "main.png")
+    XCTAssertEqual(plan.sheetState(of: office, pixelsPerPoint: 2), .missing)
+
+    let first = Date(timeIntervalSince1970: 1_793_733_302)
+    plan.apply(
+      proposal, pixelsPerPoint: 2, imageSize: (1600, 1200), rooms: ["kitchen", "office"],
+      setScale: true, at: first)
+    XCTAssertEqual(plan.sheetState(of: office, pixelsPerPoint: 2), .asDrawn)
+    XCTAssertEqual(plan.sheetState(of: kitchen, pixelsPerPoint: 2), .pinned, "open plan: nothing to outline")
+    let stamped = try XCTUnwrap(plan.placement(of: "office")?.outlinedAt)
+
+    // Applying again changes nothing, the time it was outlined included.
+    let later = Date(timeIntervalSince1970: 1_793_800_000)
+    var again = plan.apply(
+      proposal, pixelsPerPoint: 2, imageSize: (1600, 1200), rooms: ["office"], setScale: false, at: later)
+    XCTAssertEqual(again.outlined, [])
+    XCTAssertEqual(plan.placement(of: "office")?.outlinedAt, stamped)
+
+    // A corner dragged by hand: no longer as drawn, and applying puts it back.
+    var moved = try XCTUnwrap(plan.placement(of: "office")?.outline)
+    moved[0][0] += 40
+    XCTAssertTrue(plan.outline(room: "office", points: moved, in: (1600, 1200), at: later))
+    XCTAssertEqual(plan.sheetState(of: office, pixelsPerPoint: 2), .byHand)
+    again = plan.apply(
+      proposal, pixelsPerPoint: 2, imageSize: (1600, 1200), rooms: ["office"], setScale: false, at: later)
+    XCTAssertEqual(again.outlined, ["office"])
+    XCTAssertEqual(plan.sheetState(of: office, pixelsPerPoint: 2), .asDrawn)
+
+    // An outline drawn by hand where the drawing has none stays by hand.
+    let square: [[Double]] = [[220, 220], [500, 220], [500, 500], [220, 500]]
+    XCTAssertTrue(plan.outline(room: "kitchen", points: square, in: (1600, 1200), at: later))
+    XCTAssertEqual(plan.sheetState(of: kitchen, pixelsPerPoint: 2), .byHand)
+
+    // Removed from the plan, it comes back with its pin and its outline.
+    plan.unplace(room: "office")
+    XCTAssertEqual(plan.sheetState(of: office, pixelsPerPoint: 2), .missing)
+    again = plan.apply(
+      proposal, pixelsPerPoint: 2, imageSize: (1600, 1200), rooms: ["office"], setScale: false, at: later)
+    XCTAssertEqual(again.pinned, ["office"])
+    XCTAssertEqual(again.outlined, ["office"])
+  }
 }

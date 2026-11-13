@@ -7,13 +7,16 @@ import VividHomeCore
 /// Done at home, before the visit: the outline is what the guided taps in the
 /// field are asked against, corner by corner, and what the capture is placed
 /// on before the owner leaves the room. Tap the corners in order around the
-/// room, drag any under the loupe, Save.
+/// room, drag any under the loupe, Save. Undo steps back through what was
+/// done on this screen, and a room the drawing outlines (ADR-0032) can be put
+/// back as drawn.
 struct PlanOutlineView: View {
   @ObservedObject var store: PlanStore
   let level: String
   let room: String
 
   @State private var points: [CGPoint] = []
+  @State private var history = EditHistory<[CGPoint]>()
   @State private var loaded = false
   @State private var failure: String?
   @Environment(\.dismiss) private var dismiss
@@ -21,6 +24,16 @@ struct PlanOutlineView: View {
   private var plan: PlanFile? { store.plans[level] }
   private var names: [String] {
     RoomOutline.cornerNames(for: points.map { [Double($0.x), Double($0.y)] })
+  }
+  /// The room's corners as the drawing has them, when it has been read.
+  private var drawn: [CGPoint]? {
+    store.drawnOutline(of: room, on: level)?.compactMap {
+      $0.count == 2 ? CGPoint(x: $0[0], y: $0[1]) : nil
+    }
+  }
+  private var isAsDrawn: Bool {
+    guard let drawn, drawn.count == points.count else { return false }
+    return zip(drawn, points).allSatisfy { abs($0.x - $1.x) <= 1.5 && abs($0.y - $1.y) <= 1.5 }
   }
   private var canSave: Bool {
     guard let plan, let image = store.image(for: plan) else { return false }
@@ -36,9 +49,11 @@ struct PlanOutlineView: View {
           header
           PlanPointCanvas(
             image: image, points: $points, maxPoints: nil, figure: .polygon,
-            colour: { _ in .blue }, labels: names.map(Self.short))
+            colour: { _ in .blue }, labels: names.map(Self.short),
+            willChange: { history.record(points) })
           footer
         }
+        .task { _ = await store.sheetReading(for: level) }
         .onAppear {
           guard !loaded else { return }
           loaded = true
@@ -70,7 +85,9 @@ struct PlanOutlineView: View {
         ? "Tap each corner of \(room), in order around the room."
         : "\(points.count) corner\(points.count == 1 ? "" : "s") so far. Keep going around, then Save.")
         .font(.footnote.weight(.semibold))
-      Text("Inside corners, where two walls meet. Drag a point under the loupe to fix it. Pinch to zoom.")
+      Text(drawn == nil
+        ? "Inside corners, where two walls meet. Drag a point under the loupe to fix it. Pinch to zoom."
+        : "Drag a point under the loupe to fix it. Pinch to zoom. As drawn puts back the walls on the drawing.")
         .font(.caption).foregroundStyle(.secondary)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
@@ -87,11 +104,26 @@ struct PlanOutlineView: View {
         .font(.footnote).foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
       HStack {
-        Button("Undo last") { _ = points.popLast() }
-          .font(.footnote).disabled(points.isEmpty)
+        // Undo puts back what was there before the last change, whatever
+        // it was; it never goes past what the screen opened with.
+        Button("Undo") {
+          if let previous = history.undo(from: points) { points = previous }
+        }
+        .font(.footnote).disabled(!history.canUndo(from: points))
         Spacer()
-        Button("Start again") { points = [] }
-          .font(.footnote).disabled(points.isEmpty)
+        if let drawn {
+          Button("As drawn") {
+            history.record(points)
+            points = drawn
+          }
+          .font(.footnote).disabled(isAsDrawn)
+          Spacer()
+        }
+        Button("Start again") {
+          history.record(points)
+          points = []
+        }
+        .font(.footnote).disabled(points.isEmpty)
       }
     }
     .padding(16)

@@ -39,7 +39,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from . import __version__
-from .index import build_index
+from .store import LEGACY_NOTE, PROJECTS, build_store_index, is_legacy, project_store
 from .upload import (
     PAIRING_FILE,
     Inbox,
@@ -73,7 +73,7 @@ class Renderer:
     """Renders ``inspect/<level>.html`` in the background when a capture arrives
     placed (ADR-0031 step 6).
 
-    One worker thread and a queue of levels, each listed once: three captures
+    One worker thread and a queue of a project's levels, each listed once: three captures
     of one level arriving together render the page once. The upload's reply
     does not wait, because thumbnails take up to a minute and the phone's
     uploader would give up; the receipt says the page is queued and the
@@ -83,17 +83,17 @@ class Renderer:
     def __init__(self, store: Path, *, thumbnails: bool = True):
         self._store = store
         self._thumbnails = thumbnails
-        self._pending: list[str] = []
+        self._pending: list[tuple[str, str]] = []
         self._busy = False
         self._lock = threading.Lock()
         self._wake = threading.Event()
         self._thread = threading.Thread(target=self._run, name="vividhome-render", daemon=True)
         self._thread.start()
 
-    def queue(self, level: str) -> None:
+    def queue(self, project: str, level: str) -> None:
         with self._lock:
-            if level not in self._pending:
-                self._pending.append(level)
+            if (project, level) not in self._pending:
+                self._pending.append((project, level))
         self._wake.set()
 
     @property
@@ -122,20 +122,26 @@ class Renderer:
                     if not self._pending:
                         self._wake.clear()
                         break
-                    level = self._pending.pop(0)
+                    project, level = self._pending.pop(0)
                     self._busy = True
                 try:
+                    # Each project is a store of its own (ADR-0033).
+                    store = project_store(self._store, project)
+                    where = f"{PROJECTS}/{project}/inspect"
                     # The 3D page first (ADR-0036), so the level page links to
                     # it; a level with no scan to show has none.
                     try:
-                        model = build_model(self._store, level)
-                        print(f"rendered inspect/{model.page.name}: {model.faces:,} faces in 3D")
+                        model = build_model(store, level)
+                        print(f"rendered {where}/{model.page.name}: {model.faces:,} faces in 3D")
                     except PlanError:
                         pass
-                    path = build_page(self._store, level, thumbnails=self._thumbnails)
-                    print(f"rendered inspect/{path.name}; the phone's rendering is current")
+                    path = build_page(store, level, thumbnails=self._thumbnails)
+                    print(f"rendered {where}/{path.name}; the phone's rendering is current")
                 except Exception as error:  # noqa: BLE001 - the server must not die for a page
-                    print(f"could not render level {level!r}: {error}", file=sys.stderr)
+                    print(
+                        f"could not render level {level!r} of {project!r}: {error}",
+                        file=sys.stderr,
+                    )
                 finally:
                     with self._lock:
                         self._busy = False
@@ -179,7 +185,7 @@ class StoreHandler(SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
         if path == "/index.json":
-            self._send_json(build_index(self._root))
+            self._send_json(build_store_index(self._root))
             return
         if path == "/_vividhome/ping":
             self._send_json({"vividhome": __version__, "store": self._root.name})
@@ -279,10 +285,15 @@ class StoreHandler(SimpleHTTPRequestHandler):
         placement was adopted (ADR-0031 step 6); what the receipt says about it."""
         alignment = receipt.get("alignment") or {}
         level = alignment.get("level")
-        if self._renderer is None or not alignment.get("adopted") or not level:
+        project = receipt.get("project")
+        if self._renderer is None or not alignment.get("adopted") or not level or not project:
             return None
-        self._renderer.queue(str(level))
-        return {"level": level, "page": f"inspect/{level}.html", "status": "queued"}
+        self._renderer.queue(str(project), str(level))
+        return {
+            "level": level,
+            "page": f"{PROJECTS}/{project}/inspect/{level}.html",
+            "status": "queued",
+        }
 
     @staticmethod
     def _announce(receipt: dict) -> None:
@@ -455,6 +466,8 @@ def serve(
     if lan:
         addresses = lan_addresses()
         print(f"serving {root} on the network")
+        if is_legacy(root):
+            print(f"  note: {LEGACY_NOTE}")
         for address in addresses or ["<no network address found>"]:
             print(f"  http://{address}:{actual}/{open_path}")
         print("  anyone on this network can read the store; only the app, with the pairing")

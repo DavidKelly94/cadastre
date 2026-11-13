@@ -87,12 +87,14 @@ def _add_plan(sub: argparse._SubParsersAction) -> None:
     plan_sub = p.add_subparsers(dest="plan_command", required=True)
 
     add = plan_sub.add_parser("add", help="rasterize a PDF or image into the store")
+    _project_option(add)
     add.add_argument("file", help="source PDF or image")
     add.add_argument("--level", required=True, help="level slug, e.g. main")
     add.add_argument("--page", type=int, default=1, help="page number for a PDF source")
     add.add_argument("--dpi", type=int, default=200, help="rasterizing resolution")
 
     correct = plan_sub.add_parser("correct", help="perspective-correct a photographed plan")
+    _project_option(correct)
     correct.add_argument("file", help="source image")
     correct.add_argument("--level", required=True, help="level slug")
     correct.add_argument(
@@ -103,6 +105,7 @@ def _add_plan(sub: argparse._SubParsersAction) -> None:
     )
 
     calibrate = plan_sub.add_parser("calibrate", help="set scale, origin and rotation for a level")
+    _project_option(calibrate)
     calibrate.add_argument("--level", required=True, help="level slug")
     calibrate.add_argument(
         "--web", action="store_true", help="click the points in a browser instead"
@@ -150,6 +153,7 @@ def _add_align(sub: argparse._SubParsersAction) -> None:
 
 def _add_inspect(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("inspect", help="generate the per-level inspection page")
+    _project_option(p)
     p.add_argument("--level", help="level slug; omit to generate every aligned level")
     p.add_argument("--serve", action="store_true", help="serve the pages after writing them")
     p.add_argument("--port", type=int, default=8765, help="port for --serve")
@@ -172,6 +176,27 @@ def _add_model(sub: argparse._SubParsersAction) -> None:
         help="build the level's 3D page from the scans of its placed captures",
     )
     p.add_argument("--level", help="level slug; omit to build every aligned level")
+    _project_option(p)
+
+
+def _project_option(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--project",
+        help="project slug; needed only when the store holds more than one (ADR-0033)",
+    )
+
+
+def _add_project(sub: argparse._SubParsersAction) -> None:
+    p = sub.add_parser("project", help="list the store's projects, or remove one")
+    project_sub = p.add_subparsers(dest="project_command", required=True)
+    project_sub.add_parser("list", help="every project, with what it holds")
+    delete = project_sub.add_parser(
+        "delete", help="remove a project: its captures, plans, placements and pages"
+    )
+    delete.add_argument("slug", help="project slug, as 'project list' prints it")
+    delete.add_argument(
+        "--yes", action="store_true", help="do it; without this the command only says what would go"
+    )
 
 
 def _add_markers(sub: argparse._SubParsersAction) -> None:
@@ -263,6 +288,7 @@ def build_parser() -> argparse.ArgumentParser:
         _add_align,
         _add_inspect,
         _add_model,
+        _add_project,
         _add_markers,
         _add_synth,
         _add_corners,
@@ -284,6 +310,10 @@ def resolve_session(store: str, value: str) -> Path:
     if direct.is_dir():
         return direct
     matches = sorted(Path(store).glob(f"sessions/*/{value}"))
+    if not matches:
+        # The store's top, when the command was given it (ADR-0033): a
+        # session is found whichever project holds it.
+        matches = sorted(Path(store).glob(f"projects/*/sessions/*/{value}"))
     if len(matches) == 1:
         return matches[0]
     if len(matches) > 1:
@@ -561,6 +591,88 @@ def _run_inspect(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_project(args: argparse.Namespace) -> int:
+    from .store import StoreError, delete_project, project_slugs, project_store
+
+    if args.project_command == "list":
+        slugs = project_slugs(args.store)
+        if not slugs:
+            print(f"no projects in {args.store} yet")
+        for slug in slugs:
+            root = project_store(args.store, slug)
+            sessions = len(list(root.glob("sessions/*/*/manifest.json")))
+            plans = len(list(root.glob("plans/*.json")))
+            print(f"{slug}: {sessions} capture(s), {plans} plan(s)")
+        return 0
+
+    root = project_store(args.store, args.slug)
+    if not args.yes:
+        if not root.is_dir():
+            print(f"vividhome project: no project {args.slug!r} in {args.store}", file=sys.stderr)
+            return 1
+        sessions = len(list(root.glob("sessions/*/*/manifest.json")))
+        print(
+            f"would remove {args.slug}: {sessions} capture(s) and everything made from them, "
+            f"under {root}. Nothing on the phone is touched. Add --yes to do it."
+        )
+        return 0
+    try:
+        gone = delete_project(args.store, args.slug)
+    except StoreError as error:
+        print(f"vividhome project: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"removed {args.slug}: {gone['sessions']} capture(s), {gone['plans']} plan(s), "
+        f"{gone['bytes'] / 1e6:.1f} MB"
+    )
+    return 0
+
+
+#: Commands that work on one project's plans and pages, and so need to know
+#: which project when the store holds several.
+_LEVEL_COMMANDS = frozenset({"plan", "inspect", "model"})
+
+
+def _route(args: argparse.Namespace) -> None:
+    """Point ``args.store`` at the project the command means (ADR-0033).
+
+    Each project is a store of its own under ``projects/``. A store with no
+    ``projects/`` folder is used as it is, which is every store there was
+    before this and every one the tests build.
+    """
+    from .store import (
+        DEFAULT_PROJECT,
+        PROJECTS,
+        find_session,
+        peek_project,
+        project_store,
+        resolve_project,
+        store_of,
+    )
+
+    root = args.store
+    command = args.command
+    if command in ("serve", "markers", "synth", "project"):
+        return
+    has_projects = (Path(root) / PROJECTS).is_dir()
+    named = getattr(args, "project", None)
+
+    if command == "ingest":
+        if named or has_projects:
+            project = named or peek_project(args.source) or DEFAULT_PROJECT
+            args.store = str(project_store(root, project))
+        return
+    if hasattr(args, "session"):
+        direct = Path(args.session)
+        found = direct if direct.is_dir() else find_session(root, args.session)
+        inside = store_of(root, found) if found is not None else None
+        if inside is not None:
+            args.store = str(inside)
+        return
+    if command in _LEVEL_COMMANDS and (named or has_projects):
+        args.store = str(project_store(root, resolve_project(root, named)))
+
+
 def _build_model_quietly(store: str, level: str) -> None:
     """Build a level's 3D page when it has anything to show, and say so."""
     from .model import build_model
@@ -801,6 +913,7 @@ _HANDLERS = {
     "align": _run_align,
     "inspect": _run_inspect,
     "model": _run_model,
+    "project": _run_project,
     "ingest": _run_ingest,
     "markers": _run_markers,
     "corners": _run_corners,
@@ -822,6 +935,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         os.environ[units.ENVIRONMENT] = args.units
 
     try:
+        from .store import StoreError
+
+        try:
+            _route(args)
+        except StoreError as error:
+            print(f"vividhome {args.command}: {error}", file=sys.stderr)
+            return 1
         return _dispatch(args)
     except BrokenPipeError:
         # `vividhome apriltag ... | head` closes the pipe partway through. That is

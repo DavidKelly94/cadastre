@@ -10,6 +10,8 @@ happens once (Apple account, TestFlight, installing uv) is in
 
 **3D.** When a placed capture arrives, the server also draws the level in 3D: the phone's scan of each room, standing on the drawing. Open the level's page and follow *See this level in 3D*, on the PC or through *Rendering on the PC* on the phone. To build it for captures already in the store: `uv run vividhome --store $store model`.
 
+**Projects.** The PC keeps each project apart, under `projects\<project>\` in the store folder, and files a capture by the project it was made in. `uv run vividhome --store $store project list` shows them. A command about a level (`plan`, `inspect`, `model`) needs `--project <slug>` once there is more than one. `project delete <slug>` says what would go; add `--yes` to remove it. The phone is never touched by that.
+
 **PowerShell rules.** One command per line. PowerShell 5 does not accept `&&`.
 Paths with spaces go in quotes. Anything in angle brackets is a placeholder you
 replace; nothing below is meant to be typed with the brackets.

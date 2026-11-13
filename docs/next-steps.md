@@ -70,6 +70,10 @@ a pipeline test that `plan calibrate` keeps them.
 
 ## 2. Projects (ADR-0033)
 
+**The PC's half built 2026-11-13** (steps 1 and 5 below), as a store per
+project under `projects/` with no migration, at the owner's word. See
+`docs/status.md`. Steps 2 to 4, the phone's half, follow.
+
 Steps, each its own pull request:
 
 1. Pipeline: move plans, alignments, marker maps and pages under the project,

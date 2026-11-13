@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 
 from vividhome import __version__
-from vividhome.index import build_index
 from vividhome.serve import MAX_BODY_BYTES, SERVICE_TYPE, make_server, service_info
+from vividhome.store import build_store_index, project_store
 from vividhome.synth import SynthSpec, build
 from vividhome.upload import (
     MAX_FILE_BYTES,
@@ -316,7 +316,7 @@ def test_a_capture_arrives_file_by_file_and_done_ingests_it(paired, capture):
     assert set(listing["files"]) == set(sent)
     assert listing["files"]["manifest.json"] == (capture / "manifest.json").stat().st_size
     # The inbox is staging: the index does not know the session exists yet.
-    assert build_index(store)["projects"] == []
+    assert build_store_index(store)["projects"] == []
 
     status, receipt = status_of(lambda: request(base, "POST", f"/upload/{SESSION}/done", b""))
     assert status == 200, receipt
@@ -327,9 +327,14 @@ def test_a_capture_arrives_file_by_file_and_done_ingests_it(paired, capture):
     assert (destination / "derived" / "validate.json").exists()
     assert not (store / ".inbox" / SESSION).exists()
 
-    sessions = build_index(store)["projects"][0]["sessions"]
+    # Filed under the project its manifest names (ADR-0033), and indexed there.
+    assert receipt["project"] == "synthetic"
+    assert receipt["destination"].startswith("projects/synthetic/sessions/synthetic/")
+    [project] = build_store_index(store)["projects"]
+    sessions = project["sessions"]
     assert [s["session_id"] for s in sessions] == [SESSION]
     assert sessions[0]["validated"] is True
+    assert sessions[0]["path"] == receipt["destination"]
 
     # Now the store has it: the listing says so and nothing may be sent again.
     status, listing = status_of(lambda: request(base, "GET", f"/upload/{SESSION}"))
@@ -362,8 +367,11 @@ def test_plans_beside_the_session_come_across(paired, capture):
     status, receipt = status_of(lambda: request(base, "POST", f"/upload/{SESSION}/done", b""))
     assert status == 200 and receipt["validated"]
     assert [(p["level"], p["imported"]) for p in receipt["plans"]] == [("main", True)]
-    assert (store / "plans" / "main.png").read_bytes() == png
-    assert json.loads((store / "plans" / "main.json").read_text())["level"] == "main"
+    # The plan belongs to the capture's project and to no other.
+    plans = project_store(store, "synthetic") / "plans"
+    assert (plans / "main.png").read_bytes() == png
+    assert json.loads((plans / "main.json").read_text())["level"] == "main"
+    assert not (store / "plans").exists()
 
 
 def test_a_capture_that_fails_validation_is_kept_and_said_so(paired, capture):
@@ -378,7 +386,7 @@ def test_a_capture_that_fails_validation_is_kept_and_said_so(paired, capture):
     assert receipt["ingested"] and receipt["validated"] is False
     assert receipt["errors"], "the first errors travel back so the phone can show them"
     assert (store / receipt["destination"] / "manifest.json").exists()
-    sessions = build_index(store)["projects"][0]["sessions"]
+    sessions = build_store_index(store)["projects"][0]["sessions"]
     assert sessions[0]["validated"] is False
 
 
@@ -511,16 +519,18 @@ def test_a_placed_capture_arriving_redraws_its_level_for_the_phone(paired, captu
     base, store = paired
     source = tmp_path / "plan.png"
     Image.new("RGB", (400, 300), (255, 255, 255)).save(source, "PNG")
-    add_plan(store, source, "main")
+    # The capture's project already has its level calibrated.
+    mine = project_store(store, "synthetic")
+    add_plan(mine, source, "main")
     calibrate(
-        store,
+        mine,
         "main",
         point_a=(10.0, 10.0),
         point_b=(210.0, 10.0),
         distance_m=4.0,
         origin_px=(10.0, 10.0),
     )
-    assert build_index(store)["projects"] == [], "nothing recorded yet"
+    assert build_store_index(store)["projects"] == [], "nothing recorded yet"
 
     send_session(base, capture)
     placement = json.dumps(
@@ -557,17 +567,22 @@ def test_a_placed_capture_arriving_redraws_its_level_for_the_phone(paired, captu
     assert status == 200 and receipt["validated"], receipt
     assert receipt["alignment"]["adopted"] is True
     assert receipt["alignment"]["level"] == "main"
-    assert receipt["inspect"] == {"level": "main", "page": "inspect/main.html", "status": "queued"}
+    assert receipt["inspect"] == {
+        "level": "main",
+        "page": "projects/synthetic/inspect/main.html",
+        "status": "queued",
+    }
 
     # The reply did not wait for the page; the page follows.
-    page = store / "inspect" / "main.html"
+    page = mine / "inspect" / "main.html"
     deadline = time.monotonic() + 60
     while not page.exists() and time.monotonic() < deadline:
         time.sleep(0.1)
     assert page.exists(), "the level's page was not drawn after the placed capture arrived"
     assert SESSION in page.read_text(encoding="utf-8")
-    [project] = build_index(store)["projects"]
+    [project] = build_store_index(store)["projects"]
     [level] = project["levels"]
-    assert level["inspect"] == "inspect/main.html"
+    assert level["inspect"] == "projects/synthetic/inspect/main.html", "from the server's root"
+    assert level["plan"] == "projects/synthetic/plans/main.png"
     assert level["sessions"] == [SESSION]
     assert project["sessions"][0]["alignment_source"] == "app"

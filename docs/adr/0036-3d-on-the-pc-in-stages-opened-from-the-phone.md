@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, 2026-11-13. Builds on [ADR-0009](0009-posed-photos-first-splats-later.md), [ADR-0011](0011-web-viewer-threejs-spark-sog.md) and [ADR-0028](0028-results-return-to-the-app.md).
+Accepted, 2026-11-13, by the owner the day it was proposed ("the ADRs look pretty good"). Builds on [ADR-0009](0009-posed-photos-first-splats-later.md), [ADR-0011](0011-web-viewer-threejs-spark-sog.md) and [ADR-0028](0028-results-return-to-the-app.md).
 
 ## Context
 

@@ -40,11 +40,11 @@ Read them in order the first time. Afterwards, use the index.
 | [ADR-0030](0030-the-phone-owns-the-first-loop.md) | The phone owns the record's first loop; the PC is the archive and the heavy compute | Accepted |
 | [ADR-0031](0031-the-capture-proves-itself-before-you-leave.md) | The capture proves itself before you leave the room | Accepted |
 | [ADR-0032](0032-the-drawing-sets-itself-up.md) | The drawing sets itself up | Accepted |
-| [ADR-0033](0033-projects-are-made-named-and-removed-in-the-app.md) | Projects are made, named and removed in the app | Proposed |
-| [ADR-0034](0034-placement-from-the-scan-taps-as-the-fallback.md) | Placement from the scan, with taps as the fallback | Proposed |
-| [ADR-0035](0035-a-capture-complete-enough-for-3d.md) | A capture complete enough for 3D | Proposed |
-| [ADR-0036](0036-3d-on-the-pc-in-stages-opened-from-the-phone.md) | 3D on the PC in stages, opened from the phone | Proposed |
-| [ADR-0037](0037-the-exterior-is-captured-one-face-at-a-time.md) | The exterior is captured one face at a time | Proposed |
+| [ADR-0033](0033-projects-are-made-named-and-removed-in-the-app.md) | Projects are made, named and removed in the app | Accepted |
+| [ADR-0034](0034-placement-from-the-scan-taps-as-the-fallback.md) | Placement from the scan, with taps as the fallback | Accepted |
+| [ADR-0035](0035-a-capture-complete-enough-for-3d.md) | A capture complete enough for 3D | Accepted |
+| [ADR-0036](0036-3d-on-the-pc-in-stages-opened-from-the-phone.md) | 3D on the PC in stages, opened from the phone | Accepted |
+| [ADR-0037](0037-the-exterior-is-captured-one-face-at-a-time.md) | The exterior is captured one face at a time | Accepted |
 
 ## Adding a new ADR
 

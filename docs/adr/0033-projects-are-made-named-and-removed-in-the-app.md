@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, 2026-11-13. Extends [ADR-0012](0012-monorepo-and-local-storage.md) and [ADR-0025](0025-plans-are-a-project-level-asset.md).
+Accepted, 2026-11-13, by the owner the day it was proposed ("the ADRs look pretty good"). Extends [ADR-0012](0012-monorepo-and-local-storage.md) and [ADR-0025](0025-plans-are-a-project-level-asset.md).
 
 ## Context
 

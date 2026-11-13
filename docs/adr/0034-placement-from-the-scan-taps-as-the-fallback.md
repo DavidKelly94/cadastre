@@ -2,31 +2,33 @@
 
 ## Status
 
-Proposed, 2026-11-13. Extends [ADR-0007](0007-per-level-se2-alignment.md), which deferred automatic refinement, and [ADR-0031](0031-the-capture-proves-itself-before-you-leave.md).
+Accepted, 2026-11-13. First proposed as a fit made on the PC; revised before acceptance on the owner's instructions that day: the phone proposes and the owner confirms, it says when a hand is needed, every proposal has a manual override, and ceiling corners count. Extends [ADR-0007](0007-per-level-se2-alignment.md) and [ADR-0031](0031-the-capture-proves-itself-before-you-leave.md). Details in `docs/design/capture-guidance-design.md`.
 
 ## Context
 
-A capture is placed on the plan by tapping the room's corners as the app names them: four taps for a simple room. The owner would rather tap nothing. Every capture already records the walls as a mesh, and the `corners` prototype in the pipeline finds wall planes and where they meet, but it has only run on a synthetic room. The rehearsal capture of 2026-11-13 is the first real room with a known answer: its taps placed it at 7 cm.
+A capture is placed on the plan by tapping the room's corners as the app names them. The owner would rather tap nothing, and accepts that some captures will still need taps. Every capture already builds a mesh of the walls as it runs.
 
-Two limits are known before starting. A rectangular room fits its outline two or four ways round. And at framing a wall is open studs: the depth sensor sees through it into the next room, so the walls may not be findable until drywall.
+A rectangular room fits its outline two or four ways round. At framing a wall is open studs, which the depth sensor sees through, and furniture hides floor corners in a finished room. The scan will find every corner, a few, or none.
 
 ## Decision
 
-1. **The walls found in the scan are fit to the room's outline.** The result is the same alignment file, with `method: "walls"`.
-2. **Evidence before the phone.** It runs first on the PC, after the fact, on real captures that also have taps. It moves into the live capture only when it agrees with the taps within 10 cm on real rooms, framing included.
-3. **Which way round is settled by what is cheapest.** A room that is not symmetric settles itself. Otherwise the phone's heading decides, once one tapped room on the level has shown which way the drawing faces. Failing that, one tap.
-4. **Taps stay and taps win.** The guided taps remain. When both exist and disagree, the app says so and keeps the taps.
-5. **Recording the heading is an optional field** in the manifest, added when step 3 needs it.
+1. **The phone looks for the room's corners in its own scan** while the capture runs, and matches them to the outline. A corner is the vertical line where two walls meet, so it can be found, proposed or tapped at the floor or at the ceiling, whichever can be seen.
+2. **What it finds is proposed, not placed.** Proposed marks appear in the camera view with their names and count only when the owner confirms them, together or one by one.
+3. **Every proposal can be overridden by hand.** A mark can be moved, dismissed, or replaced by a tap, before or after confirming, and proposals can be switched off for a capture. A tap always wins.
+4. **The phone says when a hand is needed.** A corner the scan cannot find is asked for by name, as today. When two ways round fit equally, the app shows one and asks.
+5. **A confirmed proposal is recorded as one**: the landmark's `method` says the scan found it and a person confirmed it.
+6. **A wall height, when the owner enters one, is a check**: the scan's floor-to-ceiling distance is compared with it, and a corner seen at both ends must stand upright.
+7. **The PC checks the phone afterwards**, comparing proposals with taps on real captures, to tune the thresholds.
 
 ## Consequences
 
-Positive: a furnished or finished room may need no taps; the fit rests on whole walls, not four points.
+Positive: one confirmation in place of four taps where the scan can see; a person checks every placement; it falls back corner by corner at framing.
 
-Negative: it may not work at framing, the phase that matters first; a wrong automatic fit is worse than no fit, so the threshold in step 2 is strict.
+Negative: more on the capture screen; thresholds are set before any framing capture exists.
 
 ## Alternatives considered
 
 | Alternative | Why not |
 |---|---|
-| Printed markers only ([ADR-0026](0026-markers-are-optional-the-plan-is-the-frame.md)) | Already supported and still useful; they get covered or removed as work proceeds. |
-| Carrying the placement from room to room in one session | Drift grows across a house ([ADR-0005](0005-short-room-sessions-offline-registration.md)). |
+| Placing automatically with no confirmation | A wrong fit looks like a right one, and nobody is asked. |
+| Fitting on the PC first | The answer arrives after the owner has left the room. |
